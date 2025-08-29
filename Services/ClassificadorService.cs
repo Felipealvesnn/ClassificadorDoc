@@ -55,7 +55,7 @@ namespace ClassificadorDoc.Services
                     TipoDocumento = classificacao.tipo_documento,
                     ConfiancaClassificacao = classificacao.confianca,
                     ResumoConteudo = classificacao.resumo,
-                    PalavrasChaveEncontradas = classificacao.palavras_chave_encontradas,
+                    PalavrasChaveEncontradas = classificacao.GetPalavrasChaveComoString(),
                     TextoExtraido = textoDocumento,
                     ProcessadoComSucesso = true
                 };
@@ -110,7 +110,7 @@ namespace ClassificadorDoc.Services
                     TipoDocumento = classificacao.tipo_documento,
                     ConfiancaClassificacao = classificacao.confianca,
                     ResumoConteudo = classificacao.resumo,
-                    PalavrasChaveEncontradas = classificacao.palavras_chave_encontradas,
+                    PalavrasChaveEncontradas = classificacao.GetPalavrasChaveComoString(),
                     TextoExtraido = "[PDF analisado diretamente - texto não extraído separadamente]",
                     ProcessadoComSucesso = true
                 };
@@ -170,7 +170,7 @@ Retorne APENAS um JSON válido:
     ""tipo_documento"": ""[autuacao|defesa|notificacao_penalidade|outros]"",
     ""confianca"": [0.0-1.0],
     ""resumo"": ""Descreva o que foi identificado no documento de trânsito em até 200 caracteres"",
-    ""palavras_chave_encontradas"": ""Principais termos de trânsito que justificaram a classificação""
+    ""palavras_chave_encontradas"": ""Principais termos como STRING separados por vírgula, não como array""
 }}
 ";
         }
@@ -208,7 +208,7 @@ Retorne APENAS este JSON:
     ""tipo_documento"": ""[autuacao|defesa|notificacao_penalidade|outros]"",
     ""confianca"": 0.95,
     ""resumo"": ""Descrição baseada na análise visual e textual do PDF"",
-    ""palavras_chave_encontradas"": ""Elementos visuais e textuais que justificaram a classificação""
+    ""palavras_chave_encontradas"": ""Elementos encontrados como STRING separados por vírgula, não como array""
 }
 ";
         }
@@ -218,7 +218,41 @@ Retorne APENAS este JSON:
             public string tipo_documento { get; set; } = string.Empty;
             public double confianca { get; set; }
             public string resumo { get; set; } = string.Empty;
-            public string palavras_chave_encontradas { get; set; } = string.Empty;
+
+            // Aceita tanto string quanto array de strings (mesmo que o Gemini)
+            private object? _palavras_chave_encontradas;
+
+            public object? palavras_chave_encontradas
+            {
+                get => _palavras_chave_encontradas;
+                set => _palavras_chave_encontradas = value;
+            }
+
+            // Método helper para obter como string
+            public string GetPalavrasChaveComoString()
+            {
+                if (_palavras_chave_encontradas == null)
+                    return string.Empty;
+
+                if (_palavras_chave_encontradas is string str)
+                    return str;
+
+                if (_palavras_chave_encontradas is JsonElement element)
+                {
+                    if (element.ValueKind == JsonValueKind.String)
+                        return element.GetString() ?? string.Empty;
+
+                    if (element.ValueKind == JsonValueKind.Array)
+                    {
+                        var items = element.EnumerateArray()
+                            .Select(x => x.GetString() ?? string.Empty)
+                            .Where(x => !string.IsNullOrEmpty(x));
+                        return string.Join(", ", items);
+                    }
+                }
+
+                return _palavras_chave_encontradas.ToString() ?? string.Empty;
+            }
         }
     }
 }
