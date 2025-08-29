@@ -1,0 +1,6 @@
+@ClassificadorDoc_HostAddress = http://localhost:5265
+
+GET {{ClassificadorDoc_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
