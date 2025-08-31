@@ -57,20 +57,25 @@ namespace ClassificadorDoc.Controllers
 
                 _logger.LogInformation("Processando {Count} arquivos PDF com análise visual", entradaPdfs.Count);
 
-                // Processa os PDFs em batches menores para análise visual (mais pesada)
-                const int batchSize = 3; // Reduzido para análise visual
+                // Processa os PDFs sequencialmente para evitar problemas de stream concorrente
+                const int batchSize = 1; // Processamento sequencial para máxima estabilidade
 
                 for (int i = 0; i < entradaPdfs.Count; i += batchSize)
                 {
                     var batch = entradaPdfs.Skip(i).Take(batchSize);
-                    var batchTasks = batch.Select(ProcessarPdfVisual);
 
-                    var batchResults = await Task.WhenAll(batchTasks);
-                    resultado.Documentos.AddRange(batchResults);
+                    // Processamento sequencial para evitar conflitos de stream
+                    foreach (var entrada in batch)
+                    {
+                        var resultado_individual = await ProcessarPdfVisual(entrada);
+                        resultado.Documentos.Add(resultado_individual);
 
-                    _logger.LogInformation("Processado batch visual {BatchNumber}/{TotalBatches}",
-                        (i / batchSize) + 1,
-                        (entradaPdfs.Count + batchSize - 1) / batchSize);
+                        // Pequeno delay entre arquivos para evitar sobrecarga
+                        await Task.Delay(100);
+                    }
+
+                    _logger.LogInformation("Processado item {ItemNumber}/{Total}",
+                        i + 1, entradaPdfs.Count);
                 }
 
                 resultado.DocumentosProcessados = resultado.Documentos.Count(d => d.ProcessadoComSucesso);
@@ -102,13 +107,22 @@ namespace ClassificadorDoc.Controllers
             {
                 try
                 {
-                    // Cria uma nova instância do stream a cada tentativa para evitar problemas de estado
-                    using var pdfStream = entrada.Open();
-                    using var memoryStream = new MemoryStream();
+                    // Estratégia de isolamento total - nova instância a cada tentativa
+                    byte[] pdfBytes;
 
-                    // Cópia completa do stream
-                    await pdfStream.CopyToAsync(memoryStream);
-                    var pdfBytes = memoryStream.ToArray();
+                    using (var pdfStream = entrada.Open())
+                    using (var memoryStream = new MemoryStream())
+                    {
+                        // Reset de posição para garantir leitura do início
+                        if (pdfStream.CanSeek)
+                        {
+                            pdfStream.Position = 0;
+                        }
+
+                        // Cópia completa do stream com buffer maior
+                        await pdfStream.CopyToAsync(memoryStream, bufferSize: 81920); // 80KB buffer
+                        pdfBytes = memoryStream.ToArray();
+                    }
 
                     // Validação básica do arquivo PDF
                     if (pdfBytes.Length < 4 || !VerificarHeaderPdf(pdfBytes))
@@ -116,7 +130,14 @@ namespace ClassificadorDoc.Controllers
                         throw new InvalidOperationException("Arquivo não é um PDF válido");
                     }
 
-                    var resultado = await _classificador.ClassificarDocumentoPdfAsync(entrada.Name, pdfBytes);
+                    _logger.LogDebug("Tentativa {Tentativa}: PDF {NomeArquivo} carregado com {Bytes} bytes",
+                        tentativa, entrada.Name, pdfBytes.Length);
+
+                    // Cria uma cópia independente dos bytes para evitar referências compartilhadas
+                    var pdfBytesCopia = new byte[pdfBytes.Length];
+                    Array.Copy(pdfBytes, pdfBytesCopia, pdfBytes.Length);
+
+                    var resultado = await _classificador.ClassificarDocumentoPdfAsync(entrada.Name, pdfBytesCopia);
 
                     if (tentativa > 1)
                     {

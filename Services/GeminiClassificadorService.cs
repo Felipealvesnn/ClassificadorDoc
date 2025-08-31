@@ -22,7 +22,7 @@ namespace ClassificadorDoc.Services
             return await ClassificarDocumentoVisualAsync(nomeArquivo, pdfBytes, "application/pdf");
         }
 
-       
+
 
         private async Task<DocumentoClassificacao> ClassificarDocumentoVisualAsync(string nomeArquivo, byte[] arquivoBytes, string mimeType)
         {
@@ -48,9 +48,8 @@ namespace ClassificadorDoc.Services
                         _logger.LogInformation("Processando PDF para {NomeArquivo} - pode ser texto nativo ou escaneado", nomeArquivo);
                     }
 
-                    // Chama a API do Gemini via HTTP (por enquanto só com texto)
-                    // TODO: Implementar envio de arquivo visual quando a API estiver configurada
-                    var textoResposta = await ChamarGeminiApiAsync(prompt);
+                    // Chama a API do Gemini via HTTP com dados visuais
+                    var textoResposta = await ChamarGeminiApiAsync(prompt, arquivoBytes, mimeType);
 
                     if (string.IsNullOrEmpty(textoResposta))
                     {
@@ -133,30 +132,70 @@ namespace ClassificadorDoc.Services
             };
         }
 
-        private async Task<string> ChamarGeminiApiAsync(string prompt)
+        private async Task<string> ChamarGeminiApiAsync(string prompt, byte[]? arquivoBytes = null, string? mimeType = null)
         {
             try
             {
-                var requestBody = new
+                object requestBody;
+
+                // Se há arquivo visual, inclui na requisição
+                if (arquivoBytes != null && !string.IsNullOrEmpty(mimeType))
                 {
-                    contents = new[]
+                    var base64Data = Convert.ToBase64String(arquivoBytes);
+
+                    requestBody = new
                     {
-                        new
+                        contents = new[]
                         {
-                            parts = new[]
+                            new
                             {
-                                new { text = prompt }
+                                parts = new object[]
+                                {
+                                    new { text = prompt },
+                                    new
+                                    {
+                                        inline_data = new
+                                        {
+                                            mime_type = mimeType,
+                                            data = base64Data
+                                        }
+                                    }
+                                }
                             }
+                        },
+                        generationConfig = new
+                        {
+                            temperature = 0.1,
+                            topK = 32,
+                            topP = 0.1,
+                            maxOutputTokens = 2048
                         }
-                    },
-                    generationConfig = new
+                    };
+                }
+                else
+                {
+                    // Requisição apenas com texto (fallback)
+                    requestBody = new
                     {
-                        temperature = 0.1,
-                        topK = 32,
-                        topP = 0.1,
-                        maxOutputTokens = 2048
-                    }
-                };
+                        contents = new[]
+                        {
+                            new
+                            {
+                                parts = new[]
+                                {
+                                    new { text = prompt }
+                                }
+                            }
+                        },
+                        generationConfig = new
+                        {
+                            temperature = 0.1,
+                            topK = 32,
+                            topP = 0.1,
+                            maxOutputTokens = 2048
+                        }
+                    };
+                }
 
                 var json = JsonSerializer.Serialize(requestBody);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
