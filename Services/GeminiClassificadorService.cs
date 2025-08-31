@@ -1,7 +1,6 @@
 using ClassificadorDoc.Models;
 using System.Text.Json;
 using System.Text;
-using Mscc.GenerativeAI;
 
 namespace ClassificadorDoc.Services
 {
@@ -9,11 +8,13 @@ namespace ClassificadorDoc.Services
     {
         private readonly string _apiKey;
         private readonly ILogger<GeminiClassificadorService> _logger;
+        private readonly HttpClient _httpClient;
 
-        public GeminiClassificadorService(IConfiguration configuration, ILogger<GeminiClassificadorService> logger)
+        public GeminiClassificadorService(IConfiguration configuration, ILogger<GeminiClassificadorService> logger, HttpClient httpClient)
         {
             _apiKey = configuration["Gemini:ApiKey"] ?? throw new InvalidOperationException("Gemini API Key não configurada");
             _logger = logger;
+            _httpClient = httpClient;
         }
 
         public async Task<DocumentoClassificacao> ClassificarDocumentoAsync(string nomeArquivo, string textoDocumento)
@@ -25,13 +26,16 @@ namespace ClassificadorDoc.Services
             {
                 try
                 {
+                    // Validação de entrada
+                    if (string.IsNullOrWhiteSpace(textoDocumento))
+                    {
+                        throw new ArgumentException("Texto do documento não pode estar vazio");
+                    }
+
                     var prompt = CriarPromptClassificacao(textoDocumento);
 
-                    var googleAI = new GoogleAI(_apiKey);
-                    var model = googleAI.GenerativeModel("gemini-1.5-flash");
-
-                    var response = await model.GenerateContent(prompt);
-                    var textoResposta = response.Text;
+                    // Chama a API do Gemini via HTTP
+                    var textoResposta = await ChamarGeminiApiAsync(prompt);
 
                     if (string.IsNullOrEmpty(textoResposta))
                     {
@@ -45,6 +49,12 @@ namespace ClassificadorDoc.Services
                     if (classificacao == null)
                     {
                         throw new InvalidOperationException("Falha ao deserializar resposta do Gemini");
+                    }
+
+                    if (tentativa > 1)
+                    {
+                        _logger.LogInformation("Classificação bem-sucedida na tentativa {Tentativa} para {NomeArquivo}",
+                            tentativa, nomeArquivo);
                     }
 
                     return new DocumentoClassificacao
@@ -65,20 +75,22 @@ namespace ClassificadorDoc.Services
                      ex.Message.Contains("timeout") ||
                      ex.Message.Contains("network") ||
                      ex.Message.Contains("concurrency") ||
-                     ex.Message.Contains("thread")))
+                     ex.Message.Contains("thread") ||
+                     ex.Message.Contains("HTTP") ||
+                     ex.Message.Contains("API")))
                 {
                     ultimaExcecao = ex;
                     _logger.LogWarning("Tentativa {Tentativa} falhou para {NomeArquivo}: {Erro}. Tentando novamente...",
                         tentativa, nomeArquivo, ex.Message);
 
-                    // Aguarda antes de tentar novamente
+                    // Aguarda antes de tentar novamente com tempo crescente
                     await Task.Delay(TimeSpan.FromSeconds(tentativa * 2));
                     continue;
                 }
                 catch (Exception ex)
                 {
                     ultimaExcecao = ex;
-                    break;
+                    break; // Erro não transitório
                 }
             }
 
@@ -114,22 +126,13 @@ namespace ClassificadorDoc.Services
 
             for (int tentativa = 1; tentativa <= maxTentativas; tentativa++)
             {
-                GoogleAI? googleAI = null;
-                GenerativeModel? model = null;
-
                 try
                 {
-                    // Cria instâncias completamente novas para cada tentativa
-                    googleAI = new GoogleAI(_apiKey);
-                    model = googleAI.GenerativeModel("gemini-1.5-flash");
-
                     // Validação básica do arquivo
                     if (arquivoBytes == null || arquivoBytes.Length == 0)
                     {
                         throw new ArgumentException("Arquivo vazio ou inválido");
                     }
-
-                    var base64Arquivo = Convert.ToBase64String(arquivoBytes);
 
                     // Criando o prompt adaptado para o tipo de arquivo
                     var prompt = CriarPromptClassificacaoVisual(mimeType);
@@ -140,10 +143,9 @@ namespace ClassificadorDoc.Services
                         _logger.LogInformation("Processando PDF para {NomeArquivo} - pode ser texto nativo ou escaneado", nomeArquivo);
                     }
 
-                    // Usando o método simples apenas com texto por enquanto
-                    // TODO: Implementar envio de arquivo visual quando encontrarmos a API correta
-                    var response = await model.GenerateContent(prompt);
-                    var textoResposta = response?.Text;
+                    // Chama a API do Gemini via HTTP (por enquanto só com texto)
+                    // TODO: Implementar envio de arquivo visual quando a API estiver configurada
+                    var textoResposta = await ChamarGeminiApiAsync(prompt);
 
                     if (string.IsNullOrEmpty(textoResposta))
                     {
@@ -176,7 +178,7 @@ namespace ClassificadorDoc.Services
                         ConfiancaClassificacao = classificacao.confianca,
                         ResumoConteudo = classificacao.resumo,
                         PalavrasChaveEncontradas = classificacao.GetPalavrasChaveComoString(),
-                        TextoExtraido = $"[{tipoAnalise} analisado diretamente pelo Gemini - análise visual completa com OCR se necessário]",
+                        TextoExtraido = $"[{tipoAnalise} analisado via Gemini API - análise visual]",
                         ProcessadoComSucesso = true
                     };
                 }
@@ -190,7 +192,9 @@ namespace ClassificadorDoc.Services
                      ex.Message.Contains("vision") ||
                      ex.Message.Contains("image processing") ||
                      ex.Message.Contains("concurrency") ||
-                     ex.Message.Contains("thread")))
+                     ex.Message.Contains("thread") ||
+                     ex.Message.Contains("HTTP") ||
+                     ex.Message.Contains("API")))
                 {
                     ultimaExcecao = ex;
                     var tipoArquivo = mimeType.Contains("pdf") ? "PDF" : "imagem";
@@ -205,12 +209,6 @@ namespace ClassificadorDoc.Services
                 {
                     ultimaExcecao = ex;
                     break; // Erro não transitório
-                }
-                finally
-                {
-                    // Limpa referências para ajudar no GC
-                    model = null;
-                    googleAI = null;
                 }
             }
 
@@ -228,6 +226,66 @@ namespace ClassificadorDoc.Services
                 ProcessadoComSucesso = false,
                 ErroProcessamento = ultimaExcecao?.Message ?? "Erro desconhecido após múltiplas tentativas"
             };
+        }
+
+        private async Task<string> ChamarGeminiApiAsync(string prompt)
+        {
+            try
+            {
+                var requestBody = new
+                {
+                    contents = new[]
+                    {
+                        new
+                        {
+                            parts = new[]
+                            {
+                                new { text = prompt }
+                            }
+                        }
+                    },
+                    generationConfig = new
+                    {
+                        temperature = 0.1,
+                        topK = 32,
+                        topP = 0.1,
+                        maxOutputTokens = 2048
+                    }
+                };
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+
+                var response = await _httpClient.PostAsync(url, content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    throw new HttpRequestException($"Erro na API do Gemini: {response.StatusCode} - {errorContent}");
+                }
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var responseJson = JsonDocument.Parse(responseContent);
+
+                if (responseJson.RootElement.TryGetProperty("candidates", out var candidates) &&
+                    candidates.GetArrayLength() > 0 &&
+                    candidates[0].TryGetProperty("content", out var contentElement) &&
+                    contentElement.TryGetProperty("parts", out var parts) &&
+                    parts.GetArrayLength() > 0 &&
+                    parts[0].TryGetProperty("text", out var textElement))
+                {
+                    return textElement.GetString() ?? string.Empty;
+                }
+
+                throw new InvalidOperationException("Resposta da API do Gemini em formato inesperado");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao chamar a API do Gemini");
+                throw;
+            }
         }
 
         private string ExtrairJsonDaResposta(string resposta)
