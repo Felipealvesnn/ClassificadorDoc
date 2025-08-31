@@ -7,10 +7,9 @@ namespace ClassificadorDoc.Services
 {
     public interface IClassificadorService
     {
-        Task<DocumentoClassificacao> ClassificarDocumentoAsync(string nomeArquivo, string textoDocumento);
+    
         Task<DocumentoClassificacao> ClassificarDocumentoPdfAsync(string nomeArquivo, byte[] pdfBytes);
-        Task<DocumentoClassificacao> ClassificarDocumentoImagemAsync(string nomeArquivo, byte[] imagemBytes, string mimeType = "image/jpeg");
-    }
+     }
 
     public class ClassificadorService : IClassificadorService
     {
@@ -23,60 +22,7 @@ namespace ClassificadorDoc.Services
             _logger = logger;
         }
 
-        public async Task<DocumentoClassificacao> ClassificarDocumentoAsync(string nomeArquivo, string textoDocumento)
-        {
-            try
-            {
-                var prompt = CriarPromptClassificacao(textoDocumento);
-
-                var chatClient = _openAiClient.GetChatClient("gpt-4o-mini");
-
-                var completion = await chatClient.CompleteChatAsync(
-                    new ChatMessage[]
-                    {
-                        new SystemChatMessage("Você é um especialista em classificação de documentos de trânsito brasileiros. Analise o conteúdo preenchido no documento e classifique-o como autuação, defesa ou notificação de penalidade. Retorne APENAS um JSON válido com a classificação."),
-                        new UserChatMessage(prompt)
-                    },
-                    new ChatCompletionOptions
-                    {
-                        Temperature = 0.1f
-                    });
-
-                var resposta = completion.Value.Content[0].Text;
-                var classificacao = JsonSerializer.Deserialize<ClassificacaoResposta>(resposta);
-
-                if (classificacao == null)
-                {
-                    throw new InvalidOperationException("Falha ao deserializar resposta da OpenAI");
-                }
-
-                return new DocumentoClassificacao
-                {
-                    NomeArquivo = nomeArquivo,
-                    TipoDocumento = classificacao.tipo_documento,
-                    ConfiancaClassificacao = classificacao.confianca,
-                    ResumoConteudo = classificacao.resumo,
-                    PalavrasChaveEncontradas = classificacao.GetPalavrasChaveComoString(),
-                    TextoExtraido = textoDocumento,
-                    ProcessadoComSucesso = true
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao classificar documento {NomeArquivo}", nomeArquivo);
-                return new DocumentoClassificacao
-                {
-                    NomeArquivo = nomeArquivo,
-                    TipoDocumento = "Erro",
-                    ConfiancaClassificacao = 0,
-                    ResumoConteudo = "Erro no processamento",
-                    TextoExtraido = textoDocumento ?? string.Empty,
-                    ProcessadoComSucesso = false,
-                    ErroProcessamento = ex.Message
-                };
-            }
-        }
-
+      
         public async Task<DocumentoClassificacao> ClassificarDocumentoPdfAsync(string nomeArquivo, byte[] pdfBytes)
         {
             try

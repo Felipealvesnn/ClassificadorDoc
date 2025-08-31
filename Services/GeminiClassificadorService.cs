@@ -17,107 +17,12 @@ namespace ClassificadorDoc.Services
             _httpClient = httpClient;
         }
 
-        public async Task<DocumentoClassificacao> ClassificarDocumentoAsync(string nomeArquivo, string textoDocumento)
-        {
-            const int maxTentativas = 3;
-            Exception? ultimaExcecao = null;
-
-            for (int tentativa = 1; tentativa <= maxTentativas; tentativa++)
-            {
-                try
-                {
-                    // Validação de entrada
-                    if (string.IsNullOrWhiteSpace(textoDocumento))
-                    {
-                        throw new ArgumentException("Texto do documento não pode estar vazio");
-                    }
-
-                    var prompt = CriarPromptClassificacao(textoDocumento);
-
-                    // Chama a API do Gemini via HTTP
-                    var textoResposta = await ChamarGeminiApiAsync(prompt);
-
-                    if (string.IsNullOrEmpty(textoResposta))
-                    {
-                        throw new InvalidOperationException("Resposta vazia do Gemini");
-                    }
-
-                    // Extrair JSON da resposta que pode vir em bloco markdown
-                    var jsonLimpo = ExtrairJsonDaResposta(textoResposta);
-                    var classificacao = JsonSerializer.Deserialize<ClassificacaoResposta>(jsonLimpo);
-
-                    if (classificacao == null)
-                    {
-                        throw new InvalidOperationException("Falha ao deserializar resposta do Gemini");
-                    }
-
-                    if (tentativa > 1)
-                    {
-                        _logger.LogInformation("Classificação bem-sucedida na tentativa {Tentativa} para {NomeArquivo}",
-                            tentativa, nomeArquivo);
-                    }
-
-                    return new DocumentoClassificacao
-                    {
-                        NomeArquivo = nomeArquivo,
-                        TipoDocumento = classificacao.tipo_documento,
-                        ConfiancaClassificacao = classificacao.confianca,
-                        ResumoConteudo = classificacao.resumo,
-                        PalavrasChaveEncontradas = classificacao.GetPalavrasChaveComoString(),
-                        TextoExtraido = textoDocumento,
-                        ProcessadoComSucesso = true
-                    };
-                }
-                catch (Exception ex) when (tentativa < maxTentativas &&
-                    (ex.Message.Contains("inner stream position") ||
-                     ex.Message.Contains("stream") ||
-                     ex.Message.Contains("position") ||
-                     ex.Message.Contains("timeout") ||
-                     ex.Message.Contains("network") ||
-                     ex.Message.Contains("concurrency") ||
-                     ex.Message.Contains("thread") ||
-                     ex.Message.Contains("HTTP") ||
-                     ex.Message.Contains("API")))
-                {
-                    ultimaExcecao = ex;
-                    _logger.LogWarning("Tentativa {Tentativa} falhou para {NomeArquivo}: {Erro}. Tentando novamente...",
-                        tentativa, nomeArquivo, ex.Message);
-
-                    // Aguarda antes de tentar novamente com tempo crescente
-                    await Task.Delay(TimeSpan.FromSeconds(tentativa * 2));
-                    continue;
-                }
-                catch (Exception ex)
-                {
-                    ultimaExcecao = ex;
-                    break; // Erro não transitório
-                }
-            }
-
-            _logger.LogError(ultimaExcecao, "Erro ao classificar documento {NomeArquivo} com Gemini após {MaxTentativas} tentativas",
-                nomeArquivo, maxTentativas);
-
-            return new DocumentoClassificacao
-            {
-                NomeArquivo = nomeArquivo,
-                TipoDocumento = "Erro",
-                ConfiancaClassificacao = 0,
-                ResumoConteudo = "Erro no processamento",
-                TextoExtraido = textoDocumento ?? string.Empty,
-                ProcessadoComSucesso = false,
-                ErroProcessamento = ultimaExcecao?.Message ?? "Erro desconhecido após múltiplas tentativas"
-            };
-        }
-
         public async Task<DocumentoClassificacao> ClassificarDocumentoPdfAsync(string nomeArquivo, byte[] pdfBytes)
         {
             return await ClassificarDocumentoVisualAsync(nomeArquivo, pdfBytes, "application/pdf");
         }
 
-        public async Task<DocumentoClassificacao> ClassificarDocumentoImagemAsync(string nomeArquivo, byte[] imagemBytes, string mimeType = "image/jpeg")
-        {
-            return await ClassificarDocumentoVisualAsync(nomeArquivo, imagemBytes, mimeType);
-        }
+       
 
         private async Task<DocumentoClassificacao> ClassificarDocumentoVisualAsync(string nomeArquivo, byte[] arquivoBytes, string mimeType)
         {
@@ -321,46 +226,6 @@ namespace ClassificadorDoc.Services
             return resposta.Trim();
         }
 
-        private string CriarPromptClassificacao(string textoDocumento)
-        {
-            // Limita o texto para evitar exceder limites de tokens
-            var textoLimitado = textoDocumento.Length > 4000
-                ? textoDocumento.Substring(0, 4000) + "..."
-                : textoDocumento;
-
-            return $@"
-Você é um especialista em análise de documentos de trânsito brasileiros. Analise o CONTEÚDO ESPECÍFICO preenchido no documento abaixo e classifique-o baseado no que está escrito.
-
-INSTRUÇÕES IMPORTANTES:
-- Foque no CONTEÚDO preenchido, não apenas no formato do documento
-- Um mesmo formulário pode ser usado para diferentes finalidades de trânsito
-- Procure por palavras-chave específicas e contexto da infração/defesa
-- Considere códigos de infração (CTB), valores de multa, dados do veículo
-
-TIPOS DE DOCUMENTO DE TRÂNSITO:
-- autuacao: Auto de Infração de Trânsito (AIT), Notificação de Autuação, aplicação de multa, constatação de infração
-- defesa: Defesa prévia, Recurso JARI (1ª instância), Recurso CETRAN (2ª instância), Indicação de condutor, contestação de multa
-- notificacao_penalidade: Notificação da Penalidade (NIP), intimação para pagamento, comunicação de multa aplicada
-- outros: Documentos de trânsito que não se encaixam nas categorias acima
-
-PALAVRAS-CHAVE PARA IDENTIFICAÇÃO:
-AUTUACAO: ""auto de infração"", ""AIT"", ""autuação"", ""infração constatada"", ""código CTB"", ""agente de trânsito"", ""lavrado"", ""multa aplicada""
-DEFESA: ""defesa"", ""recurso"", ""JARI"", ""CETRAN"", ""contestação"", ""impugnação"", ""indicação de condutor"", ""alegações"", ""discordância""
-NOTIFICACAO: ""notificação da penalidade"", ""NIP"", ""intimação"", ""prazo para pagamento"", ""valor da multa"", ""fica notificado"", ""débito""
-
-DOCUMENTO PARA ANÁLISE:
-{textoLimitado}
-
-Analise cuidadosamente o conteúdo preenchido e retorne APENAS um JSON válido no seguinte formato exato (sem blocos de código markdown):
-{{
-    ""tipo_documento"": ""[autuacao|defesa|notificacao_penalidade|outros]"",
-    ""confianca"": [0.0-1.0],
-    ""resumo"": ""Descreva o que foi identificado no documento de trânsito em até 200 caracteres"",
-    ""palavras_chave_encontradas"": ""Lista as principais palavras como STRING separadas por vírgula""
-}}
-";
-        }
-
         private string CriarPromptClassificacaoVisual(string mimeType)
         {
             var tipoArquivo = mimeType.Contains("pdf") ? "PDF" : "imagem";
@@ -382,93 +247,98 @@ IMPORTANTE: Este {tipoArquivo} pode conter:
 - Fotos de documentos com qualidade variável
 - Documentos inclinados, com sombras ou reflexos
 
-TIPOS DE DOCUMENTO DE TRÂNSITO (PRIORIZE O DOCUMENTO PRINCIPAL):
+TIPOS DE DOCUMENTO DE TRÂNSITO (ANALISE NA ORDEM PARA MELHOR PRECISÃO):
 
-1. DEFESA: Documento onde o proprietário/condutor CONTESTA uma infração
-   INDICADORES CHAVE: 
-   * Texto com DEFESA, REQUERIMENTO DE DEFESA, RECURSO
-   * Argumentação jurídica (palavras como requer, alega, contesta)
-   * Assinatura do proprietário / condutor
-   * Texto explicativo defendendo inocência ou questionando a autuação
-   * Cabeçalho dirigido a autoridade (Ilustríssimo Senhor...)
-   * Pedidos de cancelamento da multa/pontos
-   
-2. AUTUACAO: Documento original da infração (AIT)
-   INDICADORES: Auto de Infração, dados do agente, local/hora da infração
-   
-3. NOTIFICACAO_PENALIDADE: Confirmação oficial da multa para pagamento
-   INDICADORES: Valores para pagamento, código de barras, dados bancários
-   
-4. OUTROS: Demais documentos
+1. AUTUACAO: Auto de Infração de Trânsito (AIT) - documento ORIGINAL da infração
+   INDICADORES OBRIGATÓRIOS:
+   - Título AUTO DE INFRAÇÃO ou AIT
+   - Dados do agente autuador (matrícula, nome)
+   - Local, data e hora EXATOS da infração
+   - Descrição da irregularidade observada pelo agente
+   - Código da infração CTB
+   - Assinatura/identificação do agente fiscalizador
 
-PALAVRAS-CHAVE PARA DEFESA:
-- DEFESA, REQUERIMENTO, RECURSO
+2. NOTIFICACAO_AUTUACAO: Comunicado oficial sobre a infração (não é cobrança)
+   INDICADORES OBRIGATÓRIOS:
+   - Título NOTIFICAÇÃO DE AUTUAÇÃO
+   - Texto formal informando sobre a lavratura do AIT
+   - Instruções para defesa (prazos, documentos necessários)
+   - Formulário FICI (identificação de condutor)
+   - AUSÊNCIA de valores para pagamento ou códigos de barras
+   - Texto: tem finalidade de cientificá-lo da autuação, não tem efeito para pagamento
+
+3. NOTIFICACAO_PENALIDADE: Cobrança oficial da multa (após processo)
+   INDICADORES OBRIGATÓRIOS:
+   - Título NOTIFICAÇÃO DE PENALIDADE ou NIP
+   - Valores definidos para pagamento da multa
+   - Códigos de barras ou dados bancários
+   - Prazos para pagamento com desconto
+   - Confirmação final da multa após análise
+
+4. DEFESA: Documento onde proprietário/condutor CONTESTA a infração
+   INDICADORES OBRIGATÓRIOS:
+   - Texto com DEFESA, REQUERIMENTO DE DEFESA, RECURSO
+   - Argumentação jurídica contestando a infração
+   - Cabeçalho dirigido à autoridade (Ilustríssimo Senhor...)
+   - Texto argumentativo explicando por que a multa deve ser cancelada
+   - Assinatura do requerente (proprietário/condutor)
+   - Pedidos explícitos de cancelamento/arquivamento
+
+5. OUTROS: Demais documentos relacionados
+
+PALAVRAS-CHAVE ESPECÍFICAS POR TIPO:
+
+AUTUACAO (AIT original):
+- AUTO DE INFRAÇÃO, AIT
+- Matrícula do agente, dados do fiscalizador
+- lavrado por, autuado
+
+NOTIFICACAO_AUTUACAO:
+- NOTIFICAÇÃO DE AUTUAÇÃO
+- cientificá-lo da autuação
+- não tem efeito para pagamento
+- aguarde a notificação de penalidade
+- FICI (formulário identificação condutor)
+
+NOTIFICACAO_PENALIDADE:
+- NOTIFICAÇÃO DE PENALIDADE, NIP
+- Valores monetários definidos
+- pagamento, quitação
+- Códigos de barras
+
+DEFESA:
+- DEFESA, REQUERIMENTO DE DEFESA, RECURSO
 - requer, alega, contesta, impugna
 - Ilustríssimo, Vossa Excelência
-- cancelamento, procedente, arquivamento
-- fundamentos legais, alegação
-- Argumentos jurídicos contra a infração
+- Argumentação jurídica contestando
 
-ESTRATÉGIA DE ANÁLISE:
-1. Identifique TODOS os documentos presentes
-2. Determine qual é o DOCUMENTO PRINCIPAL (maior, foco do arquivo)
-3. Se for uma defesa com anexos (AIT, notificações), classifique como DEFESA
-4. Leia o texto argumentativo completo
-5. Verifique assinaturas e requerimentos
+ESTRATÉGIA DE ANÁLISE SEQUENCIAL:
+1. Procure primeiro pelo TÍTULO principal do documento
+2. Identifique a FINALIDADE: informar, cobrar ou contestar?
+3. Verifique indicadores específicos de cada tipo
+4. Se há múltiplos documentos, identifique qual é o PRINCIPAL
+5. ATENÇÃO ESPECIAL:
+   - NOTIFICAÇÃO DE AUTUAÇÃO ≠ DEFESA (mesmo que mencione como fazer defesa)
+   - NOTIFICAÇÃO DE AUTUAÇÃO ≠ COBRANÇA (apenas informa sobre a infração)
+   - DEFESA sempre tem argumentação contestando, não apenas formulários
+6. Confirme com as palavras-chave específicas
 
-INSTRUÇÃO CRÍTICA: 
-- Se há argumentação contestando uma infração = DEFESA
-- Se há apenas registro da infração sem contestação = AUTUACAO
-- Se há cobrança/pagamento = NOTIFICACAO_PENALIDADE
+REGRA CRÍTICA DE DECISÃO:
+- Se o documento INFORMA sobre uma infração = NOTIFICACAO_AUTUACAO
+- Se o documento REGISTRA uma infração = AUTUACAO
+- Se o documento COBRA uma multa = NOTIFICACAO_PENALIDADE
+- Se o documento CONTESTA uma infração = DEFESA
 
 Retorne APENAS este JSON (sem blocos de código markdown):
 {{
-    ""tipo_documento"": ""[defesa|autuacao|notificacao_penalidade|outros]"",
+    ""tipo_documento"": ""[autuacao|notificacao_autuacao|notificacao_penalidade|defesa|outros]"",
     ""confianca"": [0.0-1.0],
     ""resumo"": ""Análise do documento principal identificado, mencionando se há documentos anexos"",
-    ""palavras_chave_encontradas"": ""Elementos encontrados separados por vírgula""
+    ""palavras_chave_encontradas"": ""Elementos encontrados separados por vírgula"",
+    ""documentos_identificados"": ""Lista dos tipos de documento encontrados no arquivo""
 }}
 ";
         }
-        private string CriarPromptClassificacaoPdf()
-        {
-            return @"
-Analise este documento PDF de trânsito brasileiro completamente. Use a capacidade visual do Gemini para examinar:
-
-ANÁLISE VISUAL COMPLETA:
-- Layout e formatação do documento
-- Carimbos, assinaturas, logos oficiais
-- Campos preenchidos vs vazios
-- Elementos gráficos que indiquem o tipo
-- Qualidade (original, cópia, digitalização)
-
-TIPOS DE DOCUMENTO DE TRÂNSITO:
-- autuacao: Auto de Infração de Trânsito (AIT), Notificação de Autuação - documento que registra a infração
-- defesa: Defesa de Autuação, Recurso JARI/CETRAN, Defesa Prévia, Indicação de Condutor - documentos de contestação
-- notificacao_penalidade: Notificação da Penalidade (NIP), Intimação para pagamento - confirmação oficial da multa
-- outros: Outros documentos relacionados ao trânsito
-
-INDICADORES VISUAIS IMPORTANTES:
-AUTUAÇÃO: Campos do agente autuador, local/data da infração, código CTB, descrição da irregularidade
-DEFESA: Texto argumentativo, pedidos, alegações, assinatura do proprietário/condutor
-NOTIFICAÇÃO: Valores da multa, dados para pagamento, prazos, confirmação da penalidade
-
-ELEMENTOS A OBSERVAR:
-- Cabeçalho com nome do órgão (DETRAN, PRF, etc.)
-- Presença de campos específicos preenchidos
-- Linguagem formal vs argumentativa
-- Elementos que confirmem a finalidade do documento
-
-Retorne APENAS este JSON (sem blocos de código markdown):
-{
-    ""tipo_documento"": ""[autuacao|defesa|notificacao_penalidade|outros]"",
-     ""confianca"": [0.0-1.0],
-    ""resumo"": ""Descrição baseada na análise visual e textual completa do PDF"",
-    ""palavras_chave_encontradas"": ""Elementos encontrados como STRING separados por vírgula, não como array""
-}
-";
-        }
-
         private class ClassificacaoResposta
         {
             public string tipo_documento { get; set; } = string.Empty;

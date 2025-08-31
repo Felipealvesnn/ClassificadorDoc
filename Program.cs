@@ -11,7 +11,6 @@ builder.Services.AddHttpClient();
 
 // OPÇÃO 1: Usando Gemini (ATIVO)
 // Register services
-builder.Services.AddScoped<IPdfExtractorService, PdfExtractorService>();
 builder.Services.AddScoped<IClassificadorService, GeminiClassificadorService>();
 
 // OPÇÃO 2: Usando OpenAI (COMENTADO - descomente para usar OpenAI)
@@ -20,7 +19,6 @@ using OpenAI;
 var openAiApiKey = builder.Configuration["OpenAI:ApiKey"]
     ?? throw new InvalidOperationException("OpenAI API Key não configurada");
 builder.Services.AddSingleton(new OpenAIClient(openAiApiKey));
-builder.Services.AddScoped<IPdfExtractorService, PdfExtractorService>();
 builder.Services.AddScoped<IClassificadorService, ClassificadorService>();
 */
 
