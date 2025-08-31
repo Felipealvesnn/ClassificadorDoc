@@ -371,62 +371,65 @@ Analise cuidadosamente o conteúdo preenchido e retorne APENAS um JSON válido n
             return $@"
 Analise este documento de trânsito brasileiro completamente. {instrucaoEspecifica}
 
+ATENÇÃO: Este {tipoArquivo} pode conter MÚLTIPLOS documentos. Identifique o DOCUMENTO PRINCIPAL/PRIMÁRIO baseado em:
+- Qual documento ocupa mais espaço/páginas
+- Qual é o propósito principal do arquivo
+- Se há um documento que claramente é o foco (ex: defesa com anexos)
+
 IMPORTANTE: Este {tipoArquivo} pode conter:
 - Texto nativo (PDF digital com texto selecionável)
 - Imagens escaneadas (PDF de digitalização com OCR necessário)
 - Fotos de documentos com qualidade variável
 - Documentos inclinados, com sombras ou reflexos
 
-ANÁLISE VISUAL COMPLETA:
-- Layout e formatação do documento
-- Carimbos, assinaturas, logos oficiais
-- Campos preenchidos vs vazios
-- Elementos gráficos que indiquem o tipo
-- Qualidade (original, cópia, digitalização, escaneamento)
-- Texto legível mesmo que esteja em ângulo, com qualidade reduzida, brilho/contraste inadequado
-- Faça OCR (reconhecimento de texto) se necessário para PDFs escaneados
+TIPOS DE DOCUMENTO DE TRÂNSITO (PRIORIZE O DOCUMENTO PRINCIPAL):
 
-TIPOS DE DOCUMENTO DE TRÂNSITO:
-- autuacao: Auto de Infração de Trânsito (AIT), Notificação de Autuação - documento que registra a infração
-- defesa: Defesa de Autuação, Recurso JARI/CETRAN, Defesa Prévia, Indicação de Condutor - documentos de contestação
-- notificacao_penalidade: Notificação da Penalidade (NIP), Intimação para pagamento - confirmação oficial da multa
-- outros: Outros documentos relacionados ao trânsito
+1. DEFESA: Documento onde o proprietário/condutor CONTESTA uma infração
+   INDICADORES CHAVE: 
+   * Texto com DEFESA, REQUERIMENTO DE DEFESA, RECURSO
+   * Argumentação jurídica (palavras como requer, alega, contesta)
+   * Assinatura do proprietário / condutor
+   * Texto explicativo defendendo inocência ou questionando a autuação
+   * Cabeçalho dirigido a autoridade (Ilustríssimo Senhor...)
+   * Pedidos de cancelamento da multa/pontos
+   
+2. AUTUACAO: Documento original da infração (AIT)
+   INDICADORES: Auto de Infração, dados do agente, local/hora da infração
+   
+3. NOTIFICACAO_PENALIDADE: Confirmação oficial da multa para pagamento
+   INDICADORES: Valores para pagamento, código de barras, dados bancários
+   
+4. OUTROS: Demais documentos
 
-INDICADORES VISUAIS IMPORTANTES:
-AUTUAÇÃO: Campos do agente autuador, local/data da infração, código CTB, descrição da irregularidade
-DEFESA: Texto argumentativo, pedidos, alegações, assinatura do proprietário/condutor
-NOTIFICAÇÃO: Valores da multa, dados para pagamento, prazos, confirmação da penalidade
+PALAVRAS-CHAVE PARA DEFESA:
+- DEFESA, REQUERIMENTO, RECURSO
+- requer, alega, contesta, impugna
+- Ilustríssimo, Vossa Excelência
+- cancelamento, procedente, arquivamento
+- fundamentos legais, alegação
+- Argumentos jurídicos contra a infração
 
-ELEMENTOS A OBSERVAR:
-- Cabeçalho com nome do órgão (DETRAN, PRF, etc.)
-- Presença de campos específicos preenchidos
-- Linguagem formal vs argumentativa
-- Elementos que confirmem a finalidade do documento
-- Texto mesmo que esteja em qualidade de escaneamento, foto ou digitalização
-- Números de códigos, placas, valores, mesmo que parcialmente legíveis
+ESTRATÉGIA DE ANÁLISE:
+1. Identifique TODOS os documentos presentes
+2. Determine qual é o DOCUMENTO PRINCIPAL (maior, foco do arquivo)
+3. Se for uma defesa com anexos (AIT, notificações), classifique como DEFESA
+4. Leia o texto argumentativo completo
+5. Verifique assinaturas e requerimentos
 
-ESTRATÉGIA PARA PDFs ESCANEADOS/IMAGENS:
-1. Primeiro, tente identificar o tipo pelo layout visual e elementos gráficos
-2. Depois, faça o melhor esforço para ler textos usando OCR
-3. Se o texto estiver ilegível, baseie-se nos elementos visuais (formulários, campos, logos)
-4. Indique na confiança se houve dificuldades de leitura
-
-INSTRUÇÃO ESPECIAL: 
-- Para PDFs escaneados: Faça OCR do texto visível mesmo que não esteja perfeito
-- Para imagens: Leia o texto mesmo que esteja em ângulo, com sombras ou reflexos
-- Se houver dificuldades de leitura, reduza a confiança mas ainda tente classificar
-- Priorize elementos visuais consistentes (logos, layout) quando texto for ilegível
+INSTRUÇÃO CRÍTICA: 
+- Se há argumentação contestando uma infração = DEFESA
+- Se há apenas registro da infração sem contestação = AUTUACAO
+- Se há cobrança/pagamento = NOTIFICACAO_PENALIDADE
 
 Retorne APENAS este JSON (sem blocos de código markdown):
 {{
-    ""tipo_documento"": ""[autuacao|defesa|notificacao_penalidade|outros]"",
+    ""tipo_documento"": ""[defesa|autuacao|notificacao_penalidade|outros]"",
     ""confianca"": [0.0-1.0],
-    ""resumo"": ""Descrição baseada na análise visual e textual completa do {tipoArquivo}"",
-    ""palavras_chave_encontradas"": ""Elementos encontrados como STRING separados por vírgula, não como array""
+    ""resumo"": ""Análise do documento principal identificado, mencionando se há documentos anexos"",
+    ""palavras_chave_encontradas"": ""Elementos encontrados separados por vírgula""
 }}
 ";
         }
-
         private string CriarPromptClassificacaoPdf()
         {
             return @"
