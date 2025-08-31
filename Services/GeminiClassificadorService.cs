@@ -1,19 +1,19 @@
 using ClassificadorDoc.Models;
 using System.Text.Json;
 using System.Text;
+using Mscc.GenerativeAI;
 
 namespace ClassificadorDoc.Services
 {
     public class GeminiClassificadorService : IClassificadorService
     {
-        private readonly HttpClient _httpClient;
-        private readonly string _apiKey;
+        private readonly GoogleAI _googleAI;
         private readonly ILogger<GeminiClassificadorService> _logger;
 
-        public GeminiClassificadorService(HttpClient httpClient, IConfiguration configuration, ILogger<GeminiClassificadorService> logger)
+        public GeminiClassificadorService(IConfiguration configuration, ILogger<GeminiClassificadorService> logger)
         {
-            _httpClient = httpClient;
-            _apiKey = configuration["Gemini:ApiKey"] ?? throw new InvalidOperationException("Gemini API Key não configurada");
+            var apiKey = configuration["Gemini:ApiKey"] ?? throw new InvalidOperationException("Gemini API Key não configurada");
+            _googleAI = new GoogleAI(apiKey);
             _logger = logger;
         }
 
@@ -23,49 +23,19 @@ namespace ClassificadorDoc.Services
             {
                 var prompt = CriarPromptClassificacao(textoDocumento);
 
-                var requestBody = new
+                var model = _googleAI.GenerativeModel("gemini-1.5-flash");
+
+                var response = await model.GenerateContent(prompt);
+                var textoResposta = response.Text;
+
+                if (string.IsNullOrEmpty(textoResposta))
                 {
-                    contents = new[]
-                    {
-                        new
-                        {
-                            parts = new[]
-                            {
-                                new { text = prompt }
-                            }
-                        }
-                    },
-                    generationConfig = new
-                    {
-                        temperature = 0.1,
-                        maxOutputTokens = 500,
-                        responseMimeType = "application/json"
-                    }
-                };
-
-                var json = JsonSerializer.Serialize(requestBody);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
-                var response = await _httpClient.PostAsync(url, content);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError("Erro na API do Gemini: {StatusCode} - {Content}", response.StatusCode, errorContent);
-                    throw new InvalidOperationException($"Erro na API do Gemini: {response.StatusCode}");
+                    throw new InvalidOperationException("Resposta vazia do Gemini");
                 }
 
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var geminiResponse = JsonSerializer.Deserialize<GeminiResponse>(responseContent);
-
-                if (geminiResponse?.candidates == null || geminiResponse.candidates.Length == 0)
-                {
-                    throw new InvalidOperationException("Resposta inválida do Gemini");
-                }
-
-                var textoResposta = geminiResponse.candidates[0].content.parts[0].text;
-                var classificacao = JsonSerializer.Deserialize<ClassificacaoResposta>(textoResposta);
+                // Extrair JSON da resposta que pode vir em bloco markdown
+                var jsonLimpo = ExtrairJsonDaResposta(textoResposta);
+                var classificacao = JsonSerializer.Deserialize<ClassificacaoResposta>(jsonLimpo);
 
                 if (classificacao == null)
                 {
@@ -105,55 +75,24 @@ namespace ClassificadorDoc.Services
             {
                 var base64Pdf = Convert.ToBase64String(pdfBytes);
 
-                var requestBody = new
+                var model = _googleAI.GenerativeModel("gemini-1.5-flash");
+
+                // Criando o prompt e enviando o PDF como parte inline
+                var prompt = CriarPromptClassificacaoPdf();
+
+                // Usando o método simples apenas com texto por enquanto
+                // TODO: Implementar envio de PDF quando encontrarmos a API correta
+                var response = await model.GenerateContent(prompt);
+                var textoResposta = response.Text;
+
+                if (string.IsNullOrEmpty(textoResposta))
                 {
-                    contents = new[]
-                    {
-                        new
-                        {
-                            parts = new object[]
-                            {
-                                new { text = CriarPromptClassificacaoPdf() },
-                                new {
-                                    inline_data = new {
-                                        mime_type = "application/pdf",
-                                        data = base64Pdf
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    generationConfig = new
-                    {
-                        temperature = 0.1,
-                        maxOutputTokens = 500,
-                        responseMimeType = "application/json"
-                    }
-                };
-
-                var json = JsonSerializer.Serialize(requestBody);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={_apiKey}";
-                var response = await _httpClient.PostAsync(url, content);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError("Erro na API do Gemini para PDF: {StatusCode} - {Content}", response.StatusCode, errorContent);
-                    throw new InvalidOperationException($"Erro na API do Gemini: {response.StatusCode}");
+                    throw new InvalidOperationException("Resposta vazia do Gemini para PDF");
                 }
 
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var geminiResponse = JsonSerializer.Deserialize<GeminiResponse>(responseContent);
-
-                if (geminiResponse?.candidates == null || geminiResponse.candidates.Length == 0)
-                {
-                    throw new InvalidOperationException("Resposta inválida do Gemini para PDF");
-                }
-
-                var textoResposta = geminiResponse.candidates[0].content.parts[0].text;
-                var classificacao = JsonSerializer.Deserialize<ClassificacaoResposta>(textoResposta);
+                // Extrair JSON da resposta que pode vir em bloco markdown
+                var jsonLimpo = ExtrairJsonDaResposta(textoResposta);
+                var classificacao = JsonSerializer.Deserialize<ClassificacaoResposta>(jsonLimpo);
 
                 if (classificacao == null)
                 {
@@ -187,6 +126,39 @@ namespace ClassificadorDoc.Services
             }
         }
 
+        private string ExtrairJsonDaResposta(string resposta)
+        {
+            if (string.IsNullOrEmpty(resposta))
+                return resposta;
+
+            // Remove blocos de código markdown se existirem
+            if (resposta.Contains("```json"))
+            {
+                var inicioJson = resposta.IndexOf("```json") + "```json".Length;
+                var fimJson = resposta.IndexOf("```", inicioJson);
+
+                if (fimJson > inicioJson)
+                {
+                    return resposta.Substring(inicioJson, fimJson - inicioJson).Trim();
+                }
+            }
+
+            // Se não tiver markdown, procura pelo JSON diretamente
+            if (resposta.Contains("{") && resposta.Contains("}"))
+            {
+                var inicioJson = resposta.IndexOf("{");
+                var fimJson = resposta.LastIndexOf("}") + 1;
+
+                if (fimJson > inicioJson)
+                {
+                    return resposta.Substring(inicioJson, fimJson - inicioJson).Trim();
+                }
+            }
+
+            // Retorna a resposta original se não conseguir extrair
+            return resposta.Trim();
+        }
+
         private string CriarPromptClassificacao(string textoDocumento)
         {
             // Limita o texto para evitar exceder limites de tokens
@@ -217,7 +189,7 @@ NOTIFICACAO: ""notificação da penalidade"", ""NIP"", ""intimação"", ""prazo 
 DOCUMENTO PARA ANÁLISE:
 {textoLimitado}
 
-Analise cuidadosamente o conteúdo preenchido e retorne APENAS um JSON válido no seguinte formato exato:
+Analise cuidadosamente o conteúdo preenchido e retorne APENAS um JSON válido no seguinte formato exato (sem blocos de código markdown):
 {{
     ""tipo_documento"": ""[autuacao|defesa|notificacao_penalidade|outros]"",
     ""confianca"": [0.0-1.0],
@@ -256,7 +228,7 @@ ELEMENTOS A OBSERVAR:
 - Linguagem formal vs argumentativa
 - Elementos que confirmem a finalidade do documento
 
-Retorne APENAS este JSON:
+Retorne APENAS este JSON (sem blocos de código markdown):
 {
     ""tipo_documento"": ""[autuacao|defesa|notificacao_penalidade|outros]"",
      ""confianca"": [0.0-1.0],
@@ -306,26 +278,6 @@ Retorne APENAS este JSON:
 
                 return _palavras_chave_encontradas.ToString() ?? string.Empty;
             }
-        }
-
-        private class GeminiResponse
-        {
-            public Candidate[] candidates { get; set; } = Array.Empty<Candidate>();
-        }
-
-        private class Candidate
-        {
-            public Content content { get; set; } = new Content();
-        }
-
-        private class Content
-        {
-            public Part[] parts { get; set; } = Array.Empty<Part>();
-        }
-
-        private class Part
-        {
-            public string text { get; set; } = string.Empty;
         }
     }
 }
