@@ -9,6 +9,7 @@ namespace ClassificadorDoc.Services
     {
         Task<DocumentoClassificacao> ClassificarDocumentoAsync(string nomeArquivo, string textoDocumento);
         Task<DocumentoClassificacao> ClassificarDocumentoPdfAsync(string nomeArquivo, byte[] pdfBytes);
+        Task<DocumentoClassificacao> ClassificarDocumentoImagemAsync(string nomeArquivo, byte[] imagemBytes, string mimeType = "image/jpeg");
     }
 
     public class ClassificadorService : IClassificadorService
@@ -128,6 +129,45 @@ namespace ClassificadorDoc.Services
                     ProcessadoComSucesso = false,
                     ErroProcessamento = ex.Message
                 };
+            }
+        }
+
+        public Task<DocumentoClassificacao> ClassificarDocumentoImagemAsync(string nomeArquivo, byte[] imagemBytes, string mimeType = "image/jpeg")
+        {
+            try
+            {
+                _logger.LogInformation("Classificação de imagem ainda não implementada para OpenAI. Usando fallback.");
+
+                // Por enquanto, retorna um resultado indicando que não é suportado
+                var resultado = new DocumentoClassificacao
+                {
+                    NomeArquivo = nomeArquivo,
+                    TipoDocumento = "outros",
+                    ConfiancaClassificacao = 0.0,
+                    ResumoConteudo = "Análise de imagem não implementada para OpenAI - use Gemini para análise visual",
+                    PalavrasChaveEncontradas = "",
+                    TextoExtraido = "[Análise de imagem requer implementação específica]",
+                    ProcessadoComSucesso = false,
+                    ErroProcessamento = "Análise de imagem não suportada no serviço OpenAI"
+                };
+
+                return Task.FromResult(resultado);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao tentar classificar imagem {NomeArquivo}", nomeArquivo);
+                var resultado = new DocumentoClassificacao
+                {
+                    NomeArquivo = nomeArquivo,
+                    TipoDocumento = "Erro",
+                    ConfiancaClassificacao = 0,
+                    ResumoConteudo = "Erro no processamento da imagem",
+                    TextoExtraido = string.Empty,
+                    ProcessadoComSucesso = false,
+                    ErroProcessamento = ex.Message
+                };
+
+                return Task.FromResult(resultado);
             }
         }
 

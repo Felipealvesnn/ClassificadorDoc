@@ -60,9 +60,9 @@ namespace ClassificadorDoc.Controllers
 
                 _logger.LogInformation("Processando {Count} arquivos PDF", entradaPdfs.Count);
 
-                // Processa os PDFs em batches para evitar sobrecarga
+                // Processa os PDFs em batches menores para evitar sobrecarga e conflitos de stream
                 var tasks = new List<Task<DocumentoClassificacao>>();
-                const int batchSize = 5; // Processa 5 PDFs por vez
+                const int batchSize = 3; // Reduzido para 3 PDFs por vez para minimizar conflitos
 
                 for (int i = 0; i < entradaPdfs.Count; i += batchSize)
                 {
@@ -171,62 +171,155 @@ namespace ClassificadorDoc.Controllers
 
         private async Task<DocumentoClassificacao> ProcessarPdf(ZipArchiveEntry entrada)
         {
-            try
-            {
-                using var pdfStream = entrada.Open();
-                var texto = await _pdfExtractor.ExtrairTextoAsync(pdfStream);
+            const int maxTentativas = 3;
+            Exception? ultimaExcecao = null;
 
-                if (string.IsNullOrWhiteSpace(texto))
+            for (int tentativa = 1; tentativa <= maxTentativas; tentativa++)
+            {
+                try
                 {
-                    return new DocumentoClassificacao
+                    // Cria uma nova instância do stream a cada tentativa
+                    using var pdfStream = entrada.Open();
+
+                    var texto = await _pdfExtractor.ExtrairTextoAsync(pdfStream);
+
+                    if (string.IsNullOrWhiteSpace(texto))
                     {
-                        NomeArquivo = entrada.Name,
-                        TipoDocumento = "Erro",
-                        TextoExtraido = string.Empty,
-                        ProcessadoComSucesso = false,
-                        ErroProcessamento = "Não foi possível extrair texto do PDF"
-                    };
-                }
+                        return new DocumentoClassificacao
+                        {
+                            NomeArquivo = entrada.Name,
+                            TipoDocumento = "Erro",
+                            TextoExtraido = string.Empty,
+                            ProcessadoComSucesso = false,
+                            ErroProcessamento = "Não foi possível extrair texto do PDF (possivelmente escaneado)"
+                        };
+                    }
 
-                return await _classificador.ClassificarDocumentoAsync(entrada.Name, texto);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao processar PDF {NomeArquivo}", entrada.Name);
-                return new DocumentoClassificacao
+                    var resultado = await _classificador.ClassificarDocumentoAsync(entrada.Name, texto);
+
+                    if (tentativa > 1)
+                    {
+                        _logger.LogInformation("Processamento de PDF bem-sucedido na tentativa {Tentativa} para {NomeArquivo}",
+                            tentativa, entrada.Name);
+                    }
+
+                    return resultado;
+                }
+                catch (Exception ex) when (tentativa < maxTentativas &&
+                    (ex.Message.Contains("inner stream position") ||
+                     ex.Message.Contains("stream") ||
+                     ex.Message.Contains("position") ||
+                     ex.Message.Contains("concurrency") ||
+                     ex.Message.Contains("thread") ||
+                     ex.Message.Contains("timeout") ||
+                     ex.Message.Contains("network")))
                 {
-                    NomeArquivo = entrada.Name,
-                    TipoDocumento = "Erro",
-                    TextoExtraido = string.Empty,
-                    ProcessadoComSucesso = false,
-                    ErroProcessamento = ex.Message
-                };
+                    ultimaExcecao = ex;
+                    _logger.LogWarning("Tentativa {Tentativa} falhou para PDF {NomeArquivo}: {Erro}. Tentando novamente...",
+                        tentativa, entrada.Name, ex.Message);
+
+                    // Aguarda um tempo crescente antes de tentar novamente
+                    await Task.Delay(TimeSpan.FromSeconds(tentativa * 1.5));
+                    continue;
+                }
+                catch (Exception ex)
+                {
+                    ultimaExcecao = ex;
+                    break; // Erro não transitório
+                }
             }
+
+            _logger.LogError(ultimaExcecao, "Erro ao processar PDF {NomeArquivo} após {MaxTentativas} tentativas",
+                entrada.Name, maxTentativas);
+
+            return new DocumentoClassificacao
+            {
+                NomeArquivo = entrada.Name,
+                TipoDocumento = "Erro",
+                TextoExtraido = string.Empty,
+                ProcessadoComSucesso = false,
+                ErroProcessamento = ultimaExcecao?.Message ?? "Erro desconhecido após múltiplas tentativas"
+            };
         }
 
         private async Task<DocumentoClassificacao> ProcessarPdfVisual(ZipArchiveEntry entrada)
         {
-            try
-            {
-                using var pdfStream = entrada.Open();
-                using var memoryStream = new MemoryStream();
-                await pdfStream.CopyToAsync(memoryStream);
-                var pdfBytes = memoryStream.ToArray();
+            const int maxTentativas = 3;
+            Exception? ultimaExcecao = null;
 
-                return await _classificador.ClassificarDocumentoPdfAsync(entrada.Name, pdfBytes);
-            }
-            catch (Exception ex)
+            for (int tentativa = 1; tentativa <= maxTentativas; tentativa++)
             {
-                _logger.LogError(ex, "Erro ao processar PDF visual {NomeArquivo}", entrada.Name);
-                return new DocumentoClassificacao
+                try
                 {
-                    NomeArquivo = entrada.Name,
-                    TipoDocumento = "Erro",
-                    TextoExtraido = string.Empty,
-                    ProcessadoComSucesso = false,
-                    ErroProcessamento = ex.Message
-                };
+                    // Cria uma nova instância do stream a cada tentativa para evitar problemas de estado
+                    using var pdfStream = entrada.Open();
+                    using var memoryStream = new MemoryStream();
+
+                    // Cópia completa do stream
+                    await pdfStream.CopyToAsync(memoryStream);
+                    var pdfBytes = memoryStream.ToArray();
+
+                    // Validação básica do arquivo PDF
+                    if (pdfBytes.Length < 4 || !VerificarHeaderPdf(pdfBytes))
+                    {
+                        throw new InvalidOperationException("Arquivo não é um PDF válido");
+                    }
+
+                    var resultado = await _classificador.ClassificarDocumentoPdfAsync(entrada.Name, pdfBytes);
+
+                    if (tentativa > 1)
+                    {
+                        _logger.LogInformation("Processamento de PDF visual bem-sucedido na tentativa {Tentativa} para {NomeArquivo}",
+                            tentativa, entrada.Name);
+                    }
+
+                    return resultado;
+                }
+                catch (Exception ex) when (tentativa < maxTentativas &&
+                    (ex.Message.Contains("inner stream position") ||
+                     ex.Message.Contains("stream") ||
+                     ex.Message.Contains("position") ||
+                     ex.Message.Contains("concurrency") ||
+                     ex.Message.Contains("thread") ||
+                     ex.Message.Contains("timeout") ||
+                     ex.Message.Contains("network")))
+                {
+                    ultimaExcecao = ex;
+                    _logger.LogWarning("Tentativa {Tentativa} falhou para PDF visual {NomeArquivo}: {Erro}. Tentando novamente...",
+                        tentativa, entrada.Name, ex.Message);
+
+                    // Aguarda um tempo crescente antes de tentar novamente
+                    await Task.Delay(TimeSpan.FromSeconds(tentativa * 2));
+                    continue;
+                }
+                catch (Exception ex)
+                {
+                    ultimaExcecao = ex;
+                    break; // Erro não transitório
+                }
             }
+
+            _logger.LogError(ultimaExcecao, "Erro ao processar PDF visual {NomeArquivo} após {MaxTentativas} tentativas",
+                entrada.Name, maxTentativas);
+
+            return new DocumentoClassificacao
+            {
+                NomeArquivo = entrada.Name,
+                TipoDocumento = "Erro",
+                TextoExtraido = string.Empty,
+                ProcessadoComSucesso = false,
+                ErroProcessamento = ultimaExcecao?.Message ?? "Erro desconhecido após múltiplas tentativas"
+            };
+        }
+
+        private static bool VerificarHeaderPdf(byte[] bytes)
+        {
+            // Verifica se os primeiros bytes correspondem ao header PDF (%PDF)
+            return bytes.Length >= 4 &&
+                   bytes[0] == 0x25 && // %
+                   bytes[1] == 0x50 && // P
+                   bytes[2] == 0x44 && // D
+                   bytes[3] == 0x46;   // F
         }
 
         [HttpGet("tipos-documento")]
