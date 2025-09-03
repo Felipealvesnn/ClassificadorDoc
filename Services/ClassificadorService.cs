@@ -7,9 +7,8 @@ namespace ClassificadorDoc.Services
 {
     public interface IClassificadorService
     {
-    
         Task<DocumentoClassificacao> ClassificarDocumentoPdfAsync(string nomeArquivo, byte[] pdfBytes);
-     }
+    }
 
     public class ClassificadorService : IClassificadorService
     {
@@ -22,7 +21,7 @@ namespace ClassificadorDoc.Services
             _logger = logger;
         }
 
-      
+
         public async Task<DocumentoClassificacao> ClassificarDocumentoPdfAsync(string nomeArquivo, byte[] pdfBytes)
         {
             try

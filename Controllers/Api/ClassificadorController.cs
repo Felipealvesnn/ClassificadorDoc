@@ -4,7 +4,7 @@ using ClassificadorDoc.Services;
 using System.IO.Compression;
 using System.Diagnostics;
 
-namespace ClassificadorDoc.Controllers
+namespace ClassificadorDoc.Controllers.Api
 {
     [ApiController]
     [Route("api/[controller]")]
