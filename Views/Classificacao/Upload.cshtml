@@ -1,0 +1,360 @@
+@{
+    ViewData["Title"] = "Classificar Documento";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Classificar Documento</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a asp-controller="Home" asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Área de Upload -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Upload de Documento</h6>
+            </div>
+            <div class="card-body">
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <h5>Arraste e solte seu documento aqui</h5>
+                    <p class="text-muted">ou clique para selecionar arquivo</p>
+                    <small class="text-muted">
+                        Formatos suportados: PDF, DOC, DOCX, TXT (máx. 10MB)
+                    </small>
+                </div>
+                
+                <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt" style="display: none;" />
+                
+                <!-- Informações do arquivo selecionado -->
+                <div id="fileInfo" class="mt-3" style="display: none;">
+                    <div class="alert alert-info">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-file"></i>
+                                <span id="fileName"></span>
+                                <small class="text-muted">(<span id="fileSize"></span>)</small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearFile()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botões de ação -->
+                <div id="actionButtons" class="mt-3" style="display: none;">
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-outline-secondary me-md-2" onclick="clearFile()">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="classifyDocument()">
+                            <i class="fas fa-magic"></i> Classificar Documento
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading -->
+                <div id="loadingArea" class="text-center" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-3">Processando documento...</p>
+                    <small class="text-muted">Isso pode levar alguns segundos</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resultado da Classificação -->
+        <div id="resultArea" class="card shadow mb-4" style="display: none;">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-success">Resultado da Classificação</h6>
+            </div>
+            <div class="card-body">
+                <div id="classificationResult">
+                    <!-- Resultado será inserido aqui via JavaScript -->
+                </div>
+                
+                <div class="mt-3 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-primary" onclick="classifyAnother()">
+                        <i class="fas fa-plus"></i> Classificar Outro
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="saveResult()">
+                        <i class="fas fa-save"></i> Salvar Resultado
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Informações e Dicas -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Dicas de Uso</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6><i class="fas fa-lightbulb text-warning"></i> Formatos Aceitos</h6>
+                    <ul class="list-unstyled ms-3">
+                        <li><i class="fas fa-file-pdf text-danger"></i> PDF</li>
+                        <li><i class="fas fa-file-word text-primary"></i> DOC/DOCX</li>
+                        <li><i class="fas fa-file-alt text-secondary"></i> TXT</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <h6><i class="fas fa-check-circle text-success"></i> Melhores Práticas</h6>
+                    <ul class="small">
+                        <li>Use documentos com texto legível</li>
+                        <li>Evite imagens escaneadas de baixa qualidade</li>
+                        <li>Tamanho máximo: 10MB</li>
+                        <li>Documentos em português têm melhor precisão</li>
+                    </ul>
+                </div>
+
+                <div class="alert alert-info">
+                    <small>
+                        <i class="fas fa-info-circle"></i>
+                        O sistema utiliza IA para classificar automaticamente seus documentos com alta precisão.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Histórico Recente -->
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Classificações Recentes</h6>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item p-2">
+                        <div class="d-flex justify-content-between">
+                            <small class="fw-bold">contrato_servicos.pdf</small>
+                            <span class="badge bg-success">Contrato</span>
+                        </div>
+                        <small class="text-muted">Confiança: 98%</small>
+                    </div>
+                    <div class="list-group-item p-2">
+                        <div class="d-flex justify-content-between">
+                            <small class="fw-bold">nota_fiscal_456.pdf</small>
+                            <span class="badge bg-warning">Fiscal</span>
+                        </div>
+                        <small class="text-muted">Confiança: 95%</small>
+                    </div>
+                    <div class="list-group-item p-2">
+                        <div class="d-flex justify-content-between">
+                            <small class="fw-bold">relatorio_vendas.docx</small>
+                            <span class="badge bg-info">Relatório</span>
+                        </div>
+                        <small class="text-muted">Confiança: 92%</small>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <a asp-action="History" class="btn btn-sm btn-outline-primary">
+                        Ver Histórico Completo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let selectedFile = null;
+
+        // Configurar drag and drop
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            uploadArea.classList.add('dragover');
+        }
+
+        function unhighlight(e) {
+            uploadArea.classList.remove('dragover');
+        }
+
+        uploadArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+
+        fileInput.addEventListener('change', function(e) {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                const file = files[0];
+                if (validateFile(file)) {
+                    selectedFile = file;
+                    showFileInfo(file);
+                }
+            }
+        }
+
+        function validateFile(file) {
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            const allowedTypes = ['application/pdf', 'application/msword', 
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+                                'text/plain'];
+
+            if (file.size > maxSize) {
+                showAlert('Arquivo muito grande. Tamanho máximo: 10MB', 'danger');
+                return false;
+            }
+
+            if (!allowedTypes.includes(file.type)) {
+                showAlert('Tipo de arquivo não suportado. Use PDF, DOC, DOCX ou TXT', 'danger');
+                return false;
+            }
+
+            return true;
+        }
+
+        function showFileInfo(file) {
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('actionButtons').style.display = 'block';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function clearFile() {
+            selectedFile = null;
+            fileInput.value = '';
+            document.getElementById('fileInfo').style.display = 'none';
+            document.getElementById('actionButtons').style.display = 'none';
+            document.getElementById('resultArea').style.display = 'none';
+            document.getElementById('loadingArea').style.display = 'none';
+        }
+
+        function classifyDocument() {
+            if (!selectedFile) {
+                showAlert('Selecione um arquivo primeiro', 'warning');
+                return;
+            }
+
+            // Mostrar loading
+            document.getElementById('actionButtons').style.display = 'none';
+            document.getElementById('loadingArea').style.display = 'block';
+
+            // Simular classificação (substituir por chamada real à API)
+            setTimeout(() => {
+                const mockResult = {
+                    category: 'Contrato',
+                    confidence: 95.7,
+                    description: 'Documento identificado como contrato comercial',
+                    details: [
+                        'Presença de cláusulas contratuais',
+                        'Identificação de partes contratantes',
+                        'Estrutura típica de contrato'
+                    ]
+                };
+
+                showClassificationResult(mockResult);
+            }, 3000);
+        }
+
+        function showClassificationResult(result) {
+            document.getElementById('loadingArea').style.display = 'none';
+            
+            const confidenceClass = result.confidence >= 90 ? 'success' : 
+                                   result.confidence >= 70 ? 'warning' : 'danger';
+            
+            const confidenceColor = result.confidence >= 90 ? 'confidence-high' : 
+                                   result.confidence >= 70 ? 'confidence-medium' : 'confidence-low';
+
+            const resultHtml = `
+                <div class="classification-result ${confidenceClass} p-3 rounded">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h5 class="mb-1">
+                                <span class="badge bg-primary fs-6">${result.category}</span>
+                            </h5>
+                            <p class="mb-2">${result.description}</p>
+                            <div class="mb-2">
+                                <small class="text-muted">Confiança: ${result.confidence}%</small>
+                                <div class="confidence-bar mt-1">
+                                    <div class="${confidenceColor}" style="width: ${result.confidence}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <i class="fas fa-check-circle fa-3x text-success"></i>
+                        </div>
+                    </div>
+                    <hr>
+                    <h6>Detalhes da Análise:</h6>
+                    <ul class="mb-0">
+                        ${result.details.map(detail => `<li>${detail}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+
+            document.getElementById('classificationResult').innerHTML = resultHtml;
+            document.getElementById('resultArea').style.display = 'block';
+        }
+
+        function classifyAnother() {
+            clearFile();
+        }
+
+        function saveResult() {
+            showAlert('Resultado salvo com sucesso!', 'success');
+            // Implementar salvamento real
+        }
+
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const container = document.querySelector('.container-fluid');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+    </script>
+}

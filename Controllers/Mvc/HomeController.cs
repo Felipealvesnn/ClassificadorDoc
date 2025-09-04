@@ -4,6 +4,7 @@ using ClassificadorDoc.Models;
 
 namespace ClassificadorDoc.Controllers.Mvc
 {
+    [Authorize]
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
@@ -15,10 +16,12 @@ namespace ClassificadorDoc.Controllers.Mvc
 
         public IActionResult Index()
         {
+            ViewData["UserName"] = User.Identity?.Name ?? "Usuário";
+            ViewData["IsAdmin"] = User.IsInRole("Administrator");
+
             return View();
         }
 
-        [Authorize]
         public IActionResult Dashboard()
         {
             ViewBag.Username = User.Identity?.Name;
@@ -26,6 +29,11 @@ namespace ClassificadorDoc.Controllers.Mvc
         }
 
         public IActionResult About()
+        {
+            return View();
+        }
+
+        public IActionResult Privacy()
         {
             return View();
         }

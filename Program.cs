@@ -1,11 +1,55 @@
 using ClassificadorDoc.Services;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using ClassificadorDoc.Data;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 // using OpenAI; // Descomente quando usar OpenAI
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Verificar modo de execução
 var appMode = builder.Configuration["APP_MODE"] ?? Environment.GetEnvironmentVariable("APP_MODE") ?? "Full";
+
+// Configurar Entity Framework e Identity
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Configurar Identity apenas se não for modo "ApiOnly"
+if (appMode != "ApiOnly")
+{
+    builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
+    {
+        // Configurações de senha
+        options.Password.RequireDigit = true;
+        options.Password.RequiredLength = 6;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireLowercase = false;
+
+        // Configurações de conta
+        options.User.RequireUniqueEmail = true;
+        options.SignIn.RequireConfirmedEmail = false;
+        options.SignIn.RequireConfirmedPhoneNumber = false;
+
+        // Configurações de lockout
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.Lockout.MaxFailedAccessAttempts = 5;
+    })
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+    // Configurar cookie de autenticação
+    builder.Services.ConfigureApplicationCookie(options =>
+    {
+        options.LoginPath = "/Account/Login";
+        options.LogoutPath = "/Account/Logout";
+        options.AccessDeniedPath = "/Account/AccessDenied";
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    });
+}
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -15,19 +59,13 @@ if (appMode != "ApiOnly")
 {
     builder.Services.AddControllersWithViews();
 
-    // Add Authentication apenas para interface web
-    builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-        .AddCookie(options =>
-        {
-            options.LoginPath = "/Account/Login";
-            options.LogoutPath = "/Account/Logout";
-            options.AccessDeniedPath = "/Account/AccessDenied";
-            options.ExpireTimeSpan = TimeSpan.FromHours(8);
-            options.SlidingExpiration = true;
-        });
-
-    // Add Authorization
-    builder.Services.AddAuthorization();
+    // Add Authorization com políticas
+    builder.Services.AddAuthorization(options =>
+    {
+        options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+        options.AddPolicy("UserOrAdmin", policy => policy.RequireRole("User", "Admin", "Classifier"));
+        options.AddPolicy("ClassifierOrAdmin", policy => policy.RequireRole("Classifier", "Admin"));
+    });
 }
 
 // Configure HttpClient for Gemini
@@ -107,5 +145,22 @@ else // Full mode
 
 // Log do modo atual
 app.Logger.LogInformation("Aplicação iniciada no modo: {AppMode}", appMode);
+
+// Seed inicial de dados (apenas se não for ApiOnly)
+if (appMode != "ApiOnly")
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        try
+        {
+            await SeedData.InitializeAsync(scope.ServiceProvider);
+            app.Logger.LogInformation("Seed de dados executado com sucesso");
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogError(ex, "Erro ao executar seed de dados");
+        }
+    }
+}
 
 app.Run();
