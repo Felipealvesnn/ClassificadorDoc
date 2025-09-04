@@ -13,6 +13,9 @@
     @Html.AntiForgeryToken()
 }
 
+<!-- Container para alertas da página -->
+<div id="pageAlerts"></div>
+
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">Classificar Lote de Documentos</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
@@ -48,14 +51,14 @@
 
                 <!-- Informações do arquivo selecionado -->
                 <div id="fileInfo" class="mt-3" style="display: none;">
-                    <div class="alert alert-info">
+                    <div class="alert alert-info alert-permanent">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <i class="fas fa-file"></i>
                                 <span id="fileName"></span>
                                 <small class="text-muted">(<span id="fileSize"></span>)</small>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearFile()">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="forceClearFile()">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
@@ -65,7 +68,7 @@
                 <!-- Botões de ação -->
                 <div id="actionButtons" class="mt-3" style="display: none;">
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <button type="button" class="btn btn-outline-secondary me-md-2" onclick="clearFile()">
+                        <button type="button" class="btn btn-outline-secondary me-md-2" onclick="forceClearFile()">
                             <i class="fas fa-times"></i> Cancelar
                         </button>
                         <button type="button" class="btn btn-primary" onclick="classifyDocument()">
@@ -130,7 +133,7 @@
                     </ul>
                 </div>
 
-                <div class="alert alert-info">
+                <div class="alert alert-info alert-permanent">
                     <small>
                         <i class="fas fa-info-circle"></i>
                         O sistema processa lotes de documentos usando IA avançada para classificação automática de
@@ -182,6 +185,7 @@
 @section Scripts {
     <script>
         let selectedFile = null;
+        let isProcessing = false; // Flag para proteger contra limpezas acidentais
 
         // Configurar drag and drop
         const uploadArea = document.getElementById('uploadArea');
@@ -225,37 +229,69 @@
         });
 
         function handleFiles(files) {
+            console.log('handleFiles chamada com', files.length, 'arquivos');
             if (files.length > 0) {
                 const file = files[0];
+                console.log('Validando arquivo:', file.name, 'Tipo:', file.type, 'Tamanho:', file.size);
                 if (validateFile(file)) {
                     selectedFile = file;
                     showFileInfo(file);
+                } else {
+                    console.log('Arquivo falhou na validação');
                 }
             }
         }
 
         function validateFile(file) {
+            console.log('validateFile iniciada para:', file.name);
             const maxSize = 100 * 1024 * 1024; // 100MB para ZIP
             const allowedTypes = ['application/zip', 'application/x-zip-compressed'];
 
             if (file.size > maxSize) {
+                console.log('Arquivo muito grande:', file.size, 'vs', maxSize);
                 showAlert('Arquivo ZIP muito grande. Tamanho máximo: 100MB', 'danger');
                 return false;
             }
 
             if (!allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.zip')) {
+                console.log('Tipo de arquivo inválido:', file.type, 'Nome:', file.name);
                 showAlert('Apenas arquivos ZIP são aceitos para processamento em lote', 'danger');
                 return false;
             }
 
+            console.log('Arquivo validado com sucesso');
             return true;
         }
 
         function showFileInfo(file) {
-            document.getElementById('fileName').textContent = file.name;
-            document.getElementById('fileSize').textContent = formatFileSize(file.size);
-            document.getElementById('fileInfo').style.display = 'block';
-            document.getElementById('actionButtons').style.display = 'block';
+            console.log('showFileInfo chamada para:', file.name);
+
+            const fileNameElement = document.getElementById('fileName');
+            const fileSizeElement = document.getElementById('fileSize');
+            const fileInfoElement = document.getElementById('fileInfo');
+            const actionButtonsElement = document.getElementById('actionButtons');
+
+            if (!fileNameElement || !fileSizeElement || !fileInfoElement || !actionButtonsElement) {
+                console.error('Elementos não encontrados no DOM');
+                return;
+            }
+
+            fileNameElement.textContent = file.name;
+            fileSizeElement.textContent = formatFileSize(file.size);
+
+            // Mostrar os elementos com um pequeno delay para garantir que o DOM está pronto
+            setTimeout(() => {
+                fileInfoElement.style.display = 'block';
+                actionButtonsElement.style.display = 'block';
+                console.log('fileInfo exibido com sucesso');
+
+                // Verificar se ainda está visível após 2 segundos
+                setTimeout(() => {
+                    if (fileInfoElement.style.display === 'none') {
+                        console.warn('fileInfo foi escondido inesperadamente!');
+                    }
+                }, 2000);
+            }, 100);
         }
 
         function formatFileSize(bytes) {
@@ -267,6 +303,26 @@
         }
 
         function clearFile() {
+            console.log('clearFile chamada, isProcessing:', isProcessing);
+            console.trace('Stack trace para clearFile:');
+
+            // Só limpar se não estiver processando
+            if (!isProcessing) {
+                selectedFile = null;
+                fileInput.value = '';
+                document.getElementById('fileInfo').style.display = 'none';
+                document.getElementById('actionButtons').style.display = 'none';
+                document.getElementById('resultArea').style.display = 'none';
+                document.getElementById('loadingArea').style.display = 'none';
+            } else {
+                console.log('clearFile bloqueado devido ao processamento ativo');
+            }
+        }
+
+        // Função para forçar limpeza (usada pelos botões)
+        function forceClearFile() {
+            console.log('forceClearFile chamada - limpeza forçada');
+            isProcessing = false;
             selectedFile = null;
             fileInput.value = '';
             document.getElementById('fileInfo').style.display = 'none';
@@ -286,6 +342,9 @@
                 showAlert('Apenas arquivos ZIP são aceitos para processamento em lote', 'danger');
                 return;
             }
+
+            // Marcar como processando para proteger contra limpezas
+            isProcessing = true;
 
             // Mostrar loading
             document.getElementById('actionButtons').style.display = 'none';
@@ -321,6 +380,7 @@
                 })
                 .catch(error => {
                     console.error('Erro:', error);
+                    isProcessing = false; // Desmarcar processamento em caso de erro
                     document.getElementById('loadingArea').style.display = 'none';
                     document.getElementById('actionButtons').style.display = 'block';
                     showAlert('Erro ao classificar lote de documentos. Verifique se o ZIP contém PDFs válidos.', 'danger');
@@ -337,38 +397,38 @@
                 result.confidence >= 70 ? 'confidence-medium' : 'confidence-low';
 
             const resultHtml = `
-                    <div class="classification-result ${confidenceClass} p-3 rounded">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <h5 class="mb-1">
-                                    <span class="badge bg-primary fs-6">${result.category}</span>
-                                </h5>
-                                <p class="mb-2">${result.description}</p>
-                                <div class="mb-2">
-                                    <small class="text-muted">Confiança: ${result.confidence}%</small>
-                                    <div class="confidence-bar mt-1">
-                                        <div class="${confidenceColor}" style="width: ${result.confidence}%"></div>
+                            <div class="classification-result ${confidenceClass} p-3 rounded">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <h5 class="mb-1">
+                                            <span class="badge bg-primary fs-6">${result.category}</span>
+                                        </h5>
+                                        <p class="mb-2">${result.description}</p>
+                                        <div class="mb-2">
+                                            <small class="text-muted">Confiança: ${result.confidence}%</small>
+                                            <div class="confidence-bar mt-1">
+                                                <div class="${confidenceColor}" style="width: ${result.confidence}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <i class="fas fa-check-circle fa-3x text-success"></i>
                                     </div>
                                 </div>
+                                <hr>
+                                <h6>Detalhes da Análise:</h6>
+                                <ul class="mb-0">
+                                    ${result.details.map(detail => `<li>${detail}</li>`).join('')}
+                                </ul>
                             </div>
-                            <div class="col-md-4 text-center">
-                                <i class="fas fa-check-circle fa-3x text-success"></i>
-                            </div>
-                        </div>
-                        <hr>
-                        <h6>Detalhes da Análise:</h6>
-                        <ul class="mb-0">
-                            ${result.details.map(detail => `<li>${detail}</li>`).join('')}
-                        </ul>
-                    </div>
-                `;
+                        `;
 
             document.getElementById('classificationResult').innerHTML = resultHtml;
             document.getElementById('resultArea').style.display = 'block';
         }
 
         function classifyAnother() {
-            clearFile();
+            forceClearFile();
         }
 
         function saveResult() {
@@ -380,15 +440,27 @@
             const alertDiv = document.createElement('div');
             alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
             alertDiv.innerHTML = `
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
+                            ${message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
 
-            const container = document.querySelector('.container-fluid');
-            container.insertBefore(alertDiv, container.firstChild);
+            // Inserir no container específico da página
+            const pageAlerts = document.getElementById('pageAlerts');
+            if (pageAlerts) {
+                pageAlerts.appendChild(alertDiv);
+            } else {
+                // Fallback para inserir após o cabeçalho
+                const header = document.querySelector('.border-bottom');
+                if (header && header.parentNode) {
+                    header.parentNode.insertBefore(alertDiv, header.nextSibling);
+                }
+            }
 
+            // Auto-remover após 5 segundos
             setTimeout(() => {
-                alertDiv.remove();
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
             }, 5000);
         }
     </script>
