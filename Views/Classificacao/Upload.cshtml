@@ -202,12 +202,7 @@
     </div>
 </div>
 
-@section Styles {
-    <link rel="stylesheet" href="~/css/toast-notifications.css" />
-}
-
 @section Scripts {
-    <script src="~/js/toast-manager.js"></script>
     <script>
         let selectedFile = null;
         let isProcessing = false;
@@ -269,12 +264,12 @@
             const allowedTypes = ['application/zip', 'application/x-zip-compressed'];
 
             if (file.size > maxSize) {
-                toastManager.error('Arquivo Muito Grande', 'Tamanho máximo permitido: 100MB');
+                showToast.error('Arquivo Muito Grande', 'Tamanho máximo permitido: 100MB');
                 return false;
             }
 
             if (!allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.zip')) {
-                toastManager.error('Formato Inválido', 'Apenas arquivos ZIP são aceitos para processamento em lote');
+                showToast.error('Formato Inválido', 'Apenas arquivos ZIP são aceitos para processamento em lote');
                 return false;
             }
 
@@ -333,12 +328,12 @@
 
         async function classifyDocument() {
             if (!selectedFile) {
-                toastManager.warning('Arquivo Necessário', 'Selecione um arquivo ZIP primeiro');
+                showToast.warning('Arquivo Necessário', 'Selecione um arquivo ZIP primeiro');
                 return;
             }
 
             if (!selectedFile.name.toLowerCase().endsWith('.zip')) {
-                toastManager.error('Formato Inválido', 'Apenas arquivos ZIP são aceitos');
+                showToast.error('Formato Inválido', 'Apenas arquivos ZIP são aceitos');
                 return;
             }
 
@@ -350,7 +345,7 @@
             document.getElementById('loadingArea').style.display = 'block';
 
             // Mostrar toast de processamento
-            currentProcessingToast = toastManager.processingBatch(selectedFile.name);
+            currentProcessingToast = showToast.processingBatch(selectedFile.name);
 
             try {
                 // Preparar dados para envio
@@ -375,20 +370,20 @@
 
                 // Remover toast de processamento
                 if (currentProcessingToast) {
-                    toastManager.remove(currentProcessingToast);
+                    toastr.clear(currentProcessingToast);
                     currentProcessingToast = null;
                 }
 
                 if (result.success) {
                     // Sucesso - mostrar toast e resultado na página
-                    toastManager.batchSuccess(result);
+                    showToast.batchSuccess(result);
                     showQuickResult(result);
 
                     // Ocultar loading
                     document.getElementById('loadingArea').style.display = 'none';
                 } else {
                     // Erro
-                    toastManager.batchError(result.message || result.error || 'Erro desconhecido');
+                    showToast.batchError(result.message || result.error || 'Erro desconhecido');
                     restoreUploadState();
                 }
 
@@ -397,11 +392,11 @@
 
                 // Remover toast de processamento
                 if (currentProcessingToast) {
-                    toastManager.remove(currentProcessingToast);
+                    toastr.clear(currentProcessingToast);
                     currentProcessingToast = null;
                 }
 
-                toastManager.error(
+                showToast.error(
                     'Erro de Conexão',
                     'Falha ao comunicar com o servidor. Verifique sua conexão e tente novamente.'
                 );
