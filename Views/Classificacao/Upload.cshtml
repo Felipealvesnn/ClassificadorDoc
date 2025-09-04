@@ -410,30 +410,30 @@
             const viewFullReportBtn = document.getElementById('viewFullReportBtn');
 
             quickResultContent.innerHTML = `
-                    <div class="row text-center">
-                        <div class="col-md-3">
-                            <strong class="text-primary fs-4">${data.totalDocuments}</strong>
-                            <div class="small text-muted">Total de Documentos</div>
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <strong class="text-primary fs-4">${data.totalDocuments}</strong>
+                                <div class="small text-muted">Total de Documentos</div>
+                            </div>
+                            <div class="col-md-3">
+                                <strong class="text-success fs-4">${data.successfulDocuments}</strong>
+                                <div class="small text-muted">Classificados</div>
+                            </div>
+                            <div class="col-md-3">
+                                <strong class="text-info fs-4">${data.successRate}%</strong>
+                                <div class="small text-muted">Taxa de Sucesso</div>
+                            </div>
+                            <div class="col-md-3">
+                                <strong class="text-warning fs-4">${data.averageConfidence}%</strong>
+                                <div class="small text-muted">Confiança Média</div>
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <strong class="text-success fs-4">${data.successfulDocuments}</strong>
-                            <div class="small text-muted">Classificados</div>
+                        ${data.predominantType ? `
+                        <div class="mt-3 text-center">
+                            <span class="badge bg-primary fs-6">Tipo Predominante: ${data.predominantType}</span>
                         </div>
-                        <div class="col-md-3">
-                            <strong class="text-info fs-4">${data.successRate}%</strong>
-                            <div class="small text-muted">Taxa de Sucesso</div>
-                        </div>
-                        <div class="col-md-3">
-                            <strong class="text-warning fs-4">${data.averageConfidence}%</strong>
-                            <div class="small text-muted">Confiança Média</div>
-                        </div>
-                    </div>
-                    ${data.predominantType ? `
-                    <div class="mt-3 text-center">
-                        <span class="badge bg-primary fs-6">Tipo Predominante: ${data.predominantType}</span>
-                    </div>
-                    ` : ''}
-                `;
+                        ` : ''}
+                    `;
 
             // Configurar botão para ver relatório completo
             if (data.redirectUrl) {
