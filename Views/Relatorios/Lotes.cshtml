@@ -1,0 +1,364 @@
+@using ClassificadorDoc.Controllers.Mvc
+@using ClassificadorDoc.Models
+@model BatchReportViewModel
+@{
+    ViewData["Title"] = "Relatório de Lotes de Documentos";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Relatório de Lotes de Documentos</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="refreshData()" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i> Atualizar
+            </button>
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="startDate" class="form-label">Data Início</label>
+                <input type="date" class="form-control" id="startDate" name="startDate" value="@Model.StartDate.ToString("yyyy-MM-dd")">
+            </div>
+            <div class="col-md-3">
+                <label for="endDate" class="form-label">Data Fim</label>
+                <input type="date" class="form-control" id="endDate" name="endDate" value="@Model.EndDate.ToString("yyyy-MM-dd")">
+            </div>
+            <div class="col-md-4">
+                <label for="userId" class="form-label">Usuário</label>
+                <select class="form-select" id="userId" name="userId">
+                    <option value="">Todos os usuários</option>
+                    @{
+                        var users = ViewBag.Users as List<dynamic>;
+                    }
+                    @if (users != null)
+                    {
+                        @foreach (var user in users)
+                        {
+                            <option value="@user.Id" selected="@(Model.UserId == user.Id ? "selected" : null)">@user.UserName</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-primary d-block">
+                    <i class="fas fa-search"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Estatísticas Resumidas -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total de Lotes</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalBatches</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-file-archive fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total de Documentos</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalDocuments</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-file-pdf fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Taxa de Sucesso</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            @(Model.TotalDocuments > 0 ? Math.Round((double)Model.SuccessfulDocuments / Model.TotalDocuments * 100, 1) : 0)%
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Confiança Média</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">@Math.Round(Model.AverageConfidence, 1)%</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-chart-bar fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Lotes -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Histórico de Lotes Processados</h6>
+    </div>
+    <div class="card-body">
+        @if (Model.Batches.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-bordered" id="batchesTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Nome do Lote</th>
+                            <th>Usuário</th>
+                            <th>Data/Hora</th>
+                            <th>Documentos</th>
+                            <th>Sucessos</th>
+                            <th>Taxa Sucesso</th>
+                            <th>Tipo Predominante</th>
+                            <th>Confiança</th>
+                            <th>Tempo</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var batch in Model.Batches)
+                        {
+                            <tr>
+                                <td>
+                                    <i class="fas fa-file-archive text-muted me-1"></i>
+                                    @batch.BatchName
+                                </td>
+                                <td>@batch.UserName</td>
+                                <td>@batch.StartedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td class="text-center">@batch.TotalDocuments</td>
+                                <td class="text-center">@batch.SuccessfulDocuments</td>
+                                <td class="text-center">
+                                    @if (batch.TotalDocuments > 0)
+                                    {
+                                        var successRate = (double)batch.SuccessfulDocuments / batch.TotalDocuments * 100;
+                                        <span class="badge @(successRate >= 90 ? "bg-success" : successRate >= 70 ? "bg-warning" : "bg-danger")">
+                                            @Math.Round(successRate, 1)%
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">N/A</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(batch.PredominantDocumentType))
+                                    {
+                                        <span class="badge bg-primary">@batch.PredominantDocumentType</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td class="text-center">@Math.Round(batch.AverageConfidence, 1)%</td>
+                                <td class="text-center">
+                                    @if (batch.ProcessingDuration.HasValue)
+                                    {
+                                        var duration = batch.ProcessingDuration.Value;
+                                        if (duration.TotalMinutes >= 1)
+                                        {
+                                            <text>@Math.Round(duration.TotalMinutes, 1)m</text>
+                                        }
+                                        else
+                                        {
+                                            <text>@Math.Round(duration.TotalSeconds, 1)s</text>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @(batch.Status == "Completed" ? "bg-success" : batch.Status == "Failed" ? "bg-danger" : "bg-warning")">
+                                        @batch.Status
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-4">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Nenhum lote encontrado</h5>
+                <p class="text-muted">Não há lotes processados no período selecionado.</p>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto refresh nos dados a cada 30 segundos se for data atual
+        let autoRefreshInterval = null;
+        
+        $(document).ready(function () {
+            // DataTable para melhor visualização
+            $('#batchesTable').DataTable({
+                "order": [[2, "desc"]], // Ordenar por data decrescente
+                "pageLength": 25,
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/pt-BR.json"
+                }
+            });
+
+            // Verificar se há parâmetro batchId na URL (vindo do upload)
+            const urlParams = new URLSearchParams(window.location.search);
+            const batchId = urlParams.get('batchId');
+            
+            if (batchId) {
+                // Destacar o lote recém-processado
+                highlightBatch(batchId);
+                
+                // Mostrar toast de sucesso usando Toastr
+                showToast.success(
+                    'Lote Processado',
+                    'O lote foi processado com sucesso e está destacado na tabela abaixo.'
+                );
+            }
+
+            // Auto-refresh se estiver visualizando dados de hoje
+            const today = new Date().toISOString().split('T')[0];
+            const startDate = '@Model.StartDate.ToString("yyyy-MM-dd")';
+            const endDate = '@Model.EndDate.ToString("yyyy-MM-dd")';
+            
+            if (startDate === today && endDate === today) {
+                startAutoRefresh();
+            }
+        });
+
+        function highlightBatch(batchId) {
+            // Destacar a linha do lote na tabela
+            $(`#batchesTable tbody tr`).each(function() {
+                const row = $(this);
+                const batchName = row.find('td:first').text().trim();
+                
+                // Buscar por ID do lote nos dados ou nome do arquivo
+                if (batchName.includes(batchId) || row.data('batch-id') === batchId) {
+                    row.addClass('table-success');
+                    
+                    // Scroll para a linha destacada
+                    setTimeout(() => {
+                        row[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 1000);
+                }
+            });
+        }
+
+        function startAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            
+            autoRefreshInterval = setInterval(() => {
+                refreshData(true); // Refresh silencioso
+            }, 30000); // 30 segundos
+            
+            // Mostrar indicador de auto-refresh
+            $('#refreshBtn').html('<i class="fas fa-sync-alt"></i> Auto-refresh ativo');
+            $('#refreshBtn').addClass('btn-outline-success').removeClass('btn-outline-primary');
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+            
+            $('#refreshBtn').html('<i class="fas fa-sync-alt"></i> Atualizar');
+            $('#refreshBtn').removeClass('btn-outline-success').addClass('btn-outline-primary');
+        }
+
+        function refreshData(silent = false) {
+            const refreshBtn = $('#refreshBtn');
+            const originalHtml = refreshBtn.html();
+            
+            // Mostrar loading no botão
+            refreshBtn.html('<i class="fas fa-spinner fa-spin"></i> Atualizando...');
+            refreshBtn.prop('disabled', true);
+            
+            if (!silent) {
+                showToast.info('Atualizando', 'Buscando novos dados...');
+            }
+            
+            // Recarregar a página com os mesmos filtros
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        }
+
+        // Parar auto-refresh quando usuário sair da página
+        window.addEventListener('beforeunload', () => {
+            stopAutoRefresh();
+        });
+
+        // Parar auto-refresh quando usuário mudar de aba
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopAutoRefresh();
+            } else if (autoRefreshInterval === null) {
+                // Reiniciar se estava ativo antes
+                const today = new Date().toISOString().split('T')[0];
+                const startDate = '@Model.StartDate.ToString("yyyy-MM-dd")';
+                const endDate = '@Model.EndDate.ToString("yyyy-MM-dd")';
+                
+                if (startDate === today && endDate === today) {
+                    startAutoRefresh();
+                }
+            }
+        });
+
+        // Função para exibir detalhes do lote
+        function showBatchDetails(batchId) {
+            // Implementar modal com detalhes do lote
+            showToast.info('Em Desenvolvimento', 'Funcionalidade de detalhes do lote será implementada em breve.');
+        }
+
+        // Função para reprocessar lote (se necessário)
+        function reprocessBatch(batchId) {
+            if (confirm('Tem certeza que deseja reprocessar este lote?')) {
+                showToast.info('Reprocessando', 'Iniciando reprocessamento do lote...');
+                // Implementar reprocessamento
+            }
+        }
+    </script>
+}

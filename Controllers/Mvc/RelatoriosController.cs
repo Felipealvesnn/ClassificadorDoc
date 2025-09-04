@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ClassificadorDoc.Data;
 using ClassificadorDoc.Models;
+using ClassificadorDoc.ViewModels;
+using ClassificadorDoc.Scripts;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClassificadorDoc.Controllers.Mvc
@@ -59,12 +61,122 @@ namespace ClassificadorDoc.Controllers.Mvc
         {
             date ??= DateTime.Today;
 
-            var productivities = await _context.UserProductivities
-                .Where(p => p.Date.Date == date.Value.Date)
-                .ToListAsync();
+            // REFATORADO: Combinar dados de UserProductivity (atividade) + BatchProcessingHistory (documentos)
+            var productivityData = await GetCombinedProductivityData(date.Value);
 
             ViewBag.SelectedDate = date.Value;
-            return View(productivities);
+            return View(productivityData);
+        }
+
+        /// <summary>
+        /// Combina dados de atividade da plataforma com processamento de documentos
+        /// Evita redundância entre UserProductivity e BatchProcessingHistory
+        /// </summary>
+        private async Task<List<CombinedProductivityViewModel>> GetCombinedProductivityData(DateTime date)
+        {
+            // Dados de atividade da plataforma (logins, navegação)
+            var platformActivity = await _context.UserProductivities
+                .Where(p => p.Date.Date == date.Date)
+                .ToListAsync();
+
+            // Dados de processamento de documentos por lotes
+            var batchData = await _context.BatchProcessingHistories
+                .Where(b => b.StartedAt.Date == date.Date)
+                .GroupBy(b => b.UserId)
+                .Select(g => new
+                {
+                    UserId = g.Key,
+                    UserName = g.First().UserName,
+                    TotalBatches = g.Count(),
+                    TotalDocuments = g.Sum(b => b.TotalDocuments),
+                    SuccessfulDocuments = g.Sum(b => b.SuccessfulDocuments),
+                    FailedDocuments = g.Sum(b => b.FailedDocuments),
+                    AverageConfidence = g.Where(b => b.AverageConfidence > 0).Any() ?
+                        g.Where(b => b.AverageConfidence > 0).Average(b => b.AverageConfidence) : 0,
+                    TotalProcessingTime = TimeSpan.FromSeconds(g.Where(b => b.ProcessingDuration.HasValue)
+                        .Sum(b => b.ProcessingDuration!.Value.TotalSeconds))
+                })
+                .ToListAsync();
+
+            // Combinar dados
+            var combinedData = new List<CombinedProductivityViewModel>();
+
+            // Usuários com atividade na plataforma
+            foreach (var activity in platformActivity)
+            {
+                var batchInfo = batchData.FirstOrDefault(b => b.UserId == activity.UserId);
+
+                combinedData.Add(new CombinedProductivityViewModel
+                {
+                    UserId = activity.UserId,
+                    UserName = batchInfo?.UserName ?? "N/A",
+                    Date = activity.Date,
+
+                    // Dados da plataforma (únicos)
+                    LoginCount = activity.LoginCount,
+                    TotalTimeOnline = activity.TotalTimeOnline,
+                    PagesAccessed = activity.PagesAccessed,
+                    FirstLogin = activity.FirstLogin,
+                    LastActivity = activity.LastActivity,
+
+                    // Dados de documentos (do BatchProcessingHistory)
+                    TotalBatches = batchInfo?.TotalBatches ?? 0,
+                    DocumentsProcessed = batchInfo?.TotalDocuments ?? 0,
+                    SuccessfulDocuments = batchInfo?.SuccessfulDocuments ?? 0,
+                    FailedDocuments = batchInfo?.FailedDocuments ?? 0,
+                    AverageConfidence = batchInfo?.AverageConfidence ?? 0,
+                    TotalProcessingTime = batchInfo?.TotalProcessingTime ?? TimeSpan.Zero,
+                    SuccessRate = batchInfo?.TotalDocuments > 0 ?
+                        (double)(batchInfo.SuccessfulDocuments) / batchInfo.TotalDocuments * 100 : 0
+                });
+            }
+
+            // Usuários que só processaram documentos (sem atividade registrada na plataforma)
+            foreach (var batch in batchData.Where(b => !platformActivity.Any(p => p.UserId == b.UserId)))
+            {
+                combinedData.Add(new CombinedProductivityViewModel
+                {
+                    UserId = batch.UserId,
+                    UserName = batch.UserName,
+                    Date = date,
+
+                    // Sem atividade da plataforma
+                    LoginCount = 0,
+                    TotalTimeOnline = TimeSpan.Zero,
+                    PagesAccessed = 0,
+                    FirstLogin = DateTime.MinValue,
+                    LastActivity = DateTime.MinValue,
+
+                    // Dados de documentos
+                    TotalBatches = batch.TotalBatches,
+                    DocumentsProcessed = batch.TotalDocuments,
+                    SuccessfulDocuments = batch.SuccessfulDocuments,
+                    FailedDocuments = batch.FailedDocuments,
+                    AverageConfidence = batch.AverageConfidence,
+                    TotalProcessingTime = batch.TotalProcessingTime,
+                    SuccessRate = batch.TotalDocuments > 0 ?
+                        (double)batch.SuccessfulDocuments / batch.TotalDocuments * 100 : 0
+                });
+            }
+
+            return combinedData.OrderByDescending(c => c.DocumentsProcessed).ToList();
+        }
+
+        // ACTION TEMPORÁRIA PARA TESTES - REMOVER EM PRODUÇÃO
+        [HttpPost]
+        public async Task<IActionResult> GerarDadosTeste()
+        {
+            try
+            {
+                await TestDataSeeder.SeedTestProductivityData(_context);
+                TempData["Success"] = "Dados de teste gerados com sucesso!";
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Erro ao gerar dados de teste: {ex.Message}";
+            }
+
+            return RedirectToAction("Produtividade");
         }
 
         // GET: /Relatorios/UsuariosConectados
@@ -144,6 +256,113 @@ namespace ClassificadorDoc.Controllers.Mvc
 
             return stats;
         }
+
+        // GET: /Relatorios/Lotes
+        [HttpGet]
+        public async Task<IActionResult> Lotes(DateTime? startDate, DateTime? endDate, string? userId)
+        {
+            startDate ??= DateTime.Today.AddDays(-30);
+            endDate ??= DateTime.Today.AddDays(1);
+
+            var lotes = await _context.BatchProcessingHistories
+                .Where(b => b.StartedAt >= startDate && b.StartedAt < endDate)
+                .Where(b => string.IsNullOrEmpty(userId) || b.UserId == userId)
+                .OrderByDescending(b => b.StartedAt)
+                .Include(b => b.Documents)
+                .ToListAsync();
+
+            var model = new BatchReportViewModel
+            {
+                StartDate = startDate.Value,
+                EndDate = endDate.Value.AddDays(-1),
+                UserId = userId,
+                Batches = lotes,
+                TotalBatches = lotes.Count,
+                TotalDocuments = lotes.Sum(b => b.TotalDocuments),
+                SuccessfulDocuments = lotes.Sum(b => b.SuccessfulDocuments),
+                AverageConfidence = lotes.Where(b => b.AverageConfidence > 0).Any() ?
+                    lotes.Where(b => b.AverageConfidence > 0).Average(b => b.AverageConfidence) : 0,
+                AverageProcessingTime = lotes.Where(b => b.ProcessingDuration.HasValue).Any() ?
+                    lotes.Where(b => b.ProcessingDuration.HasValue).Average(b => b.ProcessingDuration!.Value.TotalSeconds) : 0
+            };
+
+            ViewBag.Users = await _context.Users
+                .Where(u => u.IsActive)
+                .Select(u => new { u.Id, u.UserName })
+                .ToListAsync();
+
+            return View(model);
+        }
+
+        // GET: /Relatorios/ProdutividadePorLotes
+        [HttpGet]
+        public async Task<IActionResult> ProdutividadePorLotes(DateTime? startDate, DateTime? endDate)
+        {
+            startDate ??= DateTime.Today.AddDays(-30);
+            endDate ??= DateTime.Today.AddDays(1);
+
+            var produtividade = await _context.BatchProcessingHistories
+                .Where(b => b.StartedAt >= startDate && b.StartedAt < endDate)
+                .GroupBy(b => new { b.UserId, b.UserName })
+                .Select(g => new BatchProductivityStats
+                {
+                    UserId = g.Key.UserId,
+                    UserName = g.Key.UserName,
+                    TotalBatchesProcessed = g.Count(),
+                    TotalDocumentsProcessed = g.Sum(b => b.TotalDocuments),
+                    AverageSuccessRate = g.Average(b => (double)b.SuccessfulDocuments / b.TotalDocuments * 100),
+                    AverageConfidence = g.Where(b => b.AverageConfidence > 0).Any() ?
+                        g.Where(b => b.AverageConfidence > 0).Average(b => b.AverageConfidence) : 0,
+                    TotalProcessingTime = TimeSpan.FromSeconds(g.Where(b => b.ProcessingDuration.HasValue)
+                        .Sum(b => b.ProcessingDuration!.Value.TotalSeconds)),
+                    LastBatchProcessed = g.Max(b => b.StartedAt),
+                    MostCommonDocumentType = g.GroupBy(b => b.PredominantDocumentType)
+                        .OrderByDescending(t => t.Count())
+                        .Select(t => t.Key)
+                        .FirstOrDefault() ?? "N/A"
+                })
+                .OrderByDescending(p => p.TotalDocumentsProcessed)
+                .ToListAsync();
+
+            var model = new BatchProductivityReportViewModel
+            {
+                StartDate = startDate.Value,
+                EndDate = endDate.Value.AddDays(-1),
+                ProductivityStats = produtividade
+            };
+
+            return View(model);
+        }
+
+        // GET: /Relatorios/ClassificacaoHierarquica
+        [HttpGet]
+        public async Task<IActionResult> ClassificacaoHierarquica(DateTime? startDate, DateTime? endDate)
+        {
+            startDate ??= DateTime.Today.AddDays(-30);
+            endDate ??= DateTime.Today.AddDays(1);
+
+            var classificacoes = await _context.BatchProcessingHistories
+                .Where(b => b.StartedAt >= startDate && b.StartedAt < endDate && !string.IsNullOrEmpty(b.PredominantDocumentType))
+                .GroupBy(b => b.PredominantDocumentType)
+                .Select(g => new ClassificationHierarchy
+                {
+                    DocumentType = g.Key ?? "Desconhecido",
+                    Count = g.Sum(b => b.TotalDocuments),
+                    AverageConfidence = g.Average(b => b.AverageConfidence),
+                    RelatedBatches = g.Select(b => b.BatchName).Take(10).ToList()
+                })
+                .OrderByDescending(c => c.Count)
+                .ToListAsync();
+
+            var model = new ClassificationHierarchyViewModel
+            {
+                StartDate = startDate.Value,
+                EndDate = endDate.Value.AddDays(-1),
+                Classifications = classificacoes
+            };
+
+            return View(model);
+        }
     }
 
     public class DashboardStatsViewModel
@@ -154,5 +373,32 @@ namespace ClassificadorDoc.Controllers.Mvc
         public int DocumentsToday { get; set; }
         public int AuditLogsCount { get; set; }
         public int SecurityEvents { get; set; }
+    }
+
+    public class BatchReportViewModel
+    {
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string? UserId { get; set; }
+        public List<BatchProcessingHistory> Batches { get; set; } = new();
+        public int TotalBatches { get; set; }
+        public int TotalDocuments { get; set; }
+        public int SuccessfulDocuments { get; set; }
+        public double AverageConfidence { get; set; }
+        public double AverageProcessingTime { get; set; }
+    }
+
+    public class BatchProductivityReportViewModel
+    {
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public List<BatchProductivityStats> ProductivityStats { get; set; } = new();
+    }
+
+    public class ClassificationHierarchyViewModel
+    {
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public List<ClassificationHierarchy> Classifications { get; set; } = new();
     }
 }

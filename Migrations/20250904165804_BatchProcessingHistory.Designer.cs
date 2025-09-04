@@ -4,6 +4,7 @@ using ClassificadorDoc.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClassificadorDoc.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250904165804_BatchProcessingHistory")]
+    partial class BatchProcessingHistory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -866,6 +869,12 @@ namespace ClassificadorDoc.Migrations
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("DocumentsProcessed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ErrorCount")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("FirstLogin")
                         .HasColumnType("datetime2");
 
@@ -877,6 +886,9 @@ namespace ClassificadorDoc.Migrations
 
                     b.Property<int>("PagesAccessed")
                         .HasColumnType("int");
+
+                    b.Property<double>("SuccessRate")
+                        .HasColumnType("float");
 
                     b.Property<TimeSpan>("TotalTimeOnline")
                         .HasColumnType("time");

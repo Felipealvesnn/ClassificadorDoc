@@ -1,0 +1,299 @@
+@model List<ClassificadorDoc.ViewModels.CombinedProductivityViewModel>
+@{
+    ViewData["Title"] = "Relatório de Produtividade Unificado";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-0">
+                                <i class="fas fa-chart-line me-2"></i>
+                                Produtividade Unificada
+                            </h4>
+                            <small>Atividade da Plataforma + Processamento de Documentos</small>
+                        </div>
+                        <div class="input-group" style="width: 200px;">
+                            <input type="date" class="form-control" id="dateFilter" value="@ViewBag.SelectedDate.ToString("yyyy-MM-dd")" />
+                            <button class="btn btn-outline-light" type="button" onclick="filterByDate()">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div class="ms-2">
+                            <form method="post" action="@Url.Action("GerarDadosTeste")" style="display: inline;">
+                                <button type="submit" class="btn btn-outline-light btn-sm" title="Gerar dados de teste">
+                                    <i class="fas fa-flask"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    @if (Model?.Any() == true)
+                    {
+                        <!-- RESUMO GERAL -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body text-center">
+                                        <h5>@Model.Count</h5>
+                                        <small>Usuários Ativos</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center">
+                                        <h5>@Model.Sum(m => m.DocumentsProcessed)</h5>
+                                        <small>Docs Processados</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-warning text-white">
+                                    <div class="card-body text-center">
+                                        <h5>@Model.Sum(m => m.TotalBatches)</h5>
+                                        <small>Lotes Processados</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-secondary text-white">
+                                    <div class="card-body text-center">
+                                        <h5>@(Model.Any(m => m.DocumentsProcessed > 0) ? Model.Where(m => m.DocumentsProcessed > 0).Average(m => m.SuccessRate).ToString("F1") : "0")%</h5>
+                                        <small>Taxa Sucesso Média</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TABELA DETALHADA -->
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Usuário</th>
+                                        <th>
+                                            <i class="fas fa-desktop me-1" title="Atividade Plataforma"></i>
+                                            Plataforma
+                                        </th>
+                                        <th>
+                                            <i class="fas fa-file-alt me-1" title="Processamento"></i>
+                                            Documentos
+                                        </th>
+                                        <th>
+                                            <i class="fas fa-clock me-1" title="Performance"></i>
+                                            Performance
+                                        </th>
+                                        <th>
+                                            <i class="fas fa-star me-1" title="Score"></i>
+                                            Score
+                                        </th>
+                                        <th>
+                                            <i class="fas fa-tags me-1" title="Atividade Principal"></i>
+                                            Foco
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var user in Model.OrderByDescending(m => m.ProductivityScore))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div>
+                                                    <strong>@user.UserName</strong>
+                                                    @if (user.FirstLogin.HasValue && user.FirstLogin.Value != DateTime.MinValue)
+                                                    {
+                                                        <br><small class="text-muted">
+                                                            Primeiro login: @user.FirstLogin.Value.ToString("HH:mm")
+                                                        </small>
+                                                    }
+                                                </div>
+                                            </td>
+                                            
+                                            <!-- ATIVIDADE PLATAFORMA -->
+                                            <td>
+                                                @if (user.LoginCount > 0)
+                                                {
+                                                    <div class="d-flex flex-column">
+                                                        <span><i class="fas fa-sign-in-alt text-primary"></i> @user.LoginCount logins</span>
+                                                        <span><i class="fas fa-clock text-info"></i> @user.TotalTimeOnline.ToString(@"hh\:mm")</span>
+                                                        <span><i class="fas fa-mouse-pointer text-secondary"></i> @user.PagesAccessed páginas</span>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">Sem atividade</span>
+                                                }
+                                            </td>
+
+                                            <!-- PROCESSAMENTO DOCUMENTOS -->
+                                            <td>
+                                                @if (user.DocumentsProcessed > 0)
+                                                {
+                                                    <div class="d-flex flex-column">
+                                                        <span>
+                                                            <strong class="text-success">@user.DocumentsProcessed</strong> documentos
+                                                            @if (user.TotalBatches > 0)
+                                                            {
+                                                                <small class="text-muted">(@user.TotalBatches lotes)</small>
+                                                            }
+                                                        </span>
+                                                        
+                                                        @if (user.SuccessfulDocuments > 0 || user.FailedDocuments > 0)
+                                                        {
+                                                            <small>
+                                                                <span class="text-success">✓ @user.SuccessfulDocuments</span>
+                                                                @if (user.FailedDocuments > 0)
+                                                                {
+                                                                    <span class="text-danger ms-2">✗ @user.FailedDocuments</span>
+                                                                }
+                                                            </small>
+                                                        }
+
+                                                        @if (user.AverageConfidence > 0)
+                                                        {
+                                                            <small class="text-info">
+                                                                Confiança: @user.AverageConfidence.ToString("F1")%
+                                                            </small>
+                                                        }
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">Nenhum documento</span>
+                                                }
+                                            </td>
+
+                                            <!-- PERFORMANCE -->
+                                            <td>
+                                                @if (user.DocumentsProcessed > 0)
+                                                {
+                                                    <div class="d-flex flex-column">
+                                                        @if (user.DocumentsPerHour > 0)
+                                                        {
+                                                            <span class="text-primary">
+                                                                <i class="fas fa-tachometer-alt"></i>
+                                                                @user.DocumentsPerHour.ToString("F1") docs/h
+                                                            </span>
+                                                        }
+                                                        
+                                                        @if (user.AverageTimePerDocument.TotalSeconds > 0)
+                                                        {
+                                                            <small class="text-muted">
+                                                                @user.AverageTimePerDocument.ToString(@"mm\:ss") médio/doc
+                                                            </small>
+                                                        }
+                                                        
+                                                        <small>
+                                                            Taxa: <strong class="@(user.SuccessRate >= 80 ? "text-success" : user.SuccessRate >= 60 ? "text-warning" : "text-danger")">
+                                                                @user.SuccessRate.ToString("F1")%
+                                                            </strong>
+                                                        </small>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+
+                                            <!-- SCORE -->
+                                            <td>
+                                                <div class="text-center">
+                                                    @{
+                                                        var scoreColor = user.ProductivityScore >= 80 ? "success" : 
+                                                                        user.ProductivityScore >= 60 ? "warning" : 
+                                                                        user.ProductivityScore >= 40 ? "info" : "danger";
+                                                    }
+                                                    <div class="progress mb-1" style="height: 20px;">
+                                                        <div class="progress-bar bg-@scoreColor" 
+                                                             role="progressbar" 
+                                                             style="width: @user.ProductivityScore%"
+                                                             aria-valuenow="@user.ProductivityScore" 
+                                                             aria-valuemin="0" 
+                                                             aria-valuemax="100">
+                                                            @user.ProductivityScore
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <!-- FOCO PRINCIPAL -->
+                                            <td>
+                                                @{
+                                                    var focusIcon = user.PrimaryActivity == "Processamento" ? "fas fa-cogs text-success" : "fas fa-mouse-pointer text-info";
+                                                    var focusClass = user.PrimaryActivity == "Processamento" ? "badge bg-success" : "badge bg-info";
+                                                }
+                                                <span class="@focusClass">
+                                                    <i class="@focusIcon me-1"></i>
+                                                    @user.PrimaryActivity
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- INSIGHTS -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-lightbulb me-2"></i>Insights dos Dados</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <ul class="mb-0">
+                                                <li><strong>Usuários mais produtivos:</strong> @Model.Where(m => m.ProductivityScore >= 80).Count() de @Model.Count</li>
+                                                <li><strong>Foco principal:</strong> @Model.Count(m => m.PrimaryActivity == "Processamento") processamento, @Model.Count(m => m.PrimaryActivity == "Navegação") navegação</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <ul class="mb-0">
+                                                <li><strong>Tempo médio online:</strong> @(Model.Any() ? TimeSpan.FromSeconds(Model.Average(m => m.TotalTimeOnline.TotalSeconds)).ToString(@"hh\:mm") : "0:00")</li>
+                                                <li><strong>Produtividade média:</strong> @(Model.Any(m => m.DocumentsProcessed > 0) ? Model.Where(m => m.DocumentsProcessed > 0).Average(m => m.DocumentsPerHour).ToString("F1") : "0") docs/hora</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Nenhuma atividade registrada para @ViewBag.SelectedDate.ToString("dd/MM/yyyy")</h5>
+                            <p class="text-muted">Selecione uma data diferente ou verifique se há dados disponíveis.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function filterByDate() {
+            const selectedDate = document.getElementById('dateFilter').value;
+            if (selectedDate) {
+                window.location.href = '@Url.Action("Produtividade", "Relatorios")?date=' + selectedDate;
+            }
+        }
+
+        // Auto refresh nos dados a cada 5 minutos se for data atual
+        @if (ViewBag.SelectedDate.ToString("yyyy-MM-dd") == DateTime.Today.ToString("yyyy-MM-dd"))
+        {
+            <text>
+            setInterval(function() {
+                location.reload();
+            }, 300000); // 5 minutos
+            </text>
+        }
+    </script>
+}

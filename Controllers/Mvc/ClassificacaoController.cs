@@ -109,17 +109,46 @@ namespace ClassificadorDoc.Controllers.Mvc
             try
             {
                 var userId = _userManager.GetUserId(User);
+                var userName = User.Identity?.Name ?? "Usuário";
                 var documentos = new List<DocumentoClassificacao>();
                 var totalDocumentosProcessados = 0;
+                var startTime = DateTime.UtcNow;
+
+                // Criar registro do lote ANTES de processar
+                var batchHistory = new BatchProcessingHistory
+                {
+                    BatchName = arquivo.FileName,
+                    UserId = userId!,
+                    UserName = userName,
+                    StartedAt = startTime,
+                    FileSizeBytes = arquivo.Length,
+                    ProcessingMethod = metodo,
+                    Status = "Processing",
+                    IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent = HttpContext.Request.Headers["User-Agent"].ToString()
+                };
+
+                _context.BatchProcessingHistories.Add(batchHistory);
+                await _context.SaveChangesAsync(); // Salva para obter o ID
 
                 using var zipStream = arquivo.OpenReadStream();
                 using var archive = new ZipArchive(zipStream, ZipArchiveMode.Read);
 
-                foreach (var entry in archive.Entries)
-                {
-                    if (!entry.FullName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
-                        continue;
+                // Contar total de PDFs primeiro
+                var pdfEntries = archive.Entries
+                    .Where(e => e.FullName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
 
+                batchHistory.TotalDocuments = pdfEntries.Count;
+                await _context.SaveChangesAsync();
+
+                var classificacaoSummary = new Dictionary<string, int>();
+                var keywordsSummary = new List<string>();
+                var confidenceSum = 0.0;
+                var sucessos = 0;
+
+                foreach (var entry in pdfEntries)
+                {
                     try
                     {
                         // Usar a API real de classificação
@@ -131,9 +160,24 @@ namespace ClassificadorDoc.Controllers.Mvc
 
                         documentos.Add(classificacao);
 
-                        // Salvar no histórico para cada documento
-                        await SalvarHistoricoProcessamento(userId, entry.Name, classificacao);
+                        // Salvar no histórico para cada documento COM REFERÊNCIA AO LOTE
+                        await SalvarHistoricoProcessamento(userId, entry.Name, classificacao, batchHistory.Id);
                         totalDocumentosProcessados++;
+
+                        if (classificacao.ProcessadoComSucesso)
+                        {
+                            sucessos++;
+                            confidenceSum += classificacao.ConfiancaClassificacao;
+
+                            // Agregar estatísticas do lote
+                            var tipo = classificacao.TipoDocumento;
+                            classificacaoSummary[tipo] = classificacaoSummary.GetValueOrDefault(tipo, 0) + 1;
+
+                            if (!string.IsNullOrEmpty(classificacao.PalavrasChaveEncontradas))
+                            {
+                                keywordsSummary.Add(classificacao.PalavrasChaveEncontradas);
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -149,18 +193,60 @@ namespace ClassificadorDoc.Controllers.Mvc
                         };
 
                         documentos.Add(classificacaoErro);
-                        await SalvarHistoricoProcessamento(userId, entry.Name, classificacaoErro);
+                        await SalvarHistoricoProcessamento(userId, entry.Name, classificacaoErro, batchHistory.Id);
                         totalDocumentosProcessados++;
                     }
                 }
 
+                // Finalizar o lote com estatísticas
+                var endTime = DateTime.UtcNow;
+                batchHistory.CompletedAt = endTime;
+                batchHistory.ProcessingDuration = endTime - startTime;
+                batchHistory.SuccessfulDocuments = sucessos;
+                batchHistory.FailedDocuments = totalDocumentosProcessados - sucessos;
+                batchHistory.AverageConfidence = sucessos > 0 ? confidenceSum / sucessos : 0;
+                batchHistory.Status = sucessos > 0 ? "Completed" : "Failed";
+
+                // Determinar tipo predominante
+                if (classificacaoSummary.Any())
+                {
+                    batchHistory.PredominantDocumentType = classificacaoSummary
+                        .OrderByDescending(kvp => kvp.Value)
+                        .First().Key;
+                }
+
+                // Serializar resumos como JSON
+                batchHistory.ClassificationSummary = System.Text.Json.JsonSerializer.Serialize(classificacaoSummary);
+                batchHistory.KeywordsSummary = System.Text.Json.JsonSerializer.Serialize(keywordsSummary.Take(50));
+
+                await _context.SaveChangesAsync();
+
                 // Atualizar produtividade do usuário com total de documentos
-                var sucessos = documentos.Count(d => d.ProcessadoComSucesso);
                 await AtualizarProdutividadeUsuario(userId, totalDocumentosProcessados, sucessos > 0);
 
-                // Registrar auditoria
+                // Registrar auditoria com informações do lote
                 await RegistrarAuditoria(userId, "ClassificacaoLote",
-                    $"Processou lote ZIP: {arquivo.FileName} com {totalDocumentosProcessados} documentos, {sucessos} sucessos");
+                    $"Processou lote ID {batchHistory.Id}: {arquivo.FileName} com {totalDocumentosProcessados} documentos, {sucessos} sucessos, tipo predominante: {batchHistory.PredominantDocumentType}");
+
+                // Retornar JSON para AJAX com informações completas do lote
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.ContentType?.Contains("application/json") == true)
+                {
+                    return Json(new
+                    {
+                        success = true,
+                        message = $"Lote processado com sucesso! {sucessos} de {totalDocumentosProcessados} documentos classificados.",
+                        batchId = batchHistory.Id,
+                        batchName = batchHistory.BatchName,
+                        totalDocuments = totalDocumentosProcessados,
+                        successfulDocuments = sucessos,
+                        failedDocuments = totalDocumentosProcessados - sucessos,
+                        successRate = totalDocumentosProcessados > 0 ? Math.Round((double)sucessos / totalDocumentosProcessados * 100, 1) : 0,
+                        averageConfidence = sucessos > 0 ? Math.Round(confidenceSum / sucessos, 1) : 0,
+                        predominantType = batchHistory.PredominantDocumentType,
+                        processingTime = (DateTime.UtcNow - startTime).TotalSeconds,
+                        redirectUrl = Url.Action("Lotes", "Relatorios", new { batchId = batchHistory.Id })
+                    });
+                }
 
                 var resultado = new ResultadoClassificacaoView
                 {
@@ -175,6 +261,18 @@ namespace ClassificadorDoc.Controllers.Mvc
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro ao processar ZIP");
+
+                // Retornar JSON para AJAX com erro
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.ContentType?.Contains("application/json") == true)
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = $"Erro ao processar lote: {ex.Message}",
+                        error = ex.Message
+                    });
+                }
+
                 ViewBag.Erro = $"Erro ao processar ZIP: {ex.Message}";
                 return View("Index");
             }
@@ -200,7 +298,7 @@ namespace ClassificadorDoc.Controllers.Mvc
 
         #region Métodos Auxiliares para Produtividade e Auditoria
 
-        private async Task SalvarHistoricoProcessamento(string? userId, string fileName, DocumentoClassificacao classificacao)
+        private async Task SalvarHistoricoProcessamento(string? userId, string fileName, DocumentoClassificacao classificacao, int? batchId = null)
         {
             if (string.IsNullOrEmpty(userId)) return;
 
@@ -214,7 +312,8 @@ namespace ClassificadorDoc.Controllers.Mvc
                 IsSuccessful = classificacao.ProcessadoComSucesso,
                 ErrorMessage = classificacao.ErroProcessamento,
                 Keywords = classificacao.PalavrasChaveEncontradas,
-                FileSizeBytes = 0 // Seria necessário passar como parâmetro
+                FileSizeBytes = 0, // Seria necessário passar como parâmetro
+                BatchProcessingHistoryId = batchId // Novo campo para vincular ao lote
             };
 
             _context.DocumentProcessingHistories.Add(historico);
@@ -222,6 +321,29 @@ namespace ClassificadorDoc.Controllers.Mvc
         }
 
         private async Task AtualizarProdutividadeUsuario(string? userId, int documentosProcessados, bool sucesso = true)
+        {
+            if (string.IsNullOrEmpty(userId)) return;
+
+            // REFATORADO: UserProductivity agora só gerencia atividade na plataforma,
+            // não mais documentos processados (isso vem do BatchProcessingHistory)
+
+            // Atualizar contador no ApplicationUser (mantém por compatibilidade)
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user != null)
+            {
+                user.DocumentsProcessed += documentosProcessados;
+                user.LastDocumentProcessedAt = DateTime.UtcNow;
+                await _userManager.UpdateAsync(user);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Novo método específico para atividade na plataforma (logins, navegação)
+        /// Separado do processamento de documentos
+        /// </summary>
+        private async Task RegistrarAtividadePlataforma(string? userId, string tipoAtividade = "PAGE_ACCESS")
         {
             if (string.IsNullOrEmpty(userId)) return;
 
@@ -233,17 +355,14 @@ namespace ClassificadorDoc.Controllers.Mvc
 
             if (produtividade == null)
             {
-                // Criar novo registro
+                // Criar novo registro focado em atividade da plataforma
                 produtividade = new UserProductivity
                 {
                     UserId = userId,
                     Date = hoje,
-                    DocumentsProcessed = documentosProcessados,
-                    LoginCount = 0,
+                    LoginCount = tipoAtividade == "LOGIN" ? 1 : 0,
                     TotalTimeOnline = TimeSpan.Zero,
-                    ErrorCount = sucesso ? 0 : 1,
-                    SuccessRate = sucesso ? 100.0 : 0.0,
-                    PagesAccessed = 0,
+                    PagesAccessed = tipoAtividade == "PAGE_ACCESS" ? 1 : 0,
                     FirstLogin = DateTime.UtcNow,
                     LastActivity = DateTime.UtcNow
                 };
@@ -252,26 +371,16 @@ namespace ClassificadorDoc.Controllers.Mvc
             else
             {
                 // Atualizar registro existente
-                produtividade.DocumentsProcessed += documentosProcessados;
-                if (!sucesso)
+                if (tipoAtividade == "LOGIN")
                 {
-                    produtividade.ErrorCount += 1;
+                    produtividade.LoginCount += 1;
+                }
+                else if (tipoAtividade == "PAGE_ACCESS")
+                {
+                    produtividade.PagesAccessed += 1;
                 }
 
-                // Recalcular taxa de sucesso
-                var totalProcessados = produtividade.DocumentsProcessed;
-                var sucessos = totalProcessados - produtividade.ErrorCount;
-                produtividade.SuccessRate = totalProcessados > 0 ? (double)sucessos / totalProcessados * 100 : 0;
                 produtividade.LastActivity = DateTime.UtcNow;
-            }
-
-            // Atualizar contador no ApplicationUser
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user != null)
-            {
-                user.DocumentsProcessed += documentosProcessados;
-                user.LastDocumentProcessedAt = DateTime.UtcNow;
-                await _userManager.UpdateAsync(user);
             }
 
             await _context.SaveChangesAsync();

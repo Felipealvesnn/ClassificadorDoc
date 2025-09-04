@@ -5,8 +5,7 @@
 @using (Html.BeginForm("Upload", "Classificacao", FormMethod.Post, new
 {
     enctype = "multipart/form-data",
-    style =
-"display:none;",
+    style = "display:none;",
     id = "hiddenForm"
 }))
 {
@@ -77,11 +76,32 @@
                     </div>
                 </div>
 
-                <!-- Loading -->
+                <!-- Loading e Status -->
                 <div id="loadingArea" class="text-center" style="display: none;">
                     <div class="loading-spinner"></div>
                     <p class="mt-3">Processando lote de documentos...</p>
                     <small class="text-muted">Analisando múltiplos PDFs - isso pode levar alguns minutos</small>
+                </div>
+
+                <!-- Área de Resultado Rápido -->
+                <div id="quickResultArea" class="mt-4" style="display: none;">
+                    <div class="alert alert-success">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="alert-heading mb-2">
+                                    <i class="fas fa-check-circle"></i> Lote Processado com Sucesso!
+                                </h6>
+                                <div id="quickResultContent">
+                                    <!-- Conteúdo será preenchido dinamicamente -->
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <button type="button" class="btn btn-success btn-sm" id="viewFullReportBtn">
+                                    <i class="fas fa-chart-bar"></i> Ver Relatório Completo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -182,10 +202,16 @@
     </div>
 </div>
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/toast-notifications.css" />
+}
+
 @section Scripts {
+    <script src="~/js/toast-manager.js"></script>
     <script>
         let selectedFile = null;
-        let isProcessing = false; // Flag para proteger contra limpezas acidentais
+        let isProcessing = false;
+        let currentProcessingToast = null;
 
         // Configurar drag and drop
         const uploadArea = document.getElementById('uploadArea');
@@ -229,68 +255,44 @@
         });
 
         function handleFiles(files) {
-            console.log('handleFiles chamada com', files.length, 'arquivos');
             if (files.length > 0) {
                 const file = files[0];
-                console.log('Validando arquivo:', file.name, 'Tipo:', file.type, 'Tamanho:', file.size);
                 if (validateFile(file)) {
                     selectedFile = file;
                     showFileInfo(file);
-                } else {
-                    console.log('Arquivo falhou na validação');
                 }
             }
         }
 
         function validateFile(file) {
-            console.log('validateFile iniciada para:', file.name);
-            const maxSize = 100 * 1024 * 1024; // 100MB para ZIP
+            const maxSize = 100 * 1024 * 1024; // 100MB
             const allowedTypes = ['application/zip', 'application/x-zip-compressed'];
 
             if (file.size > maxSize) {
-                console.log('Arquivo muito grande:', file.size, 'vs', maxSize);
-                showAlert('Arquivo ZIP muito grande. Tamanho máximo: 100MB', 'danger');
+                toastManager.error('Arquivo Muito Grande', 'Tamanho máximo permitido: 100MB');
                 return false;
             }
 
             if (!allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.zip')) {
-                console.log('Tipo de arquivo inválido:', file.type, 'Nome:', file.name);
-                showAlert('Apenas arquivos ZIP são aceitos para processamento em lote', 'danger');
+                toastManager.error('Formato Inválido', 'Apenas arquivos ZIP são aceitos para processamento em lote');
                 return false;
             }
 
-            console.log('Arquivo validado com sucesso');
             return true;
         }
 
         function showFileInfo(file) {
-            console.log('showFileInfo chamada para:', file.name);
-
             const fileNameElement = document.getElementById('fileName');
             const fileSizeElement = document.getElementById('fileSize');
             const fileInfoElement = document.getElementById('fileInfo');
             const actionButtonsElement = document.getElementById('actionButtons');
 
-            if (!fileNameElement || !fileSizeElement || !fileInfoElement || !actionButtonsElement) {
-                console.error('Elementos não encontrados no DOM');
-                return;
-            }
-
             fileNameElement.textContent = file.name;
             fileSizeElement.textContent = formatFileSize(file.size);
 
-            // Mostrar os elementos com um pequeno delay para garantir que o DOM está pronto
             setTimeout(() => {
                 fileInfoElement.style.display = 'block';
                 actionButtonsElement.style.display = 'block';
-                console.log('fileInfo exibido com sucesso');
-
-                // Verificar se ainda está visível após 2 segundos
-                setTimeout(() => {
-                    if (fileInfoElement.style.display === 'none') {
-                        console.warn('fileInfo foi escondido inesperadamente!');
-                    }
-                }, 2000);
             }, 100);
         }
 
@@ -303,165 +305,165 @@
         }
 
         function clearFile() {
-            console.log('clearFile chamada, isProcessing:', isProcessing);
-            console.trace('Stack trace para clearFile:');
-
-            // Só limpar se não estiver processando
             if (!isProcessing) {
                 selectedFile = null;
                 fileInput.value = '';
                 document.getElementById('fileInfo').style.display = 'none';
                 document.getElementById('actionButtons').style.display = 'none';
-                document.getElementById('resultArea').style.display = 'none';
                 document.getElementById('loadingArea').style.display = 'none';
-            } else {
-                console.log('clearFile bloqueado devido ao processamento ativo');
+                document.getElementById('quickResultArea').style.display = 'none';
             }
         }
 
-        // Função para forçar limpeza (usada pelos botões)
         function forceClearFile() {
-            console.log('forceClearFile chamada - limpeza forçada');
             isProcessing = false;
             selectedFile = null;
             fileInput.value = '';
             document.getElementById('fileInfo').style.display = 'none';
             document.getElementById('actionButtons').style.display = 'none';
-            document.getElementById('resultArea').style.display = 'none';
             document.getElementById('loadingArea').style.display = 'none';
+            document.getElementById('quickResultArea').style.display = 'none';
+
+            // Remover toast de processamento se existir
+            if (currentProcessingToast) {
+                toastr.clear(currentProcessingToast);
+                currentProcessingToast = null;
+            }
         }
 
-        function classifyDocument() {
+        async function classifyDocument() {
             if (!selectedFile) {
-                showAlert('Selecione um arquivo ZIP primeiro', 'warning');
+                toastManager.warning('Arquivo Necessário', 'Selecione um arquivo ZIP primeiro');
                 return;
             }
 
-            // Verificar se é realmente um ZIP
             if (!selectedFile.name.toLowerCase().endsWith('.zip')) {
-                showAlert('Apenas arquivos ZIP são aceitos para processamento em lote', 'danger');
+                toastManager.error('Formato Inválido', 'Apenas arquivos ZIP são aceitos');
                 return;
             }
 
-            // Marcar como processando para proteger contra limpezas
+            // Marcar como processando
             isProcessing = true;
 
-            // Mostrar loading
+            // Mostrar loading visual na página
             document.getElementById('actionButtons').style.display = 'none';
             document.getElementById('loadingArea').style.display = 'block';
 
-            // Atualizar mensagem de loading baseada no tamanho do arquivo
-            const loadingText = selectedFile.size > 50 * 1024 * 1024 ?
-                'Processando lote grande de documentos...' :
-                'Processando lote de documentos...';
-            document.querySelector('#loadingArea p').textContent = loadingText;
+            // Mostrar toast de processamento
+            currentProcessingToast = toastManager.processingBatch(selectedFile.name);
 
-            // Preparar FormData para envio real
-            const formData = new FormData();
-            formData.append('arquivo', selectedFile);
-            formData.append('metodo', 'visual');
+            try {
+                // Preparar dados para envio
+                const formData = new FormData();
+                formData.append('arquivo', selectedFile);
+                formData.append('metodo', 'visual');
 
-            // Pegar o token anti-forgery
-            const token = document.querySelector('#hiddenForm input[name="__RequestVerificationToken"]').value;
-            formData.append('__RequestVerificationToken', token);
+                // Token anti-forgery
+                const token = document.querySelector('#hiddenForm input[name="__RequestVerificationToken"]').value;
+                formData.append('__RequestVerificationToken', token);
 
-            // Chamar a API real do controller
-            fetch('@Url.Action("Upload", "Classificacao")', {
-                method: 'POST',
-                body: formData
-            })
-                .then(response => {
-                    if (response.ok) {
-                        // Se for sucesso, redirecionar para a página de resultado
-                        window.location.href = response.url;
-                    } else {
-                        throw new Error('Erro na classificação');
+                // Fazer requisição AJAX
+                const response = await fetch('@Url.Action("Upload", "Classificacao")', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
-                })
-                .catch(error => {
-                    console.error('Erro:', error);
-                    isProcessing = false; // Desmarcar processamento em caso de erro
-                    document.getElementById('loadingArea').style.display = 'none';
-                    document.getElementById('actionButtons').style.display = 'block';
-                    showAlert('Erro ao classificar lote de documentos. Verifique se o ZIP contém PDFs válidos.', 'danger');
                 });
+
+                const result = await response.json();
+
+                // Remover toast de processamento
+                if (currentProcessingToast) {
+                    toastManager.remove(currentProcessingToast);
+                    currentProcessingToast = null;
+                }
+
+                if (result.success) {
+                    // Sucesso - mostrar toast e resultado na página
+                    toastManager.batchSuccess(result);
+                    showQuickResult(result);
+
+                    // Ocultar loading
+                    document.getElementById('loadingArea').style.display = 'none';
+                } else {
+                    // Erro
+                    toastManager.batchError(result.message || result.error || 'Erro desconhecido');
+                    restoreUploadState();
+                }
+
+            } catch (error) {
+                console.error('Erro na classificação:', error);
+
+                // Remover toast de processamento
+                if (currentProcessingToast) {
+                    toastManager.remove(currentProcessingToast);
+                    currentProcessingToast = null;
+                }
+
+                toastManager.error(
+                    'Erro de Conexão',
+                    'Falha ao comunicar com o servidor. Verifique sua conexão e tente novamente.'
+                );
+                restoreUploadState();
+            }
         }
 
-        function showClassificationResult(result) {
+        function showQuickResult(data) {
+            const quickResultContent = document.getElementById('quickResultContent');
+            const quickResultArea = document.getElementById('quickResultArea');
+            const viewFullReportBtn = document.getElementById('viewFullReportBtn');
+
+            quickResultContent.innerHTML = `
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <strong class="text-primary fs-4">${data.totalDocuments}</strong>
+                            <div class="small text-muted">Total de Documentos</div>
+                        </div>
+                        <div class="col-md-3">
+                            <strong class="text-success fs-4">${data.successfulDocuments}</strong>
+                            <div class="small text-muted">Classificados</div>
+                        </div>
+                        <div class="col-md-3">
+                            <strong class="text-info fs-4">${data.successRate}%</strong>
+                            <div class="small text-muted">Taxa de Sucesso</div>
+                        </div>
+                        <div class="col-md-3">
+                            <strong class="text-warning fs-4">${data.averageConfidence}%</strong>
+                            <div class="small text-muted">Confiança Média</div>
+                        </div>
+                    </div>
+                    ${data.predominantType ? `
+                    <div class="mt-3 text-center">
+                        <span class="badge bg-primary fs-6">Tipo Predominante: ${data.predominantType}</span>
+                    </div>
+                    ` : ''}
+                `;
+
+            // Configurar botão para ver relatório completo
+            if (data.redirectUrl) {
+                viewFullReportBtn.onclick = () => {
+                    window.location.href = data.redirectUrl;
+                };
+            }
+
+            quickResultArea.style.display = 'block';
+            isProcessing = false; // Permitir nova operação
+        }
+
+        function restoreUploadState() {
+            isProcessing = false;
             document.getElementById('loadingArea').style.display = 'none';
-
-            const confidenceClass = result.confidence >= 90 ? 'success' :
-                result.confidence >= 70 ? 'warning' : 'danger';
-
-            const confidenceColor = result.confidence >= 90 ? 'confidence-high' :
-                result.confidence >= 70 ? 'confidence-medium' : 'confidence-low';
-
-            const resultHtml = `
-                            <div class="classification-result ${confidenceClass} p-3 rounded">
-                                <div class="row align-items-center">
-                                    <div class="col-md-8">
-                                        <h5 class="mb-1">
-                                            <span class="badge bg-primary fs-6">${result.category}</span>
-                                        </h5>
-                                        <p class="mb-2">${result.description}</p>
-                                        <div class="mb-2">
-                                            <small class="text-muted">Confiança: ${result.confidence}%</small>
-                                            <div class="confidence-bar mt-1">
-                                                <div class="${confidenceColor}" style="width: ${result.confidence}%"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4 text-center">
-                                        <i class="fas fa-check-circle fa-3x text-success"></i>
-                                    </div>
-                                </div>
-                                <hr>
-                                <h6>Detalhes da Análise:</h6>
-                                <ul class="mb-0">
-                                    ${result.details.map(detail => `<li>${detail}</li>`).join('')}
-                                </ul>
-                            </div>
-                        `;
-
-            document.getElementById('classificationResult').innerHTML = resultHtml;
-            document.getElementById('resultArea').style.display = 'block';
+            document.getElementById('actionButtons').style.display = 'block';
         }
 
         function classifyAnother() {
             forceClearFile();
         }
 
-        function saveResult() {
-            showAlert('Resultado salvo com sucesso!', 'success');
-            // Implementar salvamento real
-        }
-
-        function showAlert(message, type) {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-            alertDiv.innerHTML = `
-                            ${message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        `;
-
-            // Inserir no container específico da página
-            const pageAlerts = document.getElementById('pageAlerts');
-            if (pageAlerts) {
-                pageAlerts.appendChild(alertDiv);
-            } else {
-                // Fallback para inserir após o cabeçalho
-                const header = document.querySelector('.border-bottom');
-                if (header && header.parentNode) {
-                    header.parentNode.insertBefore(alertDiv, header.nextSibling);
-                }
-            }
-
-            // Auto-remover após 5 segundos
-            setTimeout(() => {
-                if (alertDiv.parentNode) {
-                    alertDiv.remove();
-                }
-            }, 5000);
+        // Integração com sistema legado de alertas (agora usando Toastr)
+        function showAlert(message, type, title = '') {
+            showToast[type] ? showToast[type](title, message) : showToast.info(title, message);
         }
     </script>
 }

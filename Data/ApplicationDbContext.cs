@@ -16,6 +16,9 @@ namespace ClassificadorDoc.Data
         public DbSet<ClassificationSession> ClassificationSessions { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
 
+        // DbSets para controle de lotes (atende requisito edital)
+        public DbSet<BatchProcessingHistory> BatchProcessingHistories { get; set; }
+
         // DbSets para conformidade com edital
         public DbSet<UserProductivity> UserProductivities { get; set; }
         public DbSet<ActiveUserSession> ActiveUserSessions { get; set; }
@@ -54,6 +57,12 @@ namespace ClassificadorDoc.Data
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                // Relacionamento com lote (novo)
+                entity.HasOne(e => e.BatchProcessingHistory)
+                    .WithMany(b => b.Documents)
+                    .HasForeignKey(e => e.BatchProcessingHistoryId)
+                    .OnDelete(DeleteBehavior.NoAction);
             });
 
             builder.Entity<ClassificationSession>(entity =>
@@ -188,6 +197,32 @@ namespace ClassificadorDoc.Data
                 entity.Property(e => e.Status).HasMaxLength(20);
                 entity.Property(e => e.FilePath).HasMaxLength(500);
             });
+
+            // Configurações para controle de lotes (requisito edital)
+            builder.Entity<BatchProcessingHistory>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.StartedAt);
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => e.PredominantDocumentType);
+                entity.HasIndex(e => new { e.UserId, e.StartedAt });
+
+                entity.Property(e => e.BatchName).HasMaxLength(255).IsRequired();
+                entity.Property(e => e.UserId).HasMaxLength(450).IsRequired();
+                entity.Property(e => e.UserName).HasMaxLength(100);
+                entity.Property(e => e.ProcessingMethod).HasMaxLength(20);
+                entity.Property(e => e.Status).HasMaxLength(20);
+                entity.Property(e => e.PredominantDocumentType).HasMaxLength(50);
+                entity.Property(e => e.IpAddress).HasMaxLength(45);
+                entity.Property(e => e.UserAgent).HasMaxLength(500);
+
+                // Relacionamento com usuário
+                entity.HasOne<ApplicationUser>()
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 
@@ -204,6 +239,10 @@ namespace ClassificadorDoc.Data
         public string? ErrorMessage { get; set; }
         public string? Keywords { get; set; }
         public int FileSizeBytes { get; set; }
+
+        // Relacionamento com lote (novo campo)
+        public int? BatchProcessingHistoryId { get; set; }
+        public BatchProcessingHistory? BatchProcessingHistory { get; set; }
     }
 
     public class ClassificationSession

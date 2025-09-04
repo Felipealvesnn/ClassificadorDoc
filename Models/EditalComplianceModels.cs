@@ -4,20 +4,46 @@ namespace ClassificadorDoc.Models
 {
     /// <summary>
     /// Controle de produtividade dos usuários - Requisito 4.2.7.4
+    /// REFATORADO: Removidos campos redundantes com BatchProcessingHistory
+    /// Mantém apenas dados específicos de atividade na plataforma
     /// </summary>
     public class UserProductivity
     {
         public int Id { get; set; }
         public string UserId { get; set; } = string.Empty;
         public DateTime Date { get; set; }
-        public int DocumentsProcessed { get; set; }
+
+        // === DADOS ÚNICOS (não disponíveis em BatchProcessingHistory) ===
+
+        /// <summary>
+        /// Número de logins no dia (independente de processar documentos)
+        /// </summary>
         public int LoginCount { get; set; }
+
+        /// <summary>
+        /// Tempo total online na plataforma (sessão ativa)
+        /// </summary>
         public TimeSpan TotalTimeOnline { get; set; }
-        public int ErrorCount { get; set; }
-        public double SuccessRate { get; set; }
+
+        /// <summary>
+        /// Páginas acessadas na plataforma (navegação)
+        /// </summary>
         public int PagesAccessed { get; set; }
+
+        /// <summary>
+        /// Primeiro login do dia
+        /// </summary>
         public DateTime FirstLogin { get; set; }
+
+        /// <summary>
+        /// Última atividade registrada
+        /// </summary>
         public DateTime LastActivity { get; set; }
+
+        // === REMOVIDOS (redundantes com BatchProcessingHistory) ===
+        // DocumentsProcessed -> Calculado via BatchProcessingHistory.Sum(TotalDocuments)
+        // ErrorCount -> Calculado via BatchProcessingHistory.Sum(FailedDocuments)  
+        // SuccessRate -> Calculado via BatchProcessingHistory aggregate
     }
 
     /// <summary>
