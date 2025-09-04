@@ -34,7 +34,8 @@
                 <h6 class="m-0 font-weight-bold text-primary">Upload de Lote (ZIP)</h6>
             </div>
             <div class="card-body">
-                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-area" id="uploadArea"
+                    onclick="console.log('Upload area clicked'); document.getElementById('fileInput').click()">
                     <div class="upload-icon">
                         <i class="fas fa-cloud-upload-alt"></i>
                     </div>
@@ -91,7 +92,7 @@
                                 <h6 class="alert-heading mb-2">
                                     <i class="fas fa-check-circle"></i> Lote Processado com Sucesso!
                                 </h6>
-                                <div id="quickResultContent">
+                                <div id="batchResultDisplay" data-result="batch-stats">
                                     <!-- Conteúdo será preenchido dinamicamente -->
                                 </div>
                             </div>
@@ -212,6 +213,11 @@
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
 
+        console.log('Elementos encontrados:', {
+            uploadArea: !!uploadArea,
+            fileInput: !!fileInput
+        });
+
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             uploadArea.addEventListener(eventName, preventDefaults, false);
         });
@@ -246,12 +252,15 @@
         }
 
         fileInput.addEventListener('change', function (e) {
+            console.log('FileInput change event triggered!', e.target.files);
             handleFiles(e.target.files);
         });
 
         function handleFiles(files) {
+            console.log('handleFiles chamada com:', files);
             if (files.length > 0) {
                 const file = files[0];
+                console.log('Arquivo selecionado:', file.name, file.type, file.size);
                 if (validateFile(file)) {
                     selectedFile = file;
                     showFileInfo(file);
@@ -375,6 +384,9 @@
                 }
 
                 if (result.success) {
+                    // Debug - vamos ver o que está chegando
+                    console.log('Resultado recebido:', result);
+
                     // Sucesso - mostrar toast e resultado na página
                     showToast.batchSuccess(result);
                     showQuickResult(result);
@@ -405,26 +417,161 @@
         }
 
         function showQuickResult(data) {
-            const quickResultContent = document.getElementById('quickResultContent');
-            const quickResultArea = document.getElementById('quickResultArea');
-            const viewFullReportBtn = document.getElementById('viewFullReportBtn');
+            console.log('showQuickResult chamada com dados:', data);
 
-            quickResultContent.innerHTML = `
+            // Usar jQuery para ser mais confiável
+            const $quickResultArea = $('#quickResultArea');
+
+            if ($quickResultArea.length === 0) {
+                console.error('Elemento quickResultArea não encontrado');
+                showToast.error('Erro de Interface', 'Não foi possível exibir o resultado. Recarregue a página.');
+                return;
+            }
+
+            // Mostrar a área primeiro
+            $quickResultArea.show();
+
+            // Aguardar um pequeno delay para garantir que o DOM seja atualizado
+            setTimeout(() => {
+                // Procurar o elemento de conteúdo usando jQuery
+
+                let $batchResultDisplaye = $quickResultArea.find('#batchResultDisplay');
+                $batchResultDisplay = $batchResultDisplaye.prevObject;
+
+                console.log('Tentativa 1 - Por ID:', $batchResultDisplay.length);
+
+                // Se não encontrar, tentar por atributo
+                if ($batchResultDisplay.length === 0) {
+                    $batchResultDisplay = $quickResultArea.find('[data-result="batch-stats"]');
+                    console.log('Tentativa 2 - Por atributo:', $batchResultDisplay.length);
+                }
+
+                // Debug - vamos ver o HTML interno
+                console.log('HTML interno da quickResultArea:', $quickResultArea.html());
+
+                // Se ainda não encontrar, criar dinamicamente
+                if ($batchResultDisplay.length === 0) {
+                    console.log('Elemento não encontrado, criando dinamicamente...');
+
+                    // Buscar onde inserir - vamos tentar várias opções
+                    let $targetDiv = $quickResultArea.find('.alert-heading').parent();
+
+                    if ($targetDiv.length === 0) {
+                        // Se não encontrar, buscar qualquer div dentro do alert
+                        $targetDiv = $quickResultArea.find('.alert-success div').first();
+                    }
+
+                    if ($targetDiv.length > 0) {
+                        // Criar o elemento
+                        $batchResultDisplay = $('<div>', {
+                            id: 'batchResultDisplay',
+                            'data-result': 'batch-stats',
+                            class: 'mt-2'
+                        });
+
+                        // Inserir após o heading se existir, senão no final
+                        const $heading = $targetDiv.find('.alert-heading');
+                        if ($heading.length > 0) {
+                            $heading.after($batchResultDisplay);
+                        } else {
+                            $targetDiv.append($batchResultDisplay);
+                        }
+
+                        console.log('Elemento criado dinamicamente com jQuery');
+                    } else {
+                        console.error('Não foi possível encontrar onde inserir o conteúdo');
+                        showToast.error('Erro de Interface', 'Estrutura HTML inesperada. Recarregue a página.');
+                        return;
+                    }
+                }
+
+                console.log('Elemento de conteúdo encontrado/criado:', $batchResultDisplay.length > 0);
+
+                // Buscar o botão de relatório
+                const $viewFullReportBtn = $quickResultArea.find('#viewFullReportBtn');
+
+                // Atualizar conteúdo
+                updateResultContent($batchResultDisplay[0], data, $viewFullReportBtn[0]);
+
+                isProcessing = false; // Permitir nova operação
+            }, 100); // Aguardar 100ms para o DOM ser atualizado
+        }
+
+        function updateResultContent(batchResultDisplay, data, viewFullReportBtn) {
+            console.log('updateResultContent chamada com:', {
+                element: !!batchResultDisplay,
+                data: data,
+                btn: !!viewFullReportBtn
+            });
+
+            // Se por algum motivo o elemento não existe, criar na força bruta
+            if (!batchResultDisplay) {
+                console.log('Elemento null - usando jQuery como último recurso');
+                const $area = $('#quickResultArea');
+
+                if ($area.length > 0) {
+                    // Remover qualquer conteúdo anterior e adicionar o novo
+                    const htmlContent = `
+                                            <div class="alert alert-success">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h6 class="alert-heading mb-2">
+                                                            <i class="fas fa-check-circle"></i> Lote Processado com Sucesso!
+                                                        </h6>
+                                                        <div class="row text-center">
+                                                            <div class="col-md-3">
+                                                                <strong class="text-primary fs-4">${data.totalDocuments || 0}</strong>
+                                                                <div class="small text-muted">Total de Documentos</div>
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <strong class="text-success fs-4">${data.successfulDocuments || 0}</strong>
+                                                                <div class="small text-muted">Classificados</div>
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <strong class="text-info fs-4">${data.successRate || 0}%</strong>
+                                                                <div class="small text-muted">Taxa de Sucesso</div>
+                                                            </div>
+                                                            <div class="col-md-3">
+                                                                <strong class="text-warning fs-4">${data.averageConfidence || 0}%</strong>
+                                                                <div class="small text-muted">Confiança Média</div>
+                                                            </div>
+                                                        </div>
+                                                        ${data.predominantType ? `
+                                                        <div class="mt-3 text-center">
+                                                            <span class="badge bg-primary fs-6">Tipo Predominante: ${data.predominantType}</span>
+                                                        </div>
+                                                        ` : ''}
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <button type="button" class="btn btn-success btn-sm" onclick="window.location.href='${data.redirectUrl || '#'}'">
+                                                            <i class="fas fa-chart-bar"></i> Ver Relatório Completo
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+
+                    $area.html(htmlContent);
+                }
+                return;
+            }
+
+            batchResultDisplay.innerHTML = `
                         <div class="row text-center">
                             <div class="col-md-3">
-                                <strong class="text-primary fs-4">${data.totalDocuments}</strong>
+                                <strong class="text-primary fs-4">${data.totalDocuments || 0}</strong>
                                 <div class="small text-muted">Total de Documentos</div>
                             </div>
                             <div class="col-md-3">
-                                <strong class="text-success fs-4">${data.successfulDocuments}</strong>
+                                <strong class="text-success fs-4">${data.successfulDocuments || 0}</strong>
                                 <div class="small text-muted">Classificados</div>
                             </div>
                             <div class="col-md-3">
-                                <strong class="text-info fs-4">${data.successRate}%</strong>
+                                <strong class="text-info fs-4">${data.successRate || 0}%</strong>
                                 <div class="small text-muted">Taxa de Sucesso</div>
                             </div>
                             <div class="col-md-3">
-                                <strong class="text-warning fs-4">${data.averageConfidence}%</strong>
+                                <strong class="text-warning fs-4">${data.averageConfidence || 0}%</strong>
                                 <div class="small text-muted">Confiança Média</div>
                             </div>
                         </div>
@@ -436,14 +583,11 @@
                     `;
 
             // Configurar botão para ver relatório completo
-            if (data.redirectUrl) {
+            if (data.redirectUrl && viewFullReportBtn) {
                 viewFullReportBtn.onclick = () => {
                     window.location.href = data.redirectUrl;
                 };
             }
-
-            quickResultArea.style.display = 'block';
-            isProcessing = false; // Permitir nova operação
         }
 
         function restoreUploadState() {
