@@ -1,0 +1,395 @@
+@model List<ClassificadorDoc.Models.UserManagementViewModel>
+@{
+    ViewData["Title"] = "Gerenciamento de Usuários";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-users-cog me-2 text-primary"></i>Gerenciamento de Usuários
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                <i class="fas fa-user-plus"></i> Novo Usuário
+            </button>
+            <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                <span class="visually-hidden">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="exportUsers('excel')">
+                    <i class="fas fa-file-excel me-2"></i>Exportar Excel
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="exportUsers('pdf')">
+                    <i class="fas fa-file-pdf me-2"></i>Exportar PDF
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" onclick="showBulkActions()">
+                    <i class="fas fa-tasks me-2"></i>Ações em Lote
+                </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros e Busca -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label for="searchInput" class="form-label">Buscar Usuários</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Nome, email ou departamento...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label for="roleFilter" class="form-label">Filtrar por Papel</label>
+                <select class="form-select" id="roleFilter">
+                    <option value="">Todos os papéis</option>
+                    <option value="Administrator">Administrador</option>
+                    <option value="User">Usuário</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="statusFilter" class="form-label">Status</label>
+                <select class="form-select" id="statusFilter">
+                    <option value="">Todos os status</option>
+                    <option value="active">Ativo</option>
+                    <option value="inactive">Inativo</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                        <i class="fas fa-times"></i> Limpar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estatísticas Rápidas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                <h4 class="card-title">@Model.Count</h4>
+                <p class="card-text text-muted">Total de Usuários</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <i class="fas fa-user-check fa-2x text-success mb-2"></i>
+                <h4 class="card-title">@Model.Count(u => u.IsActive)</h4>
+                <p class="card-text text-muted">Usuários Ativos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <i class="fas fa-user-shield fa-2x text-warning mb-2"></i>
+                <h4 class="card-title">@Model.Count(u => u.Roles.Contains("Administrator"))</h4>
+                <p class="card-text text-muted">Administradores</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <i class="fas fa-clock fa-2x text-info mb-2"></i>
+                <h4 class="card-title">@Model.Count(u => u.LastLoginAt != null && u.LastLoginAt > DateTime.Now.AddDays(-7))</h4>
+                <p class="card-text text-muted">Ativos (7 dias)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Usuários -->
+<div class="card shadow">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Lista de Usuários</h6>
+    </div>
+    <div class="card-body">
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover" id="usersTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>
+                                <input type="checkbox" class="form-check-input" id="selectAll">
+                            </th>
+                            <th>Usuário</th>
+                            <th>Departamento</th>
+                            <th>Papéis</th>
+                            <th>Documentos</th>
+                            <th>Último Acesso</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model.OrderBy(u => u.FullName))
+                        {
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="form-check-input user-checkbox" value="@user.Id">
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar-sm me-3">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">@user.FullName</div>
+                                            <small class="text-muted">@user.Email</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark">@(user.Department ?? "N/A")</span>
+                                </td>
+                                <td>
+                                    @foreach (var role in user.Roles)
+                                    {
+                                        <span class="badge @(role == "Administrator" ? "bg-danger" : "bg-primary") me-1">
+                                            @(role == "Administrator" ? "Admin" : role)
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-info">@(user.DocumentsProcessed ?? 0)</span>
+                                </td>
+                                <td>
+                                    @if (user.LastLoginAt.HasValue)
+                                    {
+                                        <span class="text-muted">@user.LastLoginAt.Value.ToString("dd/MM/yyyy")</span><br>
+                                        <small class="text-muted">@user.LastLoginAt.Value.ToString("HH:mm")</small>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Nunca</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (user.IsActive)
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>Ativo
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-pause-circle me-1"></i>Inativo
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-primary" 
+                                                onclick="editUser('@user.Id')" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-warning" 
+                                                onclick="resetPassword('@user.Id')" title="Reset Senha">
+                                            <i class="fas fa-key"></i>
+                                        </button>
+                                        @if (user.IsActive)
+                                        {
+                                            <button type="button" class="btn btn-outline-secondary" 
+                                                    onclick="toggleUserStatus('@user.Id', false)" title="Desativar">
+                                                <i class="fas fa-user-slash"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-outline-success" 
+                                                    onclick="toggleUserStatus('@user.Id', true)" title="Ativar">
+                                                <i class="fas fa-user-check"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Nenhum usuário encontrado</h5>
+                <p class="text-muted">Comece criando o primeiro usuário do sistema.</p>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                    <i class="fas fa-user-plus"></i> Criar Primeiro Usuário
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modal Novo Usuário -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i>Novo Usuário
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="CreateUser" method="post">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="newUserFullName" class="form-label">Nome Completo</label>
+                            <input type="text" class="form-control" name="FullName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="newUserEmail" class="form-label">E-mail</label>
+                            <input type="email" class="form-control" name="Email" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="newUserDepartment" class="form-label">Departamento</label>
+                            <input type="text" class="form-control" name="Department">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="newUserRole" class="form-label">Papel</label>
+                            <select class="form-select" name="Role" required>
+                                <option value="">Selecione um papel</option>
+                                <option value="User">Usuário</option>
+                                <option value="Administrator">Administrador</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="newUserPassword" class="form-label">Senha Temporária</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" name="Password" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="generatePassword()">
+                                    <i class="fas fa-random"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">Usuário deverá alterar na primeira login</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Opções</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="SendEmailInvitation" checked>
+                                <label class="form-check-label">Enviar convite por e-mail</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="RequirePasswordChange" checked>
+                                <label class="form-check-label">Exigir alteração de senha</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Criar Usuário
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Busca em tempo real
+        document.getElementById('searchInput').addEventListener('input', filterUsers);
+        document.getElementById('roleFilter').addEventListener('change', filterUsers);
+        document.getElementById('statusFilter').addEventListener('change', filterUsers);
+
+        function filterUsers() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const roleFilter = document.getElementById('roleFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const rows = document.querySelectorAll('#usersTable tbody tr');
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const roleMatch = !roleFilter || text.includes(roleFilter.toLowerCase());
+                const statusMatch = !statusFilter || 
+                    (statusFilter === 'active' && text.includes('ativo')) ||
+                    (statusFilter === 'inactive' && text.includes('inativo'));
+                const searchMatch = !search || text.includes(search);
+
+                row.style.display = (roleMatch && statusMatch && searchMatch) ? '' : 'none';
+            });
+        }
+
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('roleFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            filterUsers();
+        }
+
+        function editUser(userId) {
+            alert(`Editar usuário ${userId} - Em desenvolvimento`);
+        }
+
+        function resetPassword(userId) {
+            if (confirm('Tem certeza que deseja resetar a senha deste usuário?')) {
+                alert(`Reset senha usuário ${userId} - Em desenvolvimento`);
+            }
+        }
+
+        function toggleUserStatus(userId, activate) {
+            const action = activate ? 'ativar' : 'desativar';
+            if (confirm(`Tem certeza que deseja ${action} este usuário?`)) {
+                alert(`${action} usuário ${userId} - Em desenvolvimento`);
+            }
+        }
+
+        function generatePassword() {
+            const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+            document.querySelector('input[name="Password"]').value = password;
+        }
+
+        function exportUsers(format) {
+            alert(`Exportar usuários em ${format} - Em desenvolvimento`);
+        }
+
+        function showBulkActions() {
+            alert('Ações em lote - Em desenvolvimento');
+        }
+
+        // Select All functionality
+        document.getElementById('selectAll').addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.user-checkbox');
+            checkboxes.forEach(cb => cb.checked = this.checked);
+        });
+    </script>
+}
+
+<style>
+.user-avatar-sm {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1rem;
+}
+</style>

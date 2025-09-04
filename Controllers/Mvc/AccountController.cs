@@ -194,7 +194,7 @@ namespace ClassificadorDoc.Controllers.Mvc
         }
 
         [HttpGet]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> UserManagement()
         {
             var users = _userManager.Users.OrderBy(u => u.FullName).ToList();
@@ -221,7 +221,78 @@ namespace ClassificadorDoc.Controllers.Mvc
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Administrator")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateUser(CreateUserViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = new ApplicationUser
+                {
+                    UserName = model.Email,
+                    Email = model.Email,
+                    FullName = model.FullName,
+                    Department = model.Department ?? "Não informado",
+                    IsActive = true
+                };
+
+                var result = await _userManager.CreateAsync(user, model.Password);
+
+                if (result.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(user, model.Role);
+
+                    _logger.LogInformation("Novo usuário criado pelo admin: {Email}", user.Email);
+                    TempData["Message"] = "Usuário criado com sucesso!";
+                }
+                else
+                {
+                    foreach (var error in result.Errors)
+                    {
+                        TempData["Error"] = GetPortugueseErrorMessage(error.Code);
+                        break;
+                    }
+                }
+            }
+
+            return RedirectToAction("UserManagement");
+        }
+
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(model.Email);
+                if (user != null && user.IsActive)
+                {
+                    var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+                    // Em produção, enviar email com o token
+                    // Por enquanto, apenas log
+                    _logger.LogInformation("Token de reset de senha gerado para {Email}: {Token}", user.Email, token);
+
+                    ViewData["Message"] = "Se o e-mail estiver cadastrado, você receberá instruções para recuperar sua senha.";
+                }
+                else
+                {
+                    // Por segurança, sempre mostrar a mesma mensagem
+                    ViewData["Message"] = "Se o e-mail estiver cadastrado, você receberá instruções para recuperar sua senha.";
+                }
+            }
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Administrator")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ToggleUserStatus(string userId)
         {
@@ -232,6 +303,7 @@ namespace ClassificadorDoc.Controllers.Mvc
                 await _userManager.UpdateAsync(user);
 
                 _logger.LogInformation("Status do usuário {Email} alterado para {Status}", user.Email, user.IsActive ? "Ativo" : "Inativo");
+                TempData["Message"] = $"Usuário {(user.IsActive ? "ativado" : "desativado")} com sucesso!";
             }
 
             return RedirectToAction("UserManagement");
