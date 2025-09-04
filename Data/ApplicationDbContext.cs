@@ -14,6 +14,17 @@ namespace ClassificadorDoc.Data
         // DbSets para suas entidades customizadas
         public DbSet<DocumentProcessingHistory> DocumentProcessingHistories { get; set; }
         public DbSet<ClassificationSession> ClassificationSessions { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
+
+        // DbSets para conformidade com edital
+        public DbSet<UserProductivity> UserProductivities { get; set; }
+        public DbSet<ActiveUserSession> ActiveUserSessions { get; set; }
+        public DbSet<DataMiningMetadata> DataMiningMetadata { get; set; }
+        public DbSet<TimeSeriesData> TimeSeriesData { get; set; }
+        public DbSet<AutomatedAlert> AutomatedAlerts { get; set; }
+        public DbSet<DashboardWidget> DashboardWidgets { get; set; }
+        public DbSet<LGPDCompliance> LGPDCompliances { get; set; }
+        public DbSet<DataExport> DataExports { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -57,6 +68,125 @@ namespace ClassificadorDoc.Data
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<AuditLog>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Action).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Resource).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.UserId).HasMaxLength(450).IsRequired();
+                entity.Property(e => e.UserName).HasMaxLength(100);
+                entity.Property(e => e.IpAddress).HasMaxLength(45);
+                entity.Property(e => e.UserAgent).HasMaxLength(500);
+                entity.Property(e => e.Result).HasMaxLength(10).IsRequired();
+                entity.Property(e => e.ErrorMessage).HasMaxLength(500);
+                entity.Property(e => e.Category).HasMaxLength(20);
+                entity.Property(e => e.Severity).HasMaxLength(10);
+
+                // Índices para performance em consultas de auditoria
+                entity.HasIndex(e => e.Timestamp);
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.Action);
+                entity.HasIndex(e => e.Category);
+                entity.HasIndex(e => new { e.Timestamp, e.Category });
+            });
+
+            // Configurações para conformidade com edital
+            builder.Entity<UserProductivity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.UserId, e.Date }).IsUnique();
+                entity.Property(e => e.UserId).HasMaxLength(450).IsRequired();
+            });
+
+            builder.Entity<ActiveUserSession>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.SessionId).IsUnique();
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.IsActive);
+                entity.Property(e => e.UserId).HasMaxLength(450).IsRequired();
+                entity.Property(e => e.UserName).HasMaxLength(100);
+                entity.Property(e => e.SessionId).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.IpAddress).HasMaxLength(45);
+                entity.Property(e => e.UserAgent).HasMaxLength(500);
+                entity.Property(e => e.CurrentPage).HasMaxLength(200);
+                entity.Property(e => e.Role).HasMaxLength(50);
+                entity.Property(e => e.Department).HasMaxLength(50);
+            });
+
+            builder.Entity<DataMiningMetadata>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.EntityName, e.PropertyName }).IsUnique();
+                entity.Property(e => e.EntityName).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.PropertyName).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.DataType).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Description).HasMaxLength(500);
+                entity.Property(e => e.Category).HasMaxLength(50);
+            });
+
+            builder.Entity<TimeSeriesData>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.SeriesName, e.Timestamp });
+                entity.HasIndex(e => e.Category);
+                entity.Property(e => e.SeriesName).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Category).HasMaxLength(50);
+                entity.Property(e => e.DataSource).HasMaxLength(100);
+                entity.Property(e => e.PredictionModel).HasMaxLength(50);
+            });
+
+            builder.Entity<AutomatedAlert>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.IsActive);
+                entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Description).HasMaxLength(500);
+                entity.Property(e => e.AlertType).HasMaxLength(20);
+                entity.Property(e => e.Priority).HasMaxLength(10);
+                entity.Property(e => e.CreatedBy).HasMaxLength(450);
+            });
+
+            builder.Entity<DashboardWidget>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.UserRole);
+                entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Title).HasMaxLength(200);
+                entity.Property(e => e.WidgetType).HasMaxLength(20);
+                entity.Property(e => e.DataSource).HasMaxLength(100);
+                entity.Property(e => e.UserRole).HasMaxLength(50);
+                entity.Property(e => e.CreatedBy).HasMaxLength(450);
+                entity.Property(e => e.UpdatedBy).HasMaxLength(450);
+            });
+
+            builder.Entity<LGPDCompliance>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.DataType);
+                entity.HasIndex(e => e.Timestamp);
+                entity.Property(e => e.UserId).HasMaxLength(450).IsRequired();
+                entity.Property(e => e.DataType).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.Action).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.LegalBasis).HasMaxLength(100);
+                entity.Property(e => e.Description).HasMaxLength(500);
+                entity.Property(e => e.Purpose).HasMaxLength(200);
+            });
+
+            builder.Entity<DataExport>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => e.Status);
+                entity.Property(e => e.ExportName).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.Format).HasMaxLength(10).IsRequired();
+                entity.Property(e => e.DataType).HasMaxLength(50);
+                entity.Property(e => e.UserId).HasMaxLength(450).IsRequired();
+                entity.Property(e => e.Status).HasMaxLength(20);
+                entity.Property(e => e.FilePath).HasMaxLength(500);
             });
         }
     }

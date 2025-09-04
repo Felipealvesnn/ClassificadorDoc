@@ -1,9 +1,20 @@
 @{
-    ViewData["Title"] = "Classificar Documento";
+    ViewData["Title"] = "Classificar Lote de Documentos";
+}
+
+@using (Html.BeginForm("Upload", "Classificacao", FormMethod.Post, new
+{
+    enctype = "multipart/form-data",
+    style =
+"display:none;",
+    id = "hiddenForm"
+}))
+{
+    @Html.AntiForgeryToken()
 }
 
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Classificar Documento</h1>
+    <h1 class="h2">Classificar Lote de Documentos</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
             <a asp-controller="Home" asp-action="Index" class="btn btn-sm btn-outline-secondary">
@@ -18,22 +29,23 @@
         <!-- Área de Upload -->
         <div class="card shadow mb-4">
             <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Upload de Documento</h6>
+                <h6 class="m-0 font-weight-bold text-primary">Upload de Lote (ZIP)</h6>
             </div>
             <div class="card-body">
                 <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
                     <div class="upload-icon">
                         <i class="fas fa-cloud-upload-alt"></i>
                     </div>
-                    <h5>Arraste e solte seu documento aqui</h5>
-                    <p class="text-muted">ou clique para selecionar arquivo</p>
+                    <h5>Arraste e solte seu arquivo ZIP aqui</h5>
+                    <p class="text-muted">ou clique para selecionar arquivo ZIP</p>
                     <small class="text-muted">
-                        Formatos suportados: PDF, DOC, DOCX, TXT (máx. 10MB)
+                        <strong>Formato:</strong> ZIP contendo múltiplos arquivos PDF (máx. 100MB)<br>
+                        <strong>Exemplo:</strong> lote_documentos.zip com 10-50 PDFs
                     </small>
                 </div>
-                
-                <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt" style="display: none;" />
-                
+
+                <input type="file" id="fileInput" accept=".zip" style="display: none;" />
+
                 <!-- Informações do arquivo selecionado -->
                 <div id="fileInfo" class="mt-3" style="display: none;">
                     <div class="alert alert-info">
@@ -57,7 +69,7 @@
                             <i class="fas fa-times"></i> Cancelar
                         </button>
                         <button type="button" class="btn btn-primary" onclick="classifyDocument()">
-                            <i class="fas fa-magic"></i> Classificar Documento
+                            <i class="fas fa-magic"></i> Classificar Lote de Documentos
                         </button>
                     </div>
                 </div>
@@ -65,8 +77,8 @@
                 <!-- Loading -->
                 <div id="loadingArea" class="text-center" style="display: none;">
                     <div class="loading-spinner"></div>
-                    <p class="mt-3">Processando documento...</p>
-                    <small class="text-muted">Isso pode levar alguns segundos</small>
+                    <p class="mt-3">Processando lote de documentos...</p>
+                    <small class="text-muted">Analisando múltiplos PDFs - isso pode levar alguns minutos</small>
                 </div>
             </div>
         </div>
@@ -80,10 +92,10 @@
                 <div id="classificationResult">
                     <!-- Resultado será inserido aqui via JavaScript -->
                 </div>
-                
+
                 <div class="mt-3 d-flex justify-content-between">
                     <button type="button" class="btn btn-outline-primary" onclick="classifyAnother()">
-                        <i class="fas fa-plus"></i> Classificar Outro
+                        <i class="fas fa-plus"></i> Classificar Outro Lote
                     </button>
                     <button type="button" class="btn btn-success" onclick="saveResult()">
                         <i class="fas fa-save"></i> Salvar Resultado
@@ -101,28 +113,28 @@
             </div>
             <div class="card-body">
                 <div class="mb-3">
-                    <h6><i class="fas fa-lightbulb text-warning"></i> Formatos Aceitos</h6>
+                    <h6><i class="fas fa-lightbulb text-warning"></i> Formato Aceito</h6>
                     <ul class="list-unstyled ms-3">
-                        <li><i class="fas fa-file-pdf text-danger"></i> PDF</li>
-                        <li><i class="fas fa-file-word text-primary"></i> DOC/DOCX</li>
-                        <li><i class="fas fa-file-alt text-secondary"></i> TXT</li>
+                        <li><i class="fas fa-file-archive text-warning"></i> ZIP contendo múltiplos PDFs</li>
                     </ul>
                 </div>
-                
+
                 <div class="mb-3">
                     <h6><i class="fas fa-check-circle text-success"></i> Melhores Práticas</h6>
                     <ul class="small">
-                        <li>Use documentos com texto legível</li>
-                        <li>Evite imagens escaneadas de baixa qualidade</li>
-                        <li>Tamanho máximo: 10MB</li>
-                        <li>Documentos em português têm melhor precisão</li>
+                        <li>Organize os PDFs em um único arquivo ZIP</li>
+                        <li>Mantenha nomes de arquivo descritivos</li>
+                        <li>Tamanho máximo do ZIP: 100MB</li>
+                        <li>Recomendado: 10-50 PDFs por lote</li>
+                        <li>PDFs com texto legível têm melhor precisão</li>
                     </ul>
                 </div>
 
                 <div class="alert alert-info">
                     <small>
                         <i class="fas fa-info-circle"></i>
-                        O sistema utiliza IA para classificar automaticamente seus documentos com alta precisão.
+                        O sistema processa lotes de documentos usando IA avançada para classificação automática de
+                        múltiplos PDFs simultaneamente.
                     </small>
                 </div>
             </div>
@@ -137,24 +149,24 @@
                 <div class="list-group list-group-flush">
                     <div class="list-group-item p-2">
                         <div class="d-flex justify-content-between">
-                            <small class="fw-bold">contrato_servicos.pdf</small>
-                            <span class="badge bg-success">Contrato</span>
+                            <small class="fw-bold">lote_autuacoes_001.zip</small>
+                            <span class="badge bg-danger">Autuações</span>
                         </div>
-                        <small class="text-muted">Confiança: 98%</small>
+                        <small class="text-muted">15 documentos - 98% precisão</small>
                     </div>
                     <div class="list-group-item p-2">
                         <div class="d-flex justify-content-between">
-                            <small class="fw-bold">nota_fiscal_456.pdf</small>
-                            <span class="badge bg-warning">Fiscal</span>
+                            <small class="fw-bold">defesas_jari_456.zip</small>
+                            <span class="badge bg-primary">Defesas</span>
                         </div>
-                        <small class="text-muted">Confiança: 95%</small>
+                        <small class="text-muted">8 documentos - 95% precisão</small>
                     </div>
                     <div class="list-group-item p-2">
                         <div class="d-flex justify-content-between">
-                            <small class="fw-bold">relatorio_vendas.docx</small>
-                            <span class="badge bg-info">Relatório</span>
+                            <small class="fw-bold">notificacoes_mix.zip</small>
+                            <span class="badge bg-warning">Misto</span>
                         </div>
-                        <small class="text-muted">Confiança: 92%</small>
+                        <small class="text-muted">22 documentos - 92% precisão</small>
                     </div>
                 </div>
                 <div class="text-center mt-3">
@@ -208,7 +220,7 @@
             handleFiles(files);
         }
 
-        fileInput.addEventListener('change', function(e) {
+        fileInput.addEventListener('change', function (e) {
             handleFiles(e.target.files);
         });
 
@@ -223,18 +235,16 @@
         }
 
         function validateFile(file) {
-            const maxSize = 10 * 1024 * 1024; // 10MB
-            const allowedTypes = ['application/pdf', 'application/msword', 
-                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
-                                'text/plain'];
+            const maxSize = 100 * 1024 * 1024; // 100MB para ZIP
+            const allowedTypes = ['application/zip', 'application/x-zip-compressed'];
 
             if (file.size > maxSize) {
-                showAlert('Arquivo muito grande. Tamanho máximo: 10MB', 'danger');
+                showAlert('Arquivo ZIP muito grande. Tamanho máximo: 100MB', 'danger');
                 return false;
             }
 
-            if (!allowedTypes.includes(file.type)) {
-                showAlert('Tipo de arquivo não suportado. Use PDF, DOC, DOCX ou TXT', 'danger');
+            if (!allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.zip')) {
+                showAlert('Apenas arquivos ZIP são aceitos para processamento em lote', 'danger');
                 return false;
             }
 
@@ -267,7 +277,13 @@
 
         function classifyDocument() {
             if (!selectedFile) {
-                showAlert('Selecione um arquivo primeiro', 'warning');
+                showAlert('Selecione um arquivo ZIP primeiro', 'warning');
+                return;
+            }
+
+            // Verificar se é realmente um ZIP
+            if (!selectedFile.name.toLowerCase().endsWith('.zip')) {
+                showAlert('Apenas arquivos ZIP são aceitos para processamento em lote', 'danger');
                 return;
             }
 
@@ -275,58 +291,77 @@
             document.getElementById('actionButtons').style.display = 'none';
             document.getElementById('loadingArea').style.display = 'block';
 
-            // Simular classificação (substituir por chamada real à API)
-            setTimeout(() => {
-                const mockResult = {
-                    category: 'Contrato',
-                    confidence: 95.7,
-                    description: 'Documento identificado como contrato comercial',
-                    details: [
-                        'Presença de cláusulas contratuais',
-                        'Identificação de partes contratantes',
-                        'Estrutura típica de contrato'
-                    ]
-                };
+            // Atualizar mensagem de loading baseada no tamanho do arquivo
+            const loadingText = selectedFile.size > 50 * 1024 * 1024 ?
+                'Processando lote grande de documentos...' :
+                'Processando lote de documentos...';
+            document.querySelector('#loadingArea p').textContent = loadingText;
 
-                showClassificationResult(mockResult);
-            }, 3000);
+            // Preparar FormData para envio real
+            const formData = new FormData();
+            formData.append('arquivo', selectedFile);
+            formData.append('metodo', 'visual');
+
+            // Pegar o token anti-forgery
+            const token = document.querySelector('#hiddenForm input[name="__RequestVerificationToken"]').value;
+            formData.append('__RequestVerificationToken', token);
+
+            // Chamar a API real do controller
+            fetch('@Url.Action("Upload", "Classificacao")', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => {
+                    if (response.ok) {
+                        // Se for sucesso, redirecionar para a página de resultado
+                        window.location.href = response.url;
+                    } else {
+                        throw new Error('Erro na classificação');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    document.getElementById('loadingArea').style.display = 'none';
+                    document.getElementById('actionButtons').style.display = 'block';
+                    showAlert('Erro ao classificar lote de documentos. Verifique se o ZIP contém PDFs válidos.', 'danger');
+                });
         }
 
         function showClassificationResult(result) {
             document.getElementById('loadingArea').style.display = 'none';
-            
-            const confidenceClass = result.confidence >= 90 ? 'success' : 
-                                   result.confidence >= 70 ? 'warning' : 'danger';
-            
-            const confidenceColor = result.confidence >= 90 ? 'confidence-high' : 
-                                   result.confidence >= 70 ? 'confidence-medium' : 'confidence-low';
+
+            const confidenceClass = result.confidence >= 90 ? 'success' :
+                result.confidence >= 70 ? 'warning' : 'danger';
+
+            const confidenceColor = result.confidence >= 90 ? 'confidence-high' :
+                result.confidence >= 70 ? 'confidence-medium' : 'confidence-low';
 
             const resultHtml = `
-                <div class="classification-result ${confidenceClass} p-3 rounded">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h5 class="mb-1">
-                                <span class="badge bg-primary fs-6">${result.category}</span>
-                            </h5>
-                            <p class="mb-2">${result.description}</p>
-                            <div class="mb-2">
-                                <small class="text-muted">Confiança: ${result.confidence}%</small>
-                                <div class="confidence-bar mt-1">
-                                    <div class="${confidenceColor}" style="width: ${result.confidence}%"></div>
+                    <div class="classification-result ${confidenceClass} p-3 rounded">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h5 class="mb-1">
+                                    <span class="badge bg-primary fs-6">${result.category}</span>
+                                </h5>
+                                <p class="mb-2">${result.description}</p>
+                                <div class="mb-2">
+                                    <small class="text-muted">Confiança: ${result.confidence}%</small>
+                                    <div class="confidence-bar mt-1">
+                                        <div class="${confidenceColor}" style="width: ${result.confidence}%"></div>
+                                    </div>
                                 </div>
                             </div>
+                            <div class="col-md-4 text-center">
+                                <i class="fas fa-check-circle fa-3x text-success"></i>
+                            </div>
                         </div>
-                        <div class="col-md-4 text-center">
-                            <i class="fas fa-check-circle fa-3x text-success"></i>
-                        </div>
+                        <hr>
+                        <h6>Detalhes da Análise:</h6>
+                        <ul class="mb-0">
+                            ${result.details.map(detail => `<li>${detail}</li>`).join('')}
+                        </ul>
                     </div>
-                    <hr>
-                    <h6>Detalhes da Análise:</h6>
-                    <ul class="mb-0">
-                        ${result.details.map(detail => `<li>${detail}</li>`).join('')}
-                    </ul>
-                </div>
-            `;
+                `;
 
             document.getElementById('classificationResult').innerHTML = resultHtml;
             document.getElementById('resultArea').style.display = 'block';
@@ -345,13 +380,13 @@
             const alertDiv = document.createElement('div');
             alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
             alertDiv.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+
             const container = document.querySelector('.container-fluid');
             container.insertBefore(alertDiv, container.firstChild);
-            
+
             setTimeout(() => {
                 alertDiv.remove();
             }, 5000);

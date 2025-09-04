@@ -112,7 +112,7 @@
                         </a>
                     </div>
                     <div class="col-6 mb-3">
-                        <a asp-controller="Classificacao" asp-action="History" class="btn btn-outline-info w-100">
+                        <a asp-controller="Classificacao" asp-action="Historico" class="btn btn-outline-info w-100">
                             <i class="fas fa-history fa-2x mb-2"></i><br>
                             Ver Histórico
                         </a>
@@ -126,7 +126,7 @@
                             </a>
                         </div>
                         <div class="col-6 mb-3">
-                            <a href="#" class="btn btn-outline-warning w-100">
+                            <a asp-controller="Relatorios" asp-action="Index" class="btn btn-outline-warning w-100">
                                 <i class="fas fa-chart-bar fa-2x mb-2"></i><br>
                                 Relatórios
                             </a>
@@ -147,34 +147,38 @@
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
                             <small class="text-muted">Há 5 minutos</small><br>
-                            <strong>documento_contrato.pdf</strong> classificado como <span class="badge bg-success">Contrato</span>
+                            <strong>documento_contrato.pdf</strong> classificado como <span
+                                class="badge bg-success">Contrato</span>
                         </div>
                         <i class="fas fa-file-pdf text-danger"></i>
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
                             <small class="text-muted">Há 15 minutos</small><br>
-                            <strong>relatorio_mensal.docx</strong> classificado como <span class="badge bg-info">Relatório</span>
+                            <strong>relatorio_mensal.docx</strong> classificado como <span
+                                class="badge bg-info">Relatório</span>
                         </div>
                         <i class="fas fa-file-word text-primary"></i>
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
                             <small class="text-muted">Há 1 hora</small><br>
-                            <strong>nota_fiscal_123.pdf</strong> classificado como <span class="badge bg-warning">Fiscal</span>
+                            <strong>nota_fiscal_123.pdf</strong> classificado como <span
+                                class="badge bg-warning">Fiscal</span>
                         </div>
                         <i class="fas fa-file-pdf text-danger"></i>
                     </div>
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
                             <small class="text-muted">Há 2 horas</small><br>
-                            <strong>proposta_comercial.pdf</strong> classificado como <span class="badge bg-primary">Proposta</span>
+                            <strong>proposta_comercial.pdf</strong> classificado como <span
+                                class="badge bg-primary">Proposta</span>
                         </div>
                         <i class="fas fa-file-pdf text-danger"></i>
                     </div>
                 </div>
                 <div class="text-center mt-3">
-                    <a asp-controller="Classificacao" asp-action="History" class="btn btn-sm btn-outline-primary">
+                    <a asp-controller="Classificacao" asp-action="Historico" class="btn btn-sm btn-outline-primary">
                         Ver Todo Histórico
                     </a>
                 </div>
