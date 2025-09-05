@@ -1,0 +1,469 @@
+@model ClassificadorDoc.Controllers.Mvc.DetalhesLoteView
+
+@{
+    ViewData["Title"] = "Detalhes do Lote";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-archive fa-fw me-2"></i>Detalhes do Lote
+    </h1>
+    <div>
+        <a asp-action="Historico" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Voltar
+        </a>
+        <button type="button" class="btn btn-outline-primary" onclick="exportarCSV()">
+            <i class="fas fa-file-csv"></i> Exportar CSV
+        </button>
+    </div>
+</div>
+
+<!-- Informações do Lote -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-@GetStatusColor(Model.Lote.Status) shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-@GetStatusColor(Model.Lote.Status) text-uppercase mb-1">
+                            Status
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            @GetStatusDisplayName(Model.Lote.Status)
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-tasks fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total de Documentos
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            @Model.Lote.TotalDocumentos
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-file-alt fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Taxa de Sucesso
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            @Model.Lote.TaxaSucesso%
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Tamanho do Arquivo
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            @Model.Lote.TamanhoFormatado
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-file-archive fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Informações Adicionais -->
+<div class="row mb-4">
+    <div class="col-lg-6">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-info-circle me-2"></i>Informações do Processamento
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-sm-6">
+                        <p><strong>Data de Processamento:</strong><br>
+                        @Model.Lote.DataProcessamento.ToString("dd/MM/yyyy HH:mm:ss")</p>
+                    </div>
+                    <div class="col-sm-6">
+                        <p><strong>Tempo de Processamento:</strong><br>
+                        @Model.Lote.TempoFormatado</p>
+                    </div>
+                    <div class="col-sm-6">
+                        <p><strong>Usuário:</strong><br>
+                        @(User.Identity?.Name ?? "N/A")</p>
+                    </div>
+                    <div class="col-sm-6">
+                        <p><strong>Arquivo Original:</strong><br>
+                        @Model.Lote.NomeLote</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-pie me-2"></i>Distribuição de Tipos
+                </h6>
+            </div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(Model.Lote.TipoPredominante))
+                {
+                    <p><strong>Tipo Predominante:</strong><br>
+                    <span class="badge @GetTipoBadgeClass(Model.Lote.TipoPredominante) fs-6">
+                        @GetTipoDisplayName(Model.Lote.TipoPredominante)
+                    </span></p>
+                }
+                
+                <div class="small text-muted">
+                    <i class="fas fa-info-circle"></i>
+                    A distribuição completa pode ser visualizada na tabela de documentos abaixo.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-filter me-2"></i>Filtros de Documentos
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <label for="filtroTipoDoc" class="form-label">Tipo de Documento</label>
+                <select class="form-select" id="filtroTipoDoc">
+                    <option value="">Todos os tipos</option>
+                    <option value="autuacao">Autuação</option>
+                    <option value="defesa">Defesa</option>
+                    <option value="notificacao_penalidade">Notificação de Penalidade</option>
+                    <option value="outros">Outros</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="filtroStatusDoc" class="form-label">Status</label>
+                <select class="form-select" id="filtroStatusDoc">
+                    <option value="">Todos os status</option>
+                    <option value="Completed">Concluído</option>
+                    <option value="Failed">Falhou</option>
+                    <option value="Processing">Processando</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="filtroConfiancaDoc" class="form-label">Confiança Mínima</label>
+                <input type="range" class="form-range" id="filtroConfiancaDoc" min="0" max="100" value="0">
+                <div class="d-flex justify-content-between">
+                    <small>0%</small>
+                    <small>100%</small>
+                </div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <div>
+                    <button type="button" class="btn btn-primary me-2" onclick="aplicarFiltrosDoc()">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="limparFiltrosDoc()">
+                        <i class="fas fa-times"></i> Limpar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Documentos -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-file-alt me-2"></i>Documentos do Lote (@Model.Documentos.Count)
+        </h6>
+        <div class="dropdown no-arrow">
+            <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" 
+               data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in" 
+                 aria-labelledby="dropdownMenuLink">
+                <div class="dropdown-header">Exportar:</div>
+                <a class="dropdown-item" href="#" onclick="exportarCSV()">
+                    <i class="fas fa-file-csv fa-sm fa-fw mr-2 text-gray-400"></i>
+                    CSV
+                </a>
+                <a class="dropdown-item" href="#" onclick="exportarPDF()">
+                    <i class="fas fa-file-pdf fa-sm fa-fw mr-2 text-gray-400"></i>
+                    PDF
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        @if (Model.Documentos.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Arquivo</th>
+                            <th>Tipo Classificado</th>
+                            <th>Confiança</th>
+                            <th>Status</th>
+                            <th>Data Processamento</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var doc in Model.Documentos.OrderByDescending(d => d.DataProcessamento))
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="@GetFileIcon(doc.NomeArquivo) me-2"></i>
+                                        <div>
+                                            <div class="fw-bold">@doc.NomeArquivo</div>
+                                            <div class="small text-muted">@doc.TamanhoFormatado</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(doc.TipoClassificado))
+                                    {
+                                        <span class="badge @GetTipoBadgeClass(doc.TipoClassificado)">
+                                            @GetTipoDisplayName(doc.TipoClassificado)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Não identificado</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (doc.Confianca > 0)
+                                    {
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress me-2" style="width: 60px; height: 20px;">
+                                                <div class="progress-bar @GetProgressBarClass(doc.Confianca)"
+                                                     role="progressbar" 
+                                                     style="width: @(doc.Confianca * 100)%"
+                                                     aria-valuenow="@(doc.Confianca * 100)" 
+                                                     aria-valuemin="0" 
+                                                     aria-valuemax="100"></div>
+                                            </div>
+                                            <small class="fw-bold">@(doc.Confianca.ToString("P1"))</small>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @GetStatusBadgeClass(doc.Status)">@GetStatusDisplayName(doc.Status)</span>
+                                </td>
+                                <td>
+                                    <div>@doc.DataProcessamento.ToString("dd/MM/yyyy")</div>
+                                    <small class="text-muted">@doc.DataProcessamento.ToString("HH:mm:ss")</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-outline-info btn-sm" 
+                                                onclick="verDetalhesDoc(@doc.Id)" title="Ver Detalhes">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        @if (!string.IsNullOrEmpty(doc.CaminhoResultado))
+                                        {
+                                            <button type="button" class="btn btn-outline-success btn-sm"
+                                                    onclick="baixarResultadoDoc(@doc.Id)" title="Baixar Resultado">
+                                                <i class="fas fa-download"></i>
+                                            </button>
+                                        }
+                                        @if (User.IsInRole("Administrator"))
+                                        {
+                                            <button type="button" class="btn btn-outline-danger btn-sm"
+                                                    onclick="excluirDoc(@doc.Id)" title="Excluir">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Nenhum documento encontrado</h5>
+                <p class="text-muted">Este lote não contém documentos ou houve um erro no processamento.</p>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function aplicarFiltrosDoc() {
+            const tipo = document.getElementById('filtroTipoDoc').value;
+            const status = document.getElementById('filtroStatusDoc').value;
+            const confianca = document.getElementById('filtroConfiancaDoc').value;
+            
+            console.log('Filtros aplicados:', { tipo, status, confianca });
+            // Implementar lógica de filtragem
+        }
+
+        function limparFiltrosDoc() {
+            document.getElementById('filtroTipoDoc').value = '';
+            document.getElementById('filtroStatusDoc').value = '';
+            document.getElementById('filtroConfiancaDoc').value = '0';
+        }
+
+        function verDetalhesDoc(id) {
+            // Abrir modal com detalhes do documento
+            alert(`Ver detalhes do documento ${id} (Em desenvolvimento)`);
+        }
+
+        function baixarResultadoDoc(id) {
+            window.location.href = `@Url.Action("BaixarResultado", "Classificacao")?id=${id}`;
+        }
+
+        function excluirDoc(id) {
+            if (confirm('Tem certeza que deseja excluir este documento?')) {
+                // Implementar exclusão
+                alert(`Excluir documento ${id} (Em desenvolvimento)`);
+            }
+        }
+
+        function exportarCSV() {
+            window.location.href = '@Url.Action("ExportarCSV", "Classificacao")?loteId=@Model.Lote.BatchId';
+        }
+
+        function exportarPDF() {
+            window.location.href = '@Url.Action("ExportarPDF", "Classificacao")?loteId=@Model.Lote.BatchId';
+        }
+
+        // Atualizar valor do range de confiança
+        document.getElementById('filtroConfiancaDoc').addEventListener('input', function(e) {
+            const valor = e.target.value;
+            const label = e.target.nextElementSibling.children[1];
+            label.textContent = valor + '%';
+        });
+    </script>
+}
+
+@functions {
+    private static string GetStatusColor(string status)
+    {
+        return status switch
+        {
+            "Completed" => "success",
+            "Failed" => "danger", 
+            "Processing" => "warning",
+            _ => "secondary"
+        };
+    }
+
+    private static string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Completed" => "bg-success",
+            "Failed" => "bg-danger",
+            "Processing" => "bg-warning text-dark",
+            _ => "bg-secondary"
+        };
+    }
+
+    private static string GetStatusDisplayName(string status)
+    {
+        return status switch
+        {
+            "Completed" => "Concluído",
+            "Failed" => "Falhou",
+            "Processing" => "Processando",
+            _ => "Desconhecido"
+        };
+    }
+
+    private static string GetTipoBadgeClass(string? tipo)
+    {
+        return tipo switch
+        {
+            "autuacao" => "bg-danger",
+            "defesa" => "bg-primary",
+            "notificacao_penalidade" => "bg-warning text-dark",
+            "outros" => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private static string GetTipoDisplayName(string? tipo)
+    {
+        return tipo switch
+        {
+            "autuacao" => "Autuação",
+            "defesa" => "Defesa",
+            "notificacao_penalidade" => "Notificação de Penalidade",
+            "outros" => "Outros",
+            _ => "Não Identificado"
+        };
+    }
+
+    private static string GetFileIcon(string fileName)
+    {
+        var extension = System.IO.Path.GetExtension(fileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".pdf" => "fas fa-file-pdf text-danger",
+            ".zip" => "fas fa-file-archive text-warning",
+            ".doc" or ".docx" => "fas fa-file-word text-primary",
+            ".xls" or ".xlsx" => "fas fa-file-excel text-success",
+            _ => "fas fa-file text-secondary"
+        };
+    }
+
+    private static string GetProgressBarClass(decimal confianca)
+    {
+        return confianca switch
+        {
+            >= 0.9m => "bg-success",
+            >= 0.7m => "bg-warning",
+            _ => "bg-danger"
+        };
+    }
+}

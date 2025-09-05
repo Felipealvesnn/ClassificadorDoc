@@ -48,25 +48,85 @@ namespace ClassificadorDoc.Controllers.Mvc
         public async Task<IActionResult> Historico()
         {
             var userId = _userManager.GetUserId(User);
-            var userName = User.Identity?.Name ?? "Usuário";
 
-            // Buscar histórico real do banco de dados
-            var historico = await _context.DocumentProcessingHistories
-                .Where(h => h.UserId == userId)
-                .OrderByDescending(h => h.ProcessedAt)
+            // Nova abordagem: Buscar LOTES em vez de documentos individuais
+            var lotes = await _context.BatchProcessingHistories
+                .Where(b => b.UserId == userId)
+                .OrderByDescending(b => b.StartedAt)
+                .Select(b => new HistoricoLoteView
+                {
+                    BatchId = b.Id,
+                    NomeLote = b.BatchName,
+                    DataProcessamento = b.StartedAt,
+                    TotalDocumentos = b.TotalDocuments,
+                    DocumentosSucesso = b.SuccessfulDocuments,
+                    DocumentosErro = b.FailedDocuments,
+                    TipoPredominante = b.PredominantDocumentType,
+                    ConfiancaMedia = b.AverageConfidence,
+                    Status = b.Status,
+                    TempoProcessamento = b.ProcessingDuration,
+                    TamanhoArquivo = b.FileSizeBytes
+                })
+                .Take(20) // Paginação: 20 lotes por página
                 .ToListAsync();
 
-            var resultado = historico.Select(h => new HistoricoClassificacao
-            {
-                Id = h.Id,
-                NomeArquivo = h.FileName,
-                TipoClassificado = h.DocumentType,
-                DataClassificacao = h.ProcessedAt,
-                Confianca = (decimal)h.Confidence,
-                Usuario = userName
-            }).Take(100).ToList();
+            return View(lotes);
+        }
 
-            return View(resultado);
+        // GET: /Classificacao/DetalhesLote/5
+        public async Task<IActionResult> DetalhesLote(int id)
+        {
+            var userId = _userManager.GetUserId(User);
+
+            // Buscar o lote
+            var lote = await _context.BatchProcessingHistories
+                .Where(b => b.Id == id && b.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (lote == null)
+            {
+                return NotFound();
+            }
+
+            // Buscar documentos do lote
+            var documentos = await _context.DocumentProcessingHistories
+                .Where(d => d.BatchProcessingHistoryId == id)
+                .OrderByDescending(d => d.ProcessedAt)
+                .Select(d => new HistoricoDocumentoView
+                {
+                    Id = d.Id,
+                    NomeArquivo = d.FileName,
+                    TipoClassificado = d.DocumentType,
+                    Confianca = (decimal)d.Confidence,
+                    DataProcessamento = d.ProcessedAt,
+                    Sucesso = d.IsSuccessful,
+                    MensagemErro = d.ErrorMessage,
+                    PalavrasChave = d.Keywords,
+                    CaminhoResultado = null, // Para ser implementado futuramente
+                    TamanhoBytes = d.FileSizeBytes
+                })
+                .ToListAsync();
+
+            var viewModel = new DetalhesLoteView
+            {
+                Lote = new HistoricoLoteView
+                {
+                    BatchId = lote.Id,
+                    NomeLote = lote.BatchName,
+                    DataProcessamento = lote.StartedAt,
+                    TotalDocumentos = lote.TotalDocuments,
+                    DocumentosSucesso = lote.SuccessfulDocuments,
+                    DocumentosErro = lote.FailedDocuments,
+                    TipoPredominante = lote.PredominantDocumentType,
+                    ConfiancaMedia = lote.AverageConfidence,
+                    Status = lote.Status,
+                    TempoProcessamento = lote.ProcessingDuration,
+                    TamanhoArquivo = lote.FileSizeBytes
+                },
+                Documentos = documentos
+            };
+
+            return View(viewModel);
         }
 
         // POST: /Classificacao/Upload
@@ -428,5 +488,76 @@ namespace ClassificadorDoc.Controllers.Mvc
         public DateTime DataClassificacao { get; set; }
         public decimal Confianca { get; set; }
         public string Usuario { get; set; } = string.Empty;
+    }
+
+    // Novos ViewModels para abordagem hierárquica
+    public class HistoricoLoteView
+    {
+        public int BatchId { get; set; }
+        public string NomeLote { get; set; } = string.Empty;
+        public DateTime DataProcessamento { get; set; }
+        public int TotalDocumentos { get; set; }
+        public int DocumentosSucesso { get; set; }
+        public int DocumentosErro { get; set; }
+        public string? TipoPredominante { get; set; }
+        public double ConfiancaMedia { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public TimeSpan? TempoProcessamento { get; set; }
+        public long TamanhoArquivo { get; set; }
+
+        // Propriedades calculadas
+        public decimal TaxaSucesso => TotalDocumentos > 0 ? Math.Round((decimal)DocumentosSucesso / TotalDocumentos * 100, 1) : 0;
+        public string TamanhoFormatado => FormatarTamanhoArquivo(TamanhoArquivo);
+        public string TempoFormatado => TempoProcessamento?.ToString(@"mm\:ss") ?? "N/A";
+
+        private static string FormatarTamanhoArquivo(long bytes)
+        {
+            string[] sizes = { "B", "KB", "MB", "GB" };
+            double len = bytes;
+            int order = 0;
+            while (len >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                len = len / 1024;
+            }
+            return $"{len:0.##} {sizes[order]}";
+        }
+    }
+
+    public class HistoricoDocumentoView
+    {
+        public int Id { get; set; }
+        public string NomeArquivo { get; set; } = string.Empty;
+        public string TipoClassificado { get; set; } = string.Empty;
+        public decimal Confianca { get; set; }
+        public DateTime DataProcessamento { get; set; }
+        public bool Sucesso { get; set; }
+        public string? MensagemErro { get; set; }
+        public string? PalavrasChave { get; set; }
+        public string? CaminhoResultado { get; set; }
+        public long TamanhoBytes { get; set; }
+
+        // Propriedades calculadas
+        public string Status => Sucesso ? "Completed" : "Failed";
+        public string TamanhoFormatado => FormatarTamanhoArquivo(TamanhoBytes);
+
+        private static string FormatarTamanhoArquivo(long bytes)
+        {
+            string[] sizes = { "B", "KB", "MB", "GB" };
+            double len = bytes;
+            int order = 0;
+            while (len >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                len = len / 1024;
+            }
+            return $"{len:0.##} {sizes[order]}";
+        }
+    }
+
+    public class DetalhesLoteView
+    {
+        public HistoricoLoteView Lote { get; set; } = new();
+        public List<HistoricoDocumentoView> Documentos { get; set; } = new();
     }
 }

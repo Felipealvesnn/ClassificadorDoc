@@ -1,15 +1,14 @@
-@model List<ClassificadorDoc.Controllers.Mvc.HistoricoClassificacao>
-@using System.IO
+@model List<ClassificadorDoc.Controllers.Mvc.HistoricoLoteView>
 @{
-    ViewData["Title"] = "Histórico de Classificações";
+    ViewData["Title"] = "Histórico de Lotes";
 }
 
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Histórico de Classificações</h1>
+    <h1 class="h2">Histórico de Lotes de Documentos</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
             <a asp-action="Upload" class="btn btn-sm btn-primary">
-                <i class="fas fa-upload"></i> Nova Classificação
+                <i class="fas fa-upload"></i> Novo Lote
             </a>
             <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
                 data-bs-toggle="dropdown">
@@ -32,7 +31,16 @@
     <div class="card-body">
         <form class="row g-3">
             <div class="col-md-3">
-                <label for="filtroTipo" class="form-label">Tipo de Documento</label>
+                <label for="filtroStatus" class="form-label">Status do Lote</label>
+                <select class="form-select" id="filtroStatus">
+                    <option value="">Todos os status</option>
+                    <option value="Completed">Concluído</option>
+                    <option value="Failed">Falhou</option>
+                    <option value="Processing">Processando</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="filtroTipo" class="form-label">Tipo Predominante</label>
                 <select class="form-select" id="filtroTipo">
                     <option value="">Todos os tipos</option>
                     <option value="autuacao">Autuação</option>
@@ -75,8 +83,17 @@
     <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
-                <i class="fas fa-file-alt fa-2x text-primary mb-2"></i>
+                <i class="fas fa-archive fa-2x text-primary mb-2"></i>
                 <h5 class="card-title">@Model.Count</h5>
+                <p class="card-text text-muted">Total de Lotes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-file-alt fa-2x text-info mb-2"></i>
+                <h5 class="card-title">@Model.Sum(m => m.TotalDocumentos)</h5>
                 <p class="card-text text-muted">Total de Documentos</p>
             </div>
         </div>
@@ -85,17 +102,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
-                <h5 class="card-title">@Model.Count(m => m.Confianca >= 0.9m)</h5>
-                <p class="card-text text-muted">Alta Confiança (90%+)</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <i class="fas fa-chart-line fa-2x text-info mb-2"></i>
-                <h5 class="card-title">@((Model.Any() ? Model.Average(m => (double)m.Confianca) * 100 :
-                                        0).ToString("F1"))%</h5>
+                <h5 class="card-title">@(Model.Any() ? Model.Average(m => m.ConfiancaMedia * 100).ToString("F1") : "0")%</h5>
                 <p class="card-text text-muted">Confiança Média</p>
             </div>
         </div>
@@ -104,101 +111,94 @@
         <div class="card text-center">
             <div class="card-body">
                 <i class="fas fa-clock fa-2x text-warning mb-2"></i>
-                <h5 class="card-title">@(Model.Any() ? Model.Max(m => m.DataClassificacao).ToString("dd/MM") : "N/A")
-                </h5>
+                <h5 class="card-title">@(Model.Any() ? Model.Max(m => m.DataProcessamento).ToString("dd/MM") : "N/A")</h5>
                 <p class="card-text text-muted">Último Processamento</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Tabela de Histórico -->
+<!-- Lista de Lotes -->
 <div class="card shadow">
     <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Classificações Realizadas</h6>
+        <h6 class="m-0 font-weight-bold text-primary">Lotes Processados</h6>
     </div>
     <div class="card-body">
         @if (Model.Any())
         {
-            <div class="table-responsive">
-                <table class="table table-hover" id="tabelaHistorico">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Arquivo</th>
-                            <th>Tipo Classificado</th>
-                            <th>Confiança</th>
-                            <th>Data/Hora</th>
-                            <th>Usuário</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var item in Model.OrderByDescending(m => m.DataClassificacao))
-                        {
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas @GetFileIcon(item.NomeArquivo) me-2"></i>
-                                        <div>
-                                            <div class="fw-bold">@item.NomeArquivo</div>
-                                            <small class="text-muted">ID: @item.Id</small>
-                                        </div>
+            <div class="row">
+                @foreach (var lote in Model.OrderByDescending(m => m.DataProcessamento))
+                {
+                    <div class="col-lg-6 col-xl-4 mb-4">
+                        <div class="card h-100 border-left-@GetStatusColor(lote.Status)">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title text-truncate" style="max-width: 200px;" title="@lote.NomeLote">
+                                        <i class="fas fa-archive me-2"></i>@lote.NomeLote
+                                    </h6>
+                                    <span class="badge @GetStatusBadgeClass(lote.Status)">@GetStatusDisplayName(lote.Status)</span>
+                                </div>
+                                
+                                <div class="row text-center mb-3">
+                                    <div class="col-4">
+                                        <div class="h6 mb-0 text-primary">@lote.TotalDocumentos</div>
+                                        <small class="text-muted">Docs</small>
                                     </div>
-                                </td>
-                                <td>
-                                    <span class="badge @GetBadgeClass(item.TipoClassificado)">
-                                        @GetTipoDisplayName(item.TipoClassificado)
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="me-2" style="width: 60px;">
-                                            <div class="progress" style="height: 8px;">
-                                                <div class="progress-bar @GetProgressBarClass(item.Confianca)"
-                                                    style="width: @((item.Confianca * 100).ToString("F0"))%"></div>
-                                            </div>
-                                        </div>
-                                        <small class="fw-bold">@((item.Confianca * 100).ToString("F1"))%</small>
+                                    <div class="col-4">
+                                        <div class="h6 mb-0 text-success">@lote.DocumentosSucesso</div>
+                                        <small class="text-muted">Sucesso</small>
                                     </div>
-                                </td>
-                                <td>
-                                    <div>@item.DataClassificacao.ToString("dd/MM/yyyy")</div>
-                                    <small class="text-muted">@item.DataClassificacao.ToString("HH:mm")</small>
-                                </td>
-                                <td>@item.Usuario</td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <button type="button" class="btn btn-outline-primary btn-sm"
-                                            onclick="verDetalhes(@item.Id)" title="Ver Detalhes">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-outline-success btn-sm"
-                                            onclick="baixarResultado(@item.Id)" title="Baixar Resultado">
-                                            <i class="fas fa-download"></i>
-                                        </button>
-                                        @if (User.IsInRole("Administrator"))
-                                        {
-                                            <button type="button" class="btn btn-outline-danger btn-sm"
-                                                onclick="excluirItem(@item.Id)" title="Excluir">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        }
+                                    <div class="col-4">
+                                        <div class="h6 mb-0 text-info">@lote.TaxaSucesso%</div>
+                                        <small class="text-muted">Taxa</small>
                                     </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(lote.TipoPredominante))
+                                {
+                                    <div class="text-center mb-2">
+                                        <span class="badge @GetTipoBadgeClass(lote.TipoPredominante) fs-6">
+                                            @GetTipoDisplayName(lote.TipoPredominante)
+                                        </span>
+                                    </div>
+                                }
+
+                                <div class="text-muted small mb-3">
+                                    <div><i class="fas fa-calendar me-1"></i>@lote.DataProcessamento.ToString("dd/MM/yyyy HH:mm")</div>
+                                    <div><i class="fas fa-clock me-1"></i>@lote.TempoFormatado</div>
+                                    <div><i class="fas fa-file-archive me-1"></i>@lote.TamanhoFormatado</div>
+                                    <div><i class="fas fa-chart-line me-1"></i>@((lote.ConfiancaMedia * 100).ToString("F1"))% confiança</div>
+                                </div>
+
+                                <div class="d-grid">
+                                    <a asp-action="DetalhesLote" asp-route-id="@lote.BatchId" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-eye me-1"></i>Ver Documentos (@lote.TotalDocumentos)
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
             </div>
+
+            <!-- Paginação -->
+            @if (Model.Count >= 20)
+            {
+                <div class="d-flex justify-content-center mt-4">
+                    <button class="btn btn-outline-primary" onclick="carregarMais()">
+                        <i class="fas fa-plus"></i> Carregar Mais Lotes
+                    </button>
+                </div>
+            }
         }
         else
         {
             <div class="text-center py-5">
-                <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">Nenhuma classificação encontrada</h5>
-                <p class="text-muted">Comece fazendo upload de um documento para classificação.</p>
+                <i class="fas fa-archive fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Nenhum lote encontrado</h5>
+                <p class="text-muted">Você ainda não processou nenhum lote de documentos.</p>
                 <a asp-action="Upload" class="btn btn-primary">
-                    <i class="fas fa-upload"></i> Classificar Primeiro Documento
+                    <i class="fas fa-upload"></i> Processar Primeiro Lote
                 </a>
             </div>
         }
@@ -209,72 +209,78 @@
     <script>
         function aplicarFiltros() {
             // Implementar lógica de filtros
-            const tipo = document.getElementById('filtroTipo').value;
-            const dataInicio = document.getElementById('filtroDataInicio').value;
-            const dataFim = document.getElementById('filtroDataFim').value;
-            const confianca = document.getElementById('filtroConfianca').value;
-
-            // Por enquanto, apenas mostrar alerta
-            console.log('Filtros:', { tipo, dataInicio, dataFim, confianca });
-            alert('Filtros aplicados! (Funcionalidade em desenvolvimento)');
+            console.log('Aplicando filtros...');
         }
 
         function limparFiltros() {
+            document.getElementById('filtroStatus').value = '';
             document.getElementById('filtroTipo').value = '';
             document.getElementById('filtroDataInicio').value = '';
             document.getElementById('filtroDataFim').value = '';
-            document.getElementById('filtroConfianca').value = '';
         }
 
-        function verDetalhes(id) {
-            alert(`Ver detalhes do item ${id} (Em desenvolvimento)`);
-        }
-
-        function baixarResultado(id) {
-            alert(`Baixar resultado do item ${id} (Em desenvolvimento)`);
-        }
-
-        function excluirItem(id) {
-            if (confirm('Tem certeza que deseja excluir este item?')) {
-                alert(`Excluir item ${id} (Em desenvolvimento)`);
-            }
+        function carregarMais() {
+            // Implementar paginação
+            console.log('Carregando mais lotes...');
         }
 
         function exportarCSV() {
-            alert('Exportar CSV (Em desenvolvimento)');
+            window.location.href = '@Url.Action("ExportarCSV", "Classificacao")';
         }
 
         function exportarPDF() {
-            alert('Exportar PDF (Em desenvolvimento)');
+            window.location.href = '@Url.Action("ExportarPDF", "Classificacao")';
         }
     </script>
 }
 
 @functions {
-    private string GetFileIcon(string fileName)
+    private static string GetStatusColor(string status)
     {
-        var extension = System.IO.Path.GetExtension(fileName).ToLowerInvariant();
-        return extension switch
+        return status switch
         {
-            ".pdf" => "fa-file-pdf text-danger",
-            ".zip" => "fa-file-archive text-warning",
-            _ => "fa-file text-secondary"
+            "Completed" => "success",
+            "Failed" => "danger",
+            "Processing" => "warning",
+            _ => "secondary"
         };
     }
 
-    private string GetBadgeClass(string tipo)
+    private static string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Completed" => "bg-success",
+            "Failed" => "bg-danger",
+            "Processing" => "bg-warning text-dark",
+            _ => "bg-secondary"
+        };
+    }
+
+    private static string GetStatusDisplayName(string status)
+    {
+        return status switch
+        {
+            "Completed" => "Concluído",
+            "Failed" => "Falhou",
+            "Processing" => "Processando",
+            _ => "Desconhecido"
+        };
+    }
+
+    private static string GetTipoBadgeClass(string? tipo)
     {
         return tipo switch
         {
             "autuacao" => "bg-danger",
             "defesa" => "bg-primary",
-            "notificacao_penalidade" => "bg-warning",
-            "outros" => "bg-secondary",
-            _ => "bg-light text-dark"
+            "notificacao_penalidade" => "bg-warning text-dark",
+            "outros" => "bg-info",
+            _ => "bg-secondary"
         };
     }
 
-    private string GetTipoDisplayName(string tipo)
+    private static string GetTipoDisplayName(string? tipo)
     {
         return tipo switch
         {
@@ -282,7 +288,7 @@
             "defesa" => "Defesa",
             "notificacao_penalidade" => "Notificação de Penalidade",
             "outros" => "Outros",
-            _ => tipo
+            _ => "Não Identificado"
         };
     }
 
