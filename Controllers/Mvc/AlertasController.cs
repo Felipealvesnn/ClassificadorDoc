@@ -9,7 +9,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ClassificadorDoc.Controllers.Mvc
 {
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = "Admin")]
     public class AlertasController : Controller
     {
         private readonly ApplicationDbContext _context;

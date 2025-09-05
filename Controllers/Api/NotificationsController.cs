@@ -152,7 +152,7 @@ namespace ClassificadorDoc.Controllers.Api
         /// Criar uma notificação de teste (apenas para admins)
         /// </summary>
         [HttpPost("test")]
-        [Authorize(Roles = "Administrator")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateTestNotification([FromBody] TestNotificationRequest request)
         {
             try

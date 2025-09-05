@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ClassificadorDoc.Controllers.Mvc
 {
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = "Admin")]
     public class NotificationsController : Controller
     {
         private readonly ISystemNotificationService _notificationService;

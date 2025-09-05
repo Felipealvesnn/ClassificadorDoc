@@ -1,0 +1,1242 @@
+@{
+    ViewData["Title"] = "Modelagem Visual - Arrastar e Soltar";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-project-diagram me-2 text-primary"></i>Modelagem Visual
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-success" onclick="salvarModelo()">
+                <i class="fas fa-save"></i> Salvar Modelo
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="carregarModelo()">
+                <i class="fas fa-upload"></i> Carregar
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limparCanvas()">
+                <i class="fas fa-trash"></i> Limpar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Área de Trabalho -->
+<div class="row">
+    <!-- Paleta de Componentes -->
+    <div class="col-md-3">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-palette me-2"></i>Componentes
+                </h6>
+            </div>
+            <div class="card-body">
+                <!-- Fontes de Dados -->
+                <div class="mb-3">
+                    <h6 class="text-muted">
+                        <i class="fas fa-database me-2"></i>Fontes de Dados
+                    </h6>
+                    <div class="component-group">
+                        <div class="draggable-component" data-type="data-source" data-subtype="batch">
+                            <i class="fas fa-archive text-info"></i> Lotes de Documentos
+                        </div>
+                        <div class="draggable-component" data-type="data-source" data-subtype="users">
+                            <i class="fas fa-users text-success"></i> Dados de Usuários
+                        </div>
+                        <div class="draggable-component" data-type="data-source" data-subtype="audit">
+                            <i class="fas fa-clipboard-list text-warning"></i> Logs de Auditoria
+                        </div>
+                        <div class="draggable-component" data-type="data-source" data-subtype="api">
+                            <i class="fas fa-cloud text-secondary"></i> API Externa
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros e Transformações -->
+                <div class="mb-3">
+                    <h6 class="text-muted">
+                        <i class="fas fa-filter me-2"></i>Filtros
+                    </h6>
+                    <div class="component-group">
+                        <div class="draggable-component" data-type="filter" data-subtype="date">
+                            <i class="fas fa-calendar text-primary"></i> Filtro de Data
+                        </div>
+                        <div class="draggable-component" data-type="filter" data-subtype="condition">
+                            <i class="fas fa-code-branch text-info"></i> Condição
+                        </div>
+                        <div class="draggable-component" data-type="filter" data-subtype="group">
+                            <i class="fas fa-layer-group text-success"></i> Agrupamento
+                        </div>
+                        <div class="draggable-component" data-type="filter" data-subtype="join">
+                            <i class="fas fa-link text-warning"></i> Junção
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Análises -->
+                <div class="mb-3">
+                    <h6 class="text-muted">
+                        <i class="fas fa-chart-line me-2"></i>Análises
+                    </h6>
+                    <div class="component-group">
+                        <div class="draggable-component" data-type="analysis" data-subtype="aggregate">
+                            <i class="fas fa-calculator text-danger"></i> Agregação
+                        </div>
+                        <div class="draggable-component" data-type="analysis" data-subtype="trend">
+                            <i class="fas fa-trending-up text-success"></i> Tendência
+                        </div>
+                        <div class="draggable-component" data-type="analysis" data-subtype="correlation">
+                            <i class="fas fa-project-diagram text-info"></i> Correlação
+                        </div>
+                        <div class="draggable-component" data-type="analysis" data-subtype="prediction">
+                            <i class="fas fa-crystal-ball text-warning"></i> Predição
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualizações -->
+                <div class="mb-3">
+                    <h6 class="text-muted">
+                        <i class="fas fa-chart-bar me-2"></i>Visualizações
+                    </h6>
+                    <div class="component-group">
+                        <div class="draggable-component" data-type="visualization" data-subtype="chart">
+                            <i class="fas fa-chart-line text-primary"></i> Gráfico
+                        </div>
+                        <div class="draggable-component" data-type="visualization" data-subtype="table">
+                            <i class="fas fa-table text-secondary"></i> Tabela
+                        </div>
+                        <div class="draggable-component" data-type="visualization" data-subtype="kpi">
+                            <i class="fas fa-tachometer-alt text-danger"></i> KPI
+                        </div>
+                        <div class="draggable-component" data-type="visualization" data-subtype="map">
+                            <i class="fas fa-map text-success"></i> Mapa
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ações -->
+                <div class="mb-3">
+                    <h6 class="text-muted">
+                        <i class="fas fa-cogs me-2"></i>Ações
+                    </h6>
+                    <div class="component-group">
+                        <div class="draggable-component" data-type="action" data-subtype="alert">
+                            <i class="fas fa-bell text-warning"></i> Alerta
+                        </div>
+                        <div class="draggable-component" data-type="action" data-subtype="export">
+                            <i class="fas fa-download text-info"></i> Exportar
+                        </div>
+                        <div class="draggable-component" data-type="action" data-subtype="email">
+                            <i class="fas fa-envelope text-primary"></i> Email
+                        </div>
+                        <div class="draggable-component" data-type="action" data-subtype="webhook">
+                            <i class="fas fa-globe text-secondary"></i> Webhook
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canvas de Modelagem -->
+    <div class="col-md-9">
+        <div class="card shadow">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-drafting-compass me-2"></i>Canvas de Modelagem
+                </h6>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary" onclick="zoomIn()">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="zoomOut()">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="resetZoom()">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div id="modeling-canvas" class="modeling-canvas">
+                    <!-- Grid de fundo -->
+                    <div class="canvas-grid"></div>
+
+                    <!-- Área drop zone -->
+                    <div class="drop-zone">
+                        <div class="drop-zone-message">
+                            <i class="fas fa-mouse-pointer fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Arraste componentes aqui para criar seu modelo</h5>
+                            <p class="text-muted">Conecte os componentes arrastando entre as âncoras</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Painel de Propriedades -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-cog me-2"></i>Propriedades do Componente
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="properties-panel">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-mouse-pointer fa-2x mb-2"></i>
+                        <p>Selecione um componente para editar suas propriedades</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Templates de Modelos -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-layer-group me-2"></i>Templates Prontos
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="template-card" onclick="carregarTemplate('relatorio-produtividade')">
+                            <i class="fas fa-chart-bar fa-2x text-primary mb-2"></i>
+                            <h6>Relatório de Produtividade</h6>
+                            <small class="text-muted">Análise de performance dos usuários</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="template-card" onclick="carregarTemplate('dashboard-documentos')">
+                            <i class="fas fa-file-alt fa-2x text-success mb-2"></i>
+                            <h6>Dashboard de Documentos</h6>
+                            <small class="text-muted">Monitoramento de processamento</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="template-card" onclick="carregarTemplate('alerta-confianca')">
+                            <i class="fas fa-bell fa-2x text-warning mb-2"></i>
+                            <h6>Alerta de Confiança</h6>
+                            <small class="text-muted">Notificação automática por threshold</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="template-card" onclick="carregarTemplate('predicao-carga')">
+                            <i class="fas fa-crystal-ball fa-2x text-info mb-2"></i>
+                            <h6>Predição de Carga</h6>
+                            <small class="text-muted">Análise preditiva de volume</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Configuração de Componente -->
+<div class="modal fade" id="componentConfigModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-cog me-2"></i>Configurar Componente
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="component-config-form">
+                    <!-- Formulário dinâmico será preenchido via JS -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarConfiguracao()">
+                    <i class="fas fa-save me-2"></i>Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Biblioteca para drag and drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- Biblioteca para conexões -->
+    <script src="https://cdn.jsdelivr.net/npm/leader-line@1.0.7/leader-line.min.js"></script>
+
+    <script>
+        // Estado global do modelo
+        let modeloAtual = {
+            componentes: new Map(),
+            conexoes: new Map(),
+            proximoId: 1
+        };
+
+        let zoomLevel = 1;
+        let conexaoAtiva = null;
+        let componenteSelecionado = null;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            inicializarModelagem();
+        });
+
+        function inicializarModelagem() {
+            configurarDragAndDrop();
+            configurarCanvas();
+            adicionarEventListeners();
+        }
+
+        function configurarDragAndDrop() {
+            // Tornar componentes da paleta arrastáveis
+            const componentesPaleta = document.querySelectorAll('.draggable-component');
+
+            componentesPaleta.forEach(component => {
+                component.setAttribute('draggable', 'true');
+
+                component.addEventListener('dragstart', function (e) {
+                    const tipo = this.dataset.type;
+                    const subtipo = this.dataset.subtype;
+                    const texto = this.textContent.trim();
+
+                    e.dataTransfer.setData('text/json', JSON.stringify({
+                        tipo: tipo,
+                        subtipo: subtipo,
+                        texto: texto
+                    }));
+
+                    this.classList.add('dragging');
+                });
+
+                component.addEventListener('dragend', function (e) {
+                    this.classList.remove('dragging');
+                });
+            });
+        }
+
+        function configurarCanvas() {
+            const canvas = document.getElementById('modeling-canvas');
+            const dropZone = canvas.querySelector('.drop-zone');
+
+            // Configurar drop zone
+            dropZone.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                this.classList.add('drag-over');
+            });
+
+            dropZone.addEventListener('dragleave', function (e) {
+                if (!this.contains(e.relatedTarget)) {
+                    this.classList.remove('drag-over');
+                }
+            });
+
+            dropZone.addEventListener('drop', function (e) {
+                e.preventDefault();
+                this.classList.remove('drag-over');
+
+                const dados = JSON.parse(e.dataTransfer.getData('text/json'));
+                const rect = this.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                criarComponenteNoCanvas(dados, x, y);
+            });
+        }
+
+        function criarComponenteNoCanvas(dados, x, y) {
+            const id = 'component-' + modeloAtual.proximoId++;
+
+            // Criar elemento visual
+            const elemento = document.createElement('div');
+            elemento.className = 'canvas-component';
+            elemento.id = id;
+            elemento.style.left = x + 'px';
+            elemento.style.top = y + 'px';
+
+            // Determinar ícone e cor baseado no tipo
+            const config = obterConfigComponente(dados.tipo, dados.subtipo);
+
+            elemento.innerHTML = `
+                    <div class="component-header ${config.classe}">
+                        <i class="${config.icone}"></i>
+                        <span class="component-title">${dados.texto}</span>
+                        <div class="component-actions">
+                            <button class="btn btn-sm btn-outline-light" onclick="editarComponente('${id}')" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-light" onclick="removerComponente('${id}')" title="Remover">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="component-body">
+                        <div class="component-config">
+                            ${config.descricao}
+                        </div>
+                        <div class="connection-points">
+                            <div class="connection-point input" data-direction="input"></div>
+                            <div class="connection-point output" data-direction="output"></div>
+                        </div>
+                    </div>
+                `;
+
+            // Adicionar ao canvas
+            const dropZone = document.querySelector('.drop-zone');
+            dropZone.appendChild(elemento);
+
+            // Tornar arrastável
+            tornarComponenteArrastavel(elemento);
+
+            // Configurar pontos de conexão
+            configurarPontosConexao(elemento);
+
+            // Salvar no modelo
+            modeloAtual.componentes.set(id, {
+                id: id,
+                tipo: dados.tipo,
+                subtipo: dados.subtipo,
+                texto: dados.texto,
+                x: x,
+                y: y,
+                configuracao: {}
+            });
+
+            // Ocultar mensagem se for o primeiro componente
+            if (modeloAtual.componentes.size === 1) {
+                dropZone.querySelector('.drop-zone-message').style.display = 'none';
+            }
+
+            showToast.success('Componente Adicionado', `${dados.texto} foi adicionado ao modelo`);
+        }
+
+        function obterConfigComponente(tipo, subtipo) {
+            const configs = {
+                'data-source': {
+                    icone: 'fas fa-database',
+                    classe: 'bg-info',
+                    descricao: 'Fonte de dados'
+                },
+                'filter': {
+                    icone: 'fas fa-filter',
+                    classe: 'bg-primary',
+                    descricao: 'Filtro/Transformação'
+                },
+                'analysis': {
+                    icone: 'fas fa-chart-line',
+                    classe: 'bg-success',
+                    descricao: 'Análise/Processamento'
+                },
+                'visualization': {
+                    icone: 'fas fa-chart-bar',
+                    classe: 'bg-warning',
+                    descricao: 'Visualização'
+                },
+                'action': {
+                    icone: 'fas fa-cog',
+                    classe: 'bg-danger',
+                    descricao: 'Ação/Saída'
+                }
+            };
+
+            return configs[tipo] || configs['data-source'];
+        }
+
+        function tornarComponenteArrastavel(elemento) {
+            let isDragging = false;
+            let currentX;
+            let currentY;
+            let initialX;
+            let initialY;
+            let xOffset = 0;
+            let yOffset = 0;
+
+            const header = elemento.querySelector('.component-header');
+
+            header.addEventListener('mousedown', dragStart);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+
+            function dragStart(e) {
+                if (e.target.closest('.component-actions')) return;
+
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+
+                if (e.target === header || header.contains(e.target)) {
+                    isDragging = true;
+                    elemento.classList.add('dragging');
+                }
+            }
+
+            function drag(e) {
+                if (isDragging) {
+                    e.preventDefault();
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+
+                    xOffset = currentX;
+                    yOffset = currentY;
+
+                    elemento.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+                }
+            }
+
+            function dragEnd(e) {
+                if (isDragging) {
+                    initialX = currentX;
+                    initialY = currentY;
+                    isDragging = false;
+                    elemento.classList.remove('dragging');
+
+                    // Atualizar posição no modelo
+                    const rect = elemento.getBoundingClientRect();
+                    const canvasRect = document.getElementById('modeling-canvas').getBoundingClientRect();
+
+                    const component = modeloAtual.componentes.get(elemento.id);
+                    if (component) {
+                        component.x = rect.left - canvasRect.left;
+                        component.y = rect.top - canvasRect.top;
+                    }
+                }
+            }
+        }
+
+        function configurarPontosConexao(elemento) {
+            const pontos = elemento.querySelectorAll('.connection-point');
+
+            pontos.forEach(ponto => {
+                ponto.addEventListener('mousedown', function (e) {
+                    e.stopPropagation();
+                    iniciarConexao(this, elemento.id);
+                });
+
+                ponto.addEventListener('mouseup', function (e) {
+                    e.stopPropagation();
+                    finalizarConexao(this, elemento.id);
+                });
+            });
+        }
+
+        function iniciarConexao(ponto, componenteId) {
+            if (ponto.dataset.direction === 'output') {
+                conexaoAtiva = {
+                    origem: componenteId,
+                    pontoOrigem: ponto
+                };
+
+                ponto.classList.add('connecting');
+                showToast.info('Conexão', 'Clique em um ponto de entrada para conectar');
+            }
+        }
+
+        function finalizarConexao(ponto, componenteId) {
+            if (conexaoAtiva && ponto.dataset.direction === 'input' && componenteId !== conexaoAtiva.origem) {
+                criarConexao(conexaoAtiva.origem, componenteId);
+                conexaoAtiva.pontoOrigem.classList.remove('connecting');
+                conexaoAtiva = null;
+            }
+        }
+
+        function criarConexao(origemId, destinoId) {
+            const conexaoId = `${origemId}-${destinoId}`;
+
+            if (modeloAtual.conexoes.has(conexaoId)) {
+                showToast.warning('Conexão Existente', 'Já existe uma conexão entre estes componentes');
+                return;
+            }
+
+            const origemEl = document.getElementById(origemId);
+            const destinoEl = document.getElementById(destinoId);
+
+            if (!origemEl || !destinoEl) return;
+
+            const pontoOrigem = origemEl.querySelector('.connection-point.output');
+            const pontoDestino = destinoEl.querySelector('.connection-point.input');
+
+            // Criar linha de conexão visual usando Leader Line
+            const linha = new LeaderLine(pontoOrigem, pontoDestino, {
+                color: '#007bff',
+                size: 3,
+                path: 'grid',
+                startSocket: 'right',
+                endSocket: 'left',
+                startPlug: 'behind',
+                endPlug: 'arrow1'
+            });
+
+            // Salvar conexão
+            modeloAtual.conexoes.set(conexaoId, {
+                origem: origemId,
+                destino: destinoId,
+                linha: linha
+            });
+
+            showToast.success('Conectado', 'Componentes conectados com sucesso');
+        }
+
+        function editarComponente(id) {
+            componenteSelecionado = id;
+            const component = modeloAtual.componentes.get(id);
+
+            if (!component) return;
+
+            // Mostrar painel de propriedades
+            mostrarPropriedades(component);
+
+            // Destacar componente selecionado
+            document.querySelectorAll('.canvas-component').forEach(el => {
+                el.classList.remove('selected');
+            });
+            document.getElementById(id).classList.add('selected');
+        }
+
+        function mostrarPropriedades(component) {
+            const panel = document.getElementById('properties-panel');
+
+            const form = gerarFormularioPropriedades(component);
+            panel.innerHTML = form;
+        }
+
+        function gerarFormularioPropriedades(component) {
+            let form = `
+                    <h6><i class="${obterConfigComponente(component.tipo, component.subtipo).icone} me-2"></i>${component.texto}</h6>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Nome do Componente</label>
+                                <input type="text" class="form-control" id="prop-nome" value="${component.texto}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Descrição</label>
+                                <input type="text" class="form-control" id="prop-descricao" value="${component.configuracao.descricao || ''}">
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+            // Adicionar campos específicos por tipo
+            switch (component.tipo) {
+                case 'data-source':
+                    form += gerarCamposDataSource(component);
+                    break;
+                case 'filter':
+                    form += gerarCamposFiltro(component);
+                    break;
+                case 'analysis':
+                    form += gerarCamposAnalise(component);
+                    break;
+                case 'visualization':
+                    form += gerarCamposVisualizacao(component);
+                    break;
+                case 'action':
+                    form += gerarCamposAcao(component);
+                    break;
+            }
+
+            form += `
+                    <div class="mt-3">
+                        <button class="btn btn-primary" onclick="aplicarPropriedades()">
+                            <i class="fas fa-save me-2"></i>Aplicar Alterações
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="cancelarEdicao()">
+                            Cancelar
+                        </button>
+                    </div>
+                `;
+
+            return form;
+        }
+
+        function gerarCamposDataSource(component) {
+            return `
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label class="form-label">Tabela/Fonte</label>
+                                <select class="form-select" id="prop-tabela">
+                                    <option value="batch">Lotes de Processamento</option>
+                                    <option value="users">Usuários</option>
+                                    <option value="audit">Logs de Auditoria</option>
+                                    <option value="productivity">Produtividade</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `;
+        }
+
+        function gerarCamposFiltro(component) {
+            return `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Campo</label>
+                                <input type="text" class="form-control" id="prop-campo" placeholder="Ex: StartedAt">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Operador</label>
+                                <select class="form-select" id="prop-operador">
+                                    <option value="equals">Igual a</option>
+                                    <option value="greater">Maior que</option>
+                                    <option value="less">Menor que</option>
+                                    <option value="contains">Contém</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `;
+        }
+
+        function gerarCamposAnalise(component) {
+            return `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Tipo de Análise</label>
+                                <select class="form-select" id="prop-analise">
+                                    <option value="count">Contagem</option>
+                                    <option value="sum">Soma</option>
+                                    <option value="avg">Média</option>
+                                    <option value="trend">Tendência</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Campo Análise</label>
+                                <input type="text" class="form-control" id="prop-campo-analise" placeholder="Ex: TotalDocuments">
+                            </div>
+                        </div>
+                    </div>
+                `;
+        }
+
+        function gerarCamposVisualizacao(component) {
+            return `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Tipo de Gráfico</label>
+                                <select class="form-select" id="prop-grafico">
+                                    <option value="line">Linha</option>
+                                    <option value="bar">Barras</option>
+                                    <option value="pie">Pizza</option>
+                                    <option value="table">Tabela</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Título</label>
+                                <input type="text" class="form-control" id="prop-titulo" placeholder="Título do gráfico">
+                            </div>
+                        </div>
+                    </div>
+                `;
+        }
+
+        function gerarCamposAcao(component) {
+            return `
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label class="form-label">Configuração da Ação</label>
+                                <textarea class="form-control" id="prop-config-acao" rows="3" placeholder="Configuração específica da ação"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                `;
+        }
+
+        function aplicarPropriedades() {
+            if (!componenteSelecionado) return;
+
+            const component = modeloAtual.componentes.get(componenteSelecionado);
+            if (!component) return;
+
+            // Capturar valores do formulário
+            const nome = document.getElementById('prop-nome')?.value || component.texto;
+            const descricao = document.getElementById('prop-descricao')?.value || '';
+
+            // Atualizar modelo
+            component.texto = nome;
+            component.configuracao.descricao = descricao;
+
+            // Capturar configurações específicas
+            // ... (implementar baseado no tipo do componente)
+
+            // Atualizar visualização
+            const elemento = document.getElementById(componenteSelecionado);
+            if (elemento) {
+                elemento.querySelector('.component-title').textContent = nome;
+            }
+
+            showToast.success('Atualizado', 'Propriedades do componente atualizadas');
+        }
+
+        function cancelarEdicao() {
+            componenteSelecionado = null;
+            document.querySelectorAll('.canvas-component').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            const panel = document.getElementById('properties-panel');
+            panel.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="fas fa-mouse-pointer fa-2x mb-2"></i>
+                        <p>Selecione um componente para editar suas propriedades</p>
+                    </div>
+                `;
+        }
+
+        function removerComponente(id) {
+            if (confirm('Tem certeza que deseja remover este componente?')) {
+                // Remover conexões relacionadas
+                const conexoesParaRemover = [];
+                modeloAtual.conexoes.forEach((conexao, conexaoId) => {
+                    if (conexao.origem === id || conexao.destino === id) {
+                        conexao.linha.remove(); // Remover linha visual
+                        conexoesParaRemover.push(conexaoId);
+                    }
+                });
+
+                conexoesParaRemover.forEach(conexaoId => {
+                    modeloAtual.conexoes.delete(conexaoId);
+                });
+
+                // Remover elemento visual
+                const elemento = document.getElementById(id);
+                if (elemento) {
+                    elemento.remove();
+                }
+
+                // Remover do modelo
+                modeloAtual.componentes.delete(id);
+
+                // Mostrar mensagem se canvas ficar vazio
+                if (modeloAtual.componentes.size === 0) {
+                    document.querySelector('.drop-zone-message').style.display = 'block';
+                }
+
+                showToast.success('Removido', 'Componente removido do modelo');
+            }
+        }
+
+        function salvarModelo() {
+            if (modeloAtual.componentes.size === 0) {
+                showToast.warning('Modelo Vazio', 'Adicione componentes antes de salvar');
+                return;
+            }
+
+            const nomeModelo = prompt('Digite um nome para o modelo:');
+            if (!nomeModelo) return;
+
+            const modeloParaSalvar = {
+                nome: nomeModelo,
+                timestamp: new Date().toISOString(),
+                componentes: Array.from(modeloAtual.componentes.values()),
+                conexoes: Array.from(modeloAtual.conexoes.values()).map(c => ({
+                    origem: c.origem,
+                    destino: c.destino
+                }))
+            };
+
+            // Salvar no localStorage (em produção, enviar para API)
+            const modelosSalvos = JSON.parse(localStorage.getItem('modelosVisuais') || '[]');
+            modelosSalvos.push(modeloParaSalvar);
+            localStorage.setItem('modelosVisuais', JSON.stringify(modelosSalvos));
+
+            showToast.success('Salvo', `Modelo "${nomeModelo}" salvo com sucesso`);
+        }
+
+        function carregarModelo() {
+            const modelosSalvos = JSON.parse(localStorage.getItem('modelosVisuais') || '[]');
+
+            if (modelosSalvos.length === 0) {
+                showToast.info('Nenhum Modelo', 'Não há modelos salvos');
+                return;
+            }
+
+            // Criar lista de modelos para seleção
+            let opcoes = 'Selecione um modelo para carregar:\n\n';
+            modelosSalvos.forEach((modelo, index) => {
+                opcoes += `${index + 1}. ${modelo.nome} (${new Date(modelo.timestamp).toLocaleString()})\n`;
+            });
+
+            const selecao = prompt(opcoes + '\nDigite o número do modelo:');
+            const indice = parseInt(selecao) - 1;
+
+            if (isNaN(indice) || indice < 0 || indice >= modelosSalvos.length) {
+                showToast.error('Seleção Inválida', 'Número de modelo inválido');
+                return;
+            }
+
+            carregarModeloEspecifico(modelosSalvos[indice]);
+        }
+
+        function carregarModeloEspecifico(modelo) {
+            // Limpar canvas atual
+            limparCanvas();
+
+            // Recriar componentes
+            modelo.componentes.forEach(comp => {
+                criarComponenteNoCanvas({
+                    tipo: comp.tipo,
+                    subtipo: comp.subtipo,
+                    texto: comp.texto
+                }, comp.x, comp.y);
+            });
+
+            // Recriar conexões após um pequeno delay
+            setTimeout(() => {
+                modelo.conexoes.forEach(conexao => {
+                    criarConexao(conexao.origem, conexao.destino);
+                });
+            }, 100);
+
+            showToast.success('Carregado', `Modelo "${modelo.nome}" carregado com sucesso`);
+        }
+
+        function limparCanvas() {
+            if (modeloAtual.componentes.size > 0) {
+                if (!confirm('Tem certeza que deseja limpar o canvas?')) return;
+            }
+
+            // Remover todas as conexões visuais
+            modeloAtual.conexoes.forEach(conexao => {
+                if (conexao.linha) conexao.linha.remove();
+            });
+
+            // Limpar elementos do DOM
+            document.querySelectorAll('.canvas-component').forEach(el => el.remove());
+
+            // Resetar modelo
+            modeloAtual.componentes.clear();
+            modeloAtual.conexoes.clear();
+            modeloAtual.proximoId = 1;
+
+            // Mostrar mensagem
+            document.querySelector('.drop-zone-message').style.display = 'block';
+
+            showToast.info('Limpo', 'Canvas limpo com sucesso');
+        }
+
+        function carregarTemplate(template) {
+            const templates = {
+                'relatorio-produtividade': {
+                    nome: 'Relatório de Produtividade',
+                    componentes: [
+                        { tipo: 'data-source', subtipo: 'users', texto: 'Dados de Usuários', x: 50, y: 50 },
+                        { tipo: 'filter', subtipo: 'date', texto: 'Filtro de Data', x: 300, y: 50 },
+                        { tipo: 'analysis', subtipo: 'aggregate', texto: 'Agregação', x: 550, y: 50 },
+                        { tipo: 'visualization', subtipo: 'chart', texto: 'Gráfico', x: 800, y: 50 }
+                    ],
+                    conexoes: [
+                        { origem: 'component-1', destino: 'component-2' },
+                        { origem: 'component-2', destino: 'component-3' },
+                        { origem: 'component-3', destino: 'component-4' }
+                    ]
+                }
+                // Adicionar mais templates conforme necessário
+            };
+
+            const templateData = templates[template];
+            if (templateData) {
+                carregarModeloEspecifico(templateData);
+            }
+        }
+
+        // Funções de zoom
+        function zoomIn() {
+            zoomLevel = Math.min(zoomLevel + 0.1, 2);
+            aplicarZoom();
+        }
+
+        function zoomOut() {
+            zoomLevel = Math.max(zoomLevel - 0.1, 0.5);
+            aplicarZoom();
+        }
+
+        function resetZoom() {
+            zoomLevel = 1;
+            aplicarZoom();
+        }
+
+        function aplicarZoom() {
+            const canvas = document.getElementById('modeling-canvas');
+            canvas.style.transform = `scale(${zoomLevel})`;
+            canvas.style.transformOrigin = 'top left';
+        }
+
+        function adicionarEventListeners() {
+            // Clique fora para desselecionar
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('.canvas-component') && !e.target.closest('#properties-panel')) {
+                    cancelarEdicao();
+                }
+            });
+
+            // Atalhos de teclado
+            document.addEventListener('keydown', function (e) {
+                if (e.ctrlKey) {
+                    switch (e.key) {
+                        case 's':
+                            e.preventDefault();
+                            salvarModelo();
+                            break;
+                        case 'o':
+                            e.preventDefault();
+                            carregarModelo();
+                            break;
+                        case 'n':
+                            e.preventDefault();
+                            limparCanvas();
+                            break;
+                    }
+                }
+
+                if (e.key === 'Delete' && componenteSelecionado) {
+                    removerComponente(componenteSelecionado);
+                }
+            });
+        }
+    </script>
+}
+
+@section Styles {
+    <style>
+        .modeling-canvas {
+            height: 600px;
+            position: relative;
+            overflow: auto;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+
+        .canvas-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(0, 0, 0, .1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, .1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+        }
+
+        .drop-zone {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 600px;
+        }
+
+        .drop-zone.drag-over {
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+
+        .drop-zone-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .draggable-component {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            cursor: grab;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .draggable-component:hover {
+            background: #f8f9fa;
+            transform: translateX(5px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .draggable-component.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+
+        .canvas-component {
+            position: absolute;
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            min-width: 180px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .canvas-component:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .canvas-component.selected {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+        }
+
+        .canvas-component.dragging {
+            z-index: 1000;
+            transform: rotate(2deg);
+        }
+
+        .component-header {
+            padding: 8px 12px;
+            color: white;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: move;
+        }
+
+        .component-title {
+            flex: 1;
+            font-size: 0.9em;
+        }
+
+        .component-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .canvas-component:hover .component-actions {
+            opacity: 1;
+        }
+
+        .component-body {
+            padding: 12px;
+            position: relative;
+        }
+
+        .component-config {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-bottom: 8px;
+        }
+
+        .connection-points {
+            position: relative;
+            height: 20px;
+        }
+
+        .connection-point {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #007bff;
+            border-radius: 50%;
+            background: white;
+            cursor: crosshair;
+            transition: all 0.2s;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .connection-point.input {
+            left: -6px;
+        }
+
+        .connection-point.output {
+            right: -6px;
+        }
+
+        .connection-point:hover {
+            background: #007bff;
+            transform: translateY(-50%) scale(1.2);
+        }
+
+        .connection-point.connecting {
+            background: #ffc107;
+            border-color: #ffc107;
+            animation: pulse 1s infinite;
+        }
+
+        .template-card {
+            text-align: center;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            height: 100%;
+        }
+
+        .template-card:hover {
+            border-color: #007bff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .component-group {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .bg-info {
+            background-color: #17a2b8 !important;
+        }
+
+        .bg-primary {
+            background-color: #007bff !important;
+        }
+
+        .bg-success {
+            background-color: #28a745 !important;
+        }
+
+        .bg-warning {
+            background-color: #ffc107 !important;
+        }
+
+        .bg-danger {
+            background-color: #dc3545 !important;
+        }
+
+        @@keyframes pulse {
+            0% {
+                transform: translateY(-50%) scale(1);
+            }
+
+            50% {
+                transform: translateY(-50%) scale(1.3);
+            }
+
+            100% {
+                transform: translateY(-50%) scale(1);
+            }
+        }
+    </style>
+}

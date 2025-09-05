@@ -101,17 +101,19 @@ builder.Services.AddScoped<ISystemNotificationService, SystemNotificationService
 // Configure SignalR for real-time notifications
 builder.Services.AddSignalR();
 
-// Configure Quartz.NET for automatic alert execution
+// Configure Quartz.NET for automatic jobs
 builder.Services.AddQuartz(q =>
 {
-    // Configure job to run every 5 minutes
-    var jobKey = new JobKey("AlertExecutionJob");
-    q.AddJob<AlertExecutionJob>(opts => opts.WithIdentity(jobKey));
+    // Configure alert execution job to run every 5 minutes
+    var alertJobKey = new JobKey("AlertExecutionJob");
+    q.AddJob<AlertExecutionJob>(opts => opts.WithIdentity(alertJobKey));
 
     q.AddTrigger(opts => opts
-        .ForJob(jobKey)
+        .ForJob(alertJobKey)
         .WithIdentity("AlertExecutionTrigger")
         .WithCronSchedule("0 */5 * * * ?")); // Every 5 minutes
+
+    // Removido: DataRetentionJob não é necessário - dados históricos devem ser mantidos
 });
 
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);

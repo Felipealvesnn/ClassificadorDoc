@@ -1,0 +1,843 @@
+@{
+    ViewData["Title"] = "Gráficos Estatísticos Avançados";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-chart-bar me-2 text-primary"></i>Análise Estatística Interativa
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="exportarGraficos()">
+                <i class="fas fa-download"></i> Exportar Gráficos
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetarFiltros()">
+                <i class="fas fa-refresh"></i> Resetar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Controles de Filtros -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-filter me-2"></i>Filtros e Configurações
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <label for="dataInicio" class="form-label">Data Início</label>
+                <input type="date" class="form-control" id="dataInicio" value="@DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd")">
+            </div>
+            <div class="col-md-3">
+                <label for="dataFim" class="form-label">Data Fim</label>
+                <input type="date" class="form-control" id="dataFim" value="@DateTime.Now.ToString("yyyy-MM-dd")">
+            </div>
+            <div class="col-md-3">
+                <label for="tipoGrafico" class="form-label">Tipo de Visualização</label>
+                <select class="form-select" id="tipoGrafico" onchange="alterarTipoGrafico()">
+                    <option value="line">Linha</option>
+                    <option value="bar">Barras</option>
+                    <option value="scatter">Dispersão</option>
+                    <option value="bubble">Bolhas</option>
+                    <option value="radar">Radar</option>
+                    <option value="doughnut">Rosca</option>
+                    <option value="polarArea">Área Polar</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="metrica" class="form-label">Métrica Principal</label>
+                <select class="form-select" id="metrica" onchange="atualizarDados()">
+                    <option value="documentos">Documentos Processados</option>
+                    <option value="confianca">Confiança Média</option>
+                    <option value="tempo">Tempo de Processamento</option>
+                    <option value="usuarios">Usuários Ativos</option>
+                    <option value="tipos">Tipos de Documento</option>
+                </select>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <button type="button" class="btn btn-primary" onclick="aplicarFiltros()">
+                    <i class="fas fa-chart-line me-2"></i>Atualizar Gráficos
+                </button>
+                <button type="button" class="btn btn-outline-info" onclick="mostrarEstatisticas()">
+                    <i class="fas fa-calculator me-2"></i>Estatísticas Descritivas
+                </button>
+                <button type="button" class="btn btn-outline-success" onclick="gerarRelatorio()">
+                    <i class="fas fa-file-alt me-2"></i>Gerar Relatório
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos Principais -->
+<div class="row">
+    <!-- Gráfico Principal Interativo -->
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary" id="tituloGraficoPrincipal">
+                    Evolução Temporal - Documentos Processados
+                </h6>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-cog"></i> Opções
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="toggleAnimacao()">
+                            <i class="fas fa-play"></i> Toggle Animação
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="alterarEscala()">
+                            <i class="fas fa-expand-arrows-alt"></i> Escala Logarítmica
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="mostrarTendencia()">
+                            <i class="fas fa-chart-line"></i> Linha de Tendência
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportarGrafico('principal')">
+                            <i class="fas fa-download"></i> Exportar PNG
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                <div style="position: relative; height: 400px;">
+                    <canvas id="graficoPrincipal"></canvas>
+                </div>
+                <!-- Controles de Zoom -->
+                <div class="mt-3 text-center">
+                    <button class="btn btn-sm btn-outline-primary" onclick="resetZoom()">
+                        <i class="fas fa-search-minus"></i> Reset Zoom
+                    </button>
+                    <button class="btn btn-sm btn-outline-info" onclick="togglePan()">
+                        <i class="fas fa-hand-paper"></i> Pan/Zoom
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Distribuição -->
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-chart-pie me-2"></i>Distribuição por Categoria
+                </h6>
+            </div>
+            <div class="card-body">
+                <div style="position: relative; height: 300px;">
+                    <canvas id="graficoDistribuicao"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos Estatísticos Avançados -->
+<div class="row">
+    <!-- Boxplot de Confiança -->
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-box me-2"></i>Análise de Distribuição - Confiança
+                </h6>
+            </div>
+            <div class="card-body">
+                <div style="position: relative; height: 300px;">
+                    <canvas id="graficoBoxplot"></canvas>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <strong>Quartis:</strong> 
+                        Q1: <span id="q1">-</span> | 
+                        Mediana: <span id="mediana">-</span> | 
+                        Q3: <span id="q3">-</span>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Heatmap de Correlação -->
+    <div class="col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-th me-2"></i>Matriz de Correlação
+                </h6>
+            </div>
+            <div class="card-body">
+                <div style="position: relative; height: 300px;">
+                    <canvas id="graficoHeatmap"></canvas>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        Correlação entre métricas: processamento, confiança, tempo e usuários
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Análise de Séries Temporais -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-clock me-2"></i>Análise de Séries Temporais com Predição
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="periodoPredicao" class="form-label">Período de Predição</label>
+                        <select class="form-select" id="periodoPredicao" onchange="atualizarPredicao()">
+                            <option value="7">7 dias</option>
+                            <option value="15">15 dias</option>
+                            <option value="30">30 dias</option>
+                            <option value="60">60 dias</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="modeloPredicao" class="form-label">Modelo de Predição</label>
+                        <select class="form-select" id="modeloPredicao" onchange="atualizarPredicao()">
+                            <option value="linear">Regressão Linear</option>
+                            <option value="moving_average">Média Móvel</option>
+                            <option value="exponential">Suavização Exponencial</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mt-4">
+                            <button class="btn btn-success" onclick="calcularPredicao()">
+                                <i class="fas fa-crystal-ball me-2"></i>Calcular Predição
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div style="position: relative; height: 400px;">
+                    <canvas id="graficoSeriesTempo"></canvas>
+                </div>
+                <div class="mt-3">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card text-center bg-light">
+                                <div class="card-body p-2">
+                                    <h6 class="card-title mb-1">Tendência</h6>
+                                    <p class="card-text mb-0">
+                                        <span id="tendencia" class="fw-bold text-success">↑ Crescente</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center bg-light">
+                                <div class="card-body p-2">
+                                    <h6 class="card-title mb-1">Sazonalidade</h6>
+                                    <p class="card-text mb-0">
+                                        <span id="sazonalidade" class="fw-bold text-info">Semanal</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center bg-light">
+                                <div class="card-body p-2">
+                                    <h6 class="card-title mb-1">R²</h6>
+                                    <p class="card-text mb-0">
+                                        <span id="r2" class="fw-bold text-primary">0.85</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center bg-light">
+                                <div class="card-body p-2">
+                                    <h6 class="card-title mb-1">Próx. Valor</h6>
+                                    <p class="card-text mb-0">
+                                        <span id="proximoValor" class="fw-bold text-warning">247</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Estatísticas Descritivas -->
+<div class="modal fade" id="modalEstatisticas" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-calculator me-2"></i>Estatísticas Descritivas
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Medidas de Tendência Central</h6>
+                        <table class="table table-sm">
+                            <tr><td><strong>Média:</strong></td><td id="estatMedia">-</td></tr>
+                            <tr><td><strong>Mediana:</strong></td><td id="estatMediana">-</td></tr>
+                            <tr><td><strong>Moda:</strong></td><td id="estatModa">-</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Medidas de Dispersão</h6>
+                        <table class="table table-sm">
+                            <tr><td><strong>Desvio Padrão:</strong></td><td id="estatDesvio">-</td></tr>
+                            <tr><td><strong>Variância:</strong></td><td id="estatVariancia">-</td></tr>
+                            <tr><td><strong>Amplitude:</strong></td><td id="estatAmplitude">-</td></tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Análise de Quartis</h6>
+                        <div id="quartisInfo" class="alert alert-info">
+                            <strong>Q1:</strong> <span id="estatQ1">-</span> | 
+                            <strong>Q2 (Mediana):</strong> <span id="estatQ2">-</span> | 
+                            <strong>Q3:</strong> <span id="estatQ3">-</span>
+                            <br><small>IQR (Amplitude Interquartil): <span id="estatIQR">-</span></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-primary" onclick="exportarEstatisticas()">
+                    <i class="fas fa-download me-2"></i>Exportar
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Chart.js com plugins avançados -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs"></script>
+    
+    <script>
+        // Variáveis globais dos gráficos
+        let graficoPrincipal = null;
+        let graficoDistribuicao = null;
+        let graficoBoxplot = null;
+        let graficoHeatmap = null;
+        let graficoSeriesTempo = null;
+
+        // Dados simulados (em produção, vir da API)
+        const dadosSimulados = {
+            documentos: [45, 52, 38, 47, 63, 41, 58, 69, 72, 55, 48, 61, 67, 59, 44],
+            confianca: [0.89, 0.92, 0.87, 0.91, 0.94, 0.88, 0.93, 0.95, 0.96, 0.90, 0.86, 0.92, 0.94, 0.91, 0.87],
+            tempo: [234, 189, 267, 201, 156, 245, 178, 134, 123, 198, 289, 167, 145, 187, 256],
+            usuarios: [12, 15, 9, 14, 18, 11, 16, 19, 21, 13, 10, 17, 20, 16, 12],
+            labels: ['01/08', '02/08', '03/08', '04/08', '05/08', '06/08', '07/08', '08/08', '09/08', '10/08', '11/08', '12/08', '13/08', '14/08', '15/08']
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            inicializarGraficos();
+        });
+
+        function inicializarGraficos() {
+            criarGraficoPrincipal();
+            criarGraficoDistribuicao();
+            criarGraficoBoxplot();
+            criarGraficoHeatmap();
+            criarGraficoSeriesTempo();
+        }
+
+        function criarGraficoPrincipal() {
+            const ctx = document.getElementById('graficoPrincipal').getContext('2d');
+            
+            graficoPrincipal = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dadosSimulados.labels,
+                    datasets: [{
+                        label: 'Documentos Processados',
+                        data: dadosSimulados.documentos,
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x',
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    onHover: (event, activeElements) => {
+                        event.native.target.style.cursor = activeElements.length > 0 ? 'pointer' : 'default';
+                    }
+                }
+            });
+        }
+
+        function criarGraficoDistribuicao() {
+            const ctx = document.getElementById('graficoDistribuicao').getContext('2d');
+            
+            graficoDistribuicao = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Autuação', 'Defesa', 'Notificação', 'Outros'],
+                    datasets: [{
+                        data: [45, 23, 18, 14],
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(255, 206, 86, 0.8)',
+                            'rgba(75, 192, 192, 0.8)'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function criarGraficoBoxplot() {
+            // Simular boxplot com dados de confiança
+            const ctx = document.getElementById('graficoBoxplot').getContext('2d');
+            
+            const confiancaDados = dadosSimulados.confianca.map(v => v * 100);
+            const quartis = calcularQuartis(confiancaDados);
+            
+            // Atualizar elementos de quartis
+            document.getElementById('q1').textContent = quartis.q1.toFixed(1) + '%';
+            document.getElementById('mediana').textContent = quartis.mediana.toFixed(1) + '%';
+            document.getElementById('q3').textContent = quartis.q3.toFixed(1) + '%';
+
+            graficoBoxplot = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Q1', 'Q2 (Mediana)', 'Q3', 'Máx', 'Mín'],
+                    datasets: [{
+                        label: 'Quartis de Confiança (%)',
+                        data: [quartis.q1, quartis.mediana, quartis.q3, quartis.max, quartis.min],
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.7)',
+                            'rgba(54, 162, 235, 0.7)',
+                            'rgba(255, 206, 86, 0.7)',
+                            'rgba(75, 192, 192, 0.7)',
+                            'rgba(153, 102, 255, 0.7)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function criarGraficoHeatmap() {
+            // Simular heatmap de correlação
+            const ctx = document.getElementById('graficoHeatmap').getContext('2d');
+            
+            // Dados de correlação simulados
+            const correlacoes = [
+                [1.0, 0.73, -0.45, 0.62],
+                [0.73, 1.0, -0.38, 0.81],
+                [-0.45, -0.38, 1.0, -0.29],
+                [0.62, 0.81, -0.29, 1.0]
+            ];
+            
+            const labels = ['Docs', 'Conf.', 'Tempo', 'Users'];
+            const heatmapData = [];
+            
+            for (let i = 0; i < labels.length; i++) {
+                for (let j = 0; j < labels.length; j++) {
+                    heatmapData.push({
+                        x: labels[j],
+                        y: labels[i],
+                        v: correlacoes[i][j]
+                    });
+                }
+            }
+
+            graficoHeatmap = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Correlação',
+                        data: heatmapData.map(d => ({
+                            x: labels.indexOf(d.x),
+                            y: labels.indexOf(d.y),
+                            r: Math.abs(d.v) * 20
+                        })),
+                        backgroundColor: heatmapData.map(d => 
+                            d.v > 0 ? `rgba(54, 162, 235, ${Math.abs(d.v)})` : `rgba(255, 99, 132, ${Math.abs(d.v)})`
+                        )
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            min: -0.5,
+                            max: 3.5,
+                            ticks: {
+                                stepSize: 1,
+                                callback: function(value, index) {
+                                    return labels[value];
+                                }
+                            }
+                        },
+                        y: {
+                            min: -0.5,
+                            max: 3.5,
+                            ticks: {
+                                stepSize: 1,
+                                callback: function(value, index) {
+                                    return labels[value];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function criarGraficoSeriesTempo() {
+            const ctx = document.getElementById('graficoSeriesTempo').getContext('2d');
+            
+            // Gerar dados históricos + predição
+            const dadosHistoricos = dadosSimulados.documentos;
+            const predicao = gerarPredicao(dadosHistoricos, 7);
+            
+            const labelsCompletos = [...dadosSimulados.labels, ...predicao.labels];
+            const dadosCompletos = [...dadosHistoricos, ...new Array(predicao.valores.length).fill(null)];
+            const dadosPredicao = [...new Array(dadosHistoricos.length).fill(null), ...predicao.valores];
+
+            graficoSeriesTempo = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labelsCompletos,
+                    datasets: [{
+                        label: 'Dados Históricos',
+                        data: dadosCompletos,
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Predição',
+                        data: dadosPredicao,
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        borderDash: [5, 5],
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Funções utilitárias
+        function calcularQuartis(dados) {
+            const sorted = dados.slice().sort((a, b) => a - b);
+            const q1 = percentil(sorted, 25);
+            const mediana = percentil(sorted, 50);
+            const q3 = percentil(sorted, 75);
+            
+            return {
+                min: Math.min(...sorted),
+                q1: q1,
+                mediana: mediana,
+                q3: q3,
+                max: Math.max(...sorted)
+            };
+        }
+
+        function percentil(arr, p) {
+            const index = (p / 100) * (arr.length - 1);
+            const lower = Math.floor(index);
+            const upper = Math.ceil(index);
+            const weight = index % 1;
+            
+            if (upper >= arr.length) return arr[lower];
+            return arr[lower] * (1 - weight) + arr[upper] * weight;
+        }
+
+        function gerarPredicao(dados, periodos) {
+            // Regressão linear simples
+            const n = dados.length;
+            const x = Array.from({length: n}, (_, i) => i);
+            const y = dados;
+            
+            const sumX = x.reduce((a, b) => a + b, 0);
+            const sumY = y.reduce((a, b) => a + b, 0);
+            const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+            const sumXX = x.reduce((sum, xi) => sum + xi * xi, 0);
+            
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+            
+            const valores = [];
+            const labels = [];
+            
+            for (let i = 0; i < periodos; i++) {
+                const proximoX = n + i;
+                const valor = Math.round(slope * proximoX + intercept);
+                valores.push(valor > 0 ? valor : 0);
+                
+                const data = new Date();
+                data.setDate(data.getDate() + i + 1);
+                labels.push(data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+            }
+            
+            return { valores, labels };
+        }
+
+        // Funções de interação
+        function alterarTipoGrafico() {
+            const tipo = document.getElementById('tipoGrafico').value;
+            
+            if (graficoPrincipal) {
+                graficoPrincipal.config.type = tipo;
+                graficoPrincipal.update();
+            }
+        }
+
+        function aplicarFiltros() {
+            const dataInicio = document.getElementById('dataInicio').value;
+            const dataFim = document.getElementById('dataFim').value;
+            const metrica = document.getElementById('metrica').value;
+            
+            showToast.info('Filtros Aplicados', 'Gráficos atualizados com novos filtros');
+            
+            // Aqui você faria uma chamada AJAX para buscar novos dados
+            // Por enquanto, apenas recriar com dados simulados
+            atualizarDados();
+        }
+
+        function atualizarDados() {
+            // Simular atualização de dados
+            showToast.info('Atualizando', 'Buscando novos dados...');
+            
+            setTimeout(() => {
+                // Recriar gráficos com novos dados
+                inicializarGraficos();
+                showToast.success('Atualizado', 'Gráficos atualizados com sucesso');
+            }, 1000);
+        }
+
+        function mostrarEstatisticas() {
+            const metrica = document.getElementById('metrica').value;
+            let dados = dadosSimulados.documentos;
+            
+            switch(metrica) {
+                case 'confianca': dados = dadosSimulados.confianca.map(v => v * 100); break;
+                case 'tempo': dados = dadosSimulados.tempo; break;
+                case 'usuarios': dados = dadosSimulados.usuarios; break;
+            }
+            
+            // Calcular estatísticas
+            const media = dados.reduce((a, b) => a + b) / dados.length;
+            const mediana = percentil(dados.slice().sort((a, b) => a - b), 50);
+            const moda = calcularModa(dados);
+            const desvio = Math.sqrt(dados.reduce((sum, x) => sum + Math.pow(x - media, 2), 0) / dados.length);
+            const variancia = Math.pow(desvio, 2);
+            const amplitude = Math.max(...dados) - Math.min(...dados);
+            const quartis = calcularQuartis(dados);
+            
+            // Preencher modal
+            document.getElementById('estatMedia').textContent = media.toFixed(2);
+            document.getElementById('estatMediana').textContent = mediana.toFixed(2);
+            document.getElementById('estatModa').textContent = moda;
+            document.getElementById('estatDesvio').textContent = desvio.toFixed(2);
+            document.getElementById('estatVariancia').textContent = variancia.toFixed(2);
+            document.getElementById('estatAmplitude').textContent = amplitude.toFixed(2);
+            document.getElementById('estatQ1').textContent = quartis.q1.toFixed(2);
+            document.getElementById('estatQ2').textContent = quartis.mediana.toFixed(2);
+            document.getElementById('estatQ3').textContent = quartis.q3.toFixed(2);
+            document.getElementById('estatIQR').textContent = (quartis.q3 - quartis.q1).toFixed(2);
+            
+            new bootstrap.Modal(document.getElementById('modalEstatisticas')).show();
+        }
+
+        function calcularModa(dados) {
+            const frequencia = {};
+            dados.forEach(valor => {
+                frequencia[valor] = (frequencia[valor] || 0) + 1;
+            });
+            
+            let maxFreq = 0;
+            let moda = [];
+            
+            for (let valor in frequencia) {
+                if (frequencia[valor] > maxFreq) {
+                    maxFreq = frequencia[valor];
+                    moda = [valor];
+                } else if (frequencia[valor] === maxFreq) {
+                    moda.push(valor);
+                }
+            }
+            
+            return moda.length === dados.length ? 'Sem moda' : moda.join(', ');
+        }
+
+        function resetZoom() {
+            if (graficoPrincipal) {
+                graficoPrincipal.resetZoom();
+            }
+        }
+
+        function togglePan() {
+            showToast.info('Pan/Zoom', 'Use a roda do mouse para zoom e arraste para navegar');
+        }
+
+        function calcularPredicao() {
+            const periodo = parseInt(document.getElementById('periodoPredicao').value);
+            const modelo = document.getElementById('modeloPredicao').value;
+            
+            showToast.info('Calculando', `Gerando predição para ${periodo} dias usando ${modelo}`);
+            
+            setTimeout(() => {
+                criarGraficoSeriesTempo();
+                showToast.success('Concluído', 'Predição calculada com sucesso');
+            }, 1500);
+        }
+
+        function exportarGraficos() {
+            showToast.info('Exportando', 'Gerando arquivo com todos os gráficos...');
+            
+            // Simular export
+            setTimeout(() => {
+                showToast.success('Exportado', 'Gráficos exportados como imagens PNG');
+            }, 2000);
+        }
+
+        function gerarRelatorio() {
+            showToast.info('Gerando', 'Criando relatório completo da análise...');
+            
+            // Simular geração de relatório
+            setTimeout(() => {
+                showToast.success('Relatório Pronto', 'Relatório estatístico gerado com sucesso');
+            }, 3000);
+        }
+
+        function resetarFiltros() {
+            document.getElementById('dataInicio').value = '@DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd")';
+            document.getElementById('dataFim').value = '@DateTime.Now.ToString("yyyy-MM-dd")';
+            document.getElementById('tipoGrafico').value = 'line';
+            document.getElementById('metrica').value = 'documentos';
+            
+            atualizarDados();
+        }
+    </script>
+}
+
+@section Styles {
+    <style>
+        .card {
+            transition: transform 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+        }
+        
+        .stat-card {
+            border-left: 4px solid #007bff;
+        }
+        
+        .correlation-high { background-color: rgba(54, 162, 235, 0.8) !important; }
+        .correlation-medium { background-color: rgba(255, 206, 86, 0.8) !important; }
+        .correlation-low { background-color: rgba(255, 99, 132, 0.8) !important; }
+    </style>
+}

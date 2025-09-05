@@ -310,7 +310,7 @@
                                                 <i class="fas fa-download"></i>
                                             </button>
                                         }
-                                        @if (User.IsInRole("Administrator"))
+                                        @if (User.IsInRole("Admin"))
                                         {
                                             <button type="button" class="btn btn-outline-danger btn-sm"
                                                     onclick="excluirDoc(@doc.Id)" title="Excluir">

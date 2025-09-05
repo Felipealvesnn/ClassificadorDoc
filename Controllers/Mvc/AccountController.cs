@@ -194,7 +194,7 @@ namespace ClassificadorDoc.Controllers.Mvc
         }
 
         [HttpGet]
-        [Authorize(Roles = "Administrator")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UserManagement()
         {
             var users = _userManager.Users.OrderBy(u => u.FullName).ToList();
@@ -221,7 +221,7 @@ namespace ClassificadorDoc.Controllers.Mvc
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrator")]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateUser(CreateUserViewModel model)
         {
@@ -292,7 +292,7 @@ namespace ClassificadorDoc.Controllers.Mvc
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrator")]
+        [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ToggleUserStatus(string userId)
         {

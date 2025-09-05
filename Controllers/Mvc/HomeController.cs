@@ -17,7 +17,7 @@ namespace ClassificadorDoc.Controllers.Mvc
         public IActionResult Index()
         {
             ViewData["UserName"] = User.Identity?.Name ?? "Usuário";
-            ViewData["IsAdmin"] = User.IsInRole("Administrator");
+            ViewData["IsAdmin"] = User.IsInRole("Admin");
 
             return View();
         }

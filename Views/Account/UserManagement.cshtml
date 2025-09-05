@@ -48,7 +48,7 @@
                 <label for="roleFilter" class="form-label">Filtrar por Papel</label>
                 <select class="form-select" id="roleFilter">
                     <option value="">Todos os papéis</option>
-                    <option value="Administrator">Administrador</option>
+                    <option value="Admin">Administrador</option>
                     <option value="User">Usuário</option>
                 </select>
             </div>
@@ -96,7 +96,7 @@
         <div class="card text-center border-warning">
             <div class="card-body">
                 <i class="fas fa-user-shield fa-2x text-warning mb-2"></i>
-                <h4 class="card-title">@Model.Count(u => u.Roles.Contains("Administrator"))</h4>
+                <h4 class="card-title">@Model.Count(u => u.Roles.Contains("Admin"))</h4>
                 <p class="card-text text-muted">Administradores</p>
             </div>
         </div>
@@ -160,8 +160,8 @@
                                 <td>
                                     @foreach (var role in user.Roles)
                                     {
-                                        <span class="badge @(role == "Administrator" ? "bg-danger" : "bg-primary") me-1">
-                                            @(role == "Administrator" ? "Admin" : role)
+                                        <span class="badge @(role == "Admin" ? "bg-danger" : "bg-primary") me-1">
+                                            @(role == "Admin" ? "Admin" : role)
                                         </span>
                                     }
                                 </td>
@@ -271,7 +271,7 @@
                             <select class="form-select" name="Role" required>
                                 <option value="">Selecione um papel</option>
                                 <option value="User">Usuário</option>
-                                <option value="Administrator">Administrador</option>
+                                <option value="Admin">Administrador</option>
                             </select>
                         </div>
                     </div>
