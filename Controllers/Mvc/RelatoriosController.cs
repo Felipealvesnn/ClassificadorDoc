@@ -82,6 +82,9 @@ namespace ClassificadorDoc.Controllers.Mvc
             // Dados de processamento de documentos por lotes
             var batchData = await _context.BatchProcessingHistories
                 .Where(b => b.StartedAt.Date == date.Date)
+                .ToListAsync();
+
+            var processedBatchData = batchData
                 .GroupBy(b => b.UserId)
                 .Select(g => new
                 {
@@ -96,7 +99,7 @@ namespace ClassificadorDoc.Controllers.Mvc
                     TotalProcessingTime = TimeSpan.FromSeconds(g.Where(b => b.ProcessingDuration.HasValue)
                         .Sum(b => b.ProcessingDuration!.Value.TotalSeconds))
                 })
-                .ToListAsync();
+                .ToList();
 
             // Combinar dados
             var combinedData = new List<CombinedProductivityViewModel>();
@@ -104,7 +107,7 @@ namespace ClassificadorDoc.Controllers.Mvc
             // Usuários com atividade na plataforma
             foreach (var activity in platformActivity)
             {
-                var batchInfo = batchData.FirstOrDefault(b => b.UserId == activity.UserId);
+                var batchInfo = processedBatchData.FirstOrDefault(b => b.UserId == activity.UserId);
 
                 combinedData.Add(new CombinedProductivityViewModel
                 {
@@ -132,7 +135,7 @@ namespace ClassificadorDoc.Controllers.Mvc
             }
 
             // Usuários que só processaram documentos (sem atividade registrada na plataforma)
-            foreach (var batch in batchData.Where(b => !platformActivity.Any(p => p.UserId == b.UserId)))
+            foreach (var batch in processedBatchData.Where(b => !platformActivity.Any(p => p.UserId == b.UserId)))
             {
                 combinedData.Add(new CombinedProductivityViewModel
                 {
@@ -301,8 +304,11 @@ namespace ClassificadorDoc.Controllers.Mvc
             startDate ??= DateTime.Today.AddDays(-30);
             endDate ??= DateTime.Today.AddDays(1);
 
-            var produtividade = await _context.BatchProcessingHistories
+            var batchesData = await _context.BatchProcessingHistories
                 .Where(b => b.StartedAt >= startDate && b.StartedAt < endDate)
+                .ToListAsync();
+
+            var produtividade = batchesData
                 .GroupBy(b => new { b.UserId, b.UserName })
                 .Select(g => new BatchProductivityStats
                 {
@@ -322,7 +328,7 @@ namespace ClassificadorDoc.Controllers.Mvc
                         .FirstOrDefault() ?? "N/A"
                 })
                 .OrderByDescending(p => p.TotalDocumentsProcessed)
-                .ToListAsync();
+                .ToList();
 
             var model = new BatchProductivityReportViewModel
             {
@@ -512,7 +518,7 @@ namespace ClassificadorDoc.Controllers.Mvc
                 .Select(g => new
                 {
                     data = g.Key,
-                    valor = g.Where(b => b.ProcessingDuration.HasValue).Average(b => b.ProcessingDuration!.Value.TotalSeconds),
+                    valor = g.Average(b => b.ProcessingDuration!.Value.TotalSeconds),
                     count = g.Count()
                 })
                 .OrderBy(x => x.data)
@@ -550,15 +556,16 @@ namespace ClassificadorDoc.Controllers.Mvc
 
         private async Task<object> ObterDadosTiposDocumento(DateTime dataInicio, DateTime dataFim)
         {
-            var dados = await _context.BatchProcessingHistories
-                .Where(b => b.StartedAt >= dataInicio && b.StartedAt <= dataFim && !string.IsNullOrEmpty(b.PredominantDocumentType))
-                .GroupBy(b => b.PredominantDocumentType)
+            var dados = await _context.DocumentProcessingHistories
+                .Where(d => d.ProcessedAt >= dataInicio && d.ProcessedAt <= dataFim && !string.IsNullOrEmpty(d.DocumentType))
+                .GroupBy(d => d.DocumentType)
                 .Select(g => new
                 {
                     tipo = g.Key ?? "Outros",
-                    count = g.Sum(b => b.TotalDocuments),
-                    batches = g.Count(),
-                    confiancaMedia = g.Average(b => b.AverageConfidence)
+                    count = g.Count(),
+                    confiancaMedia = g.Average(d => d.Confidence),
+                    sucessos = g.Count(d => d.IsSuccessful),
+                    falhas = g.Count(d => !d.IsSuccessful)
                 })
                 .OrderByDescending(x => x.count)
                 .ToListAsync();
@@ -571,10 +578,10 @@ namespace ClassificadorDoc.Controllers.Mvc
                     labels = new[] { "Autuação", "Defesa", "Notificação", "Outros" },
                     valores = new[] { 45, 23, 18, 14 },
                     detalhes = new[] {
-                        new { tipo = "Autuação", documentos = 45, lotes = 12, confianca = 92.0 },
-                        new { tipo = "Defesa", documentos = 23, lotes = 8, confianca = 89.0 },
-                        new { tipo = "Notificação", documentos = 18, lotes = 6, confianca = 94.0 },
-                        new { tipo = "Outros", documentos = 14, lotes = 4, confianca = 87.0 }
+                        new { tipo = "Autuação", documentos = 45, confianca = 92.0, sucessos = 43, falhas = 2 },
+                        new { tipo = "Defesa", documentos = 23, confianca = 89.0, sucessos = 21, falhas = 2 },
+                        new { tipo = "Notificação", documentos = 18, confianca = 94.0, sucessos = 17, falhas = 1 },
+                        new { tipo = "Outros", documentos = 14, confianca = 87.0, sucessos = 12, falhas = 2 }
                     }
                 };
             }
@@ -587,8 +594,10 @@ namespace ClassificadorDoc.Controllers.Mvc
                 {
                     tipo = d.tipo,
                     documentos = d.count,
-                    lotes = d.batches,
-                    confianca = Math.Round(d.confiancaMedia * 100, 1)
+                    confianca = Math.Round(d.confiancaMedia * 100, 1),
+                    sucessos = d.sucessos,
+                    falhas = d.falhas,
+                    taxaSucesso = Math.Round((double)d.sucessos / d.count * 100, 1)
                 }).ToArray()
             };
         }
@@ -699,6 +708,42 @@ namespace ClassificadorDoc.Controllers.Mvc
                 }
 
                 _context.BatchProcessingHistories.AddRange(batches);
+                await _context.SaveChangesAsync(); // Salvar primeiro para ter os IDs
+
+                // Inserir dados de DocumentProcessingHistories individuais
+                var documents = new List<DocumentProcessingHistory>();
+                var tiposDocumento = new[] { "Autuação", "Defesa", "Notificação", "Petição", "Sentença", "Despacho", "Outros" };
+
+                foreach (var batch in batches)
+                {
+                    var random = new Random(batch.Id * 100);
+                    var totalDocsThisBatch = batch.TotalDocuments;
+
+                    for (int doc = 0; doc < totalDocsThisBatch; doc++)
+                    {
+                        var tipo = tiposDocumento[random.Next(tiposDocumento.Length)];
+                        var isSuccessful = random.NextDouble() > 0.1; // 90% de sucesso
+                        var confidence = isSuccessful ?
+                            0.75 + (random.NextDouble() * 0.24) : // 75-99% se sucesso
+                            0.30 + (random.NextDouble() * 0.40);   // 30-70% se falha
+
+                        documents.Add(new DocumentProcessingHistory
+                        {
+                            FileName = $"documento_{batch.Id}_{doc + 1:D3}.pdf",
+                            DocumentType = tipo,
+                            Confidence = confidence,
+                            ProcessedAt = batch.StartedAt.AddMinutes(random.Next((int)(batch.ProcessingDuration?.TotalMinutes ?? 30))),
+                            UserId = batch.UserId,
+                            IsSuccessful = isSuccessful,
+                            ErrorMessage = isSuccessful ? null : "Erro de processamento simulado",
+                            Keywords = $"palavra-chave-{tipo.ToLower()}, documento, processamento",
+                            FileSizeBytes = 50000 + random.Next(200000), // 50KB - 250KB
+                            BatchProcessingHistoryId = batch.Id
+                        });
+                    }
+                }
+
+                _context.DocumentProcessingHistories.AddRange(documents);
 
                 // Inserir dados de UserProductivities
                 var users = await _context.Users.ToListAsync();
