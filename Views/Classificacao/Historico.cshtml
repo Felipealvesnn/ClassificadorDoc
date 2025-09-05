@@ -1,4 +1,5 @@
-@model List<ClassificadorDoc.Controllers.Mvc.HistoricoLoteView>
+@model X.PagedList.IPagedList<ClassificadorDoc.Controllers.Mvc.HistoricoLoteView>
+@using X.PagedList.Mvc.Core;
 @{
     ViewData["Title"] = "Histórico de Lotes";
 }
@@ -181,13 +182,19 @@
                 }
             </div>
 
-            <!-- Paginação -->
-            @if (Model.Count >= 20)
+            <!-- Paginação com X.PagedList -->
+            @if (Model.PageCount > 1)
             {
                 <div class="d-flex justify-content-center mt-4">
-                    <button class="btn btn-outline-primary" onclick="carregarMais()">
-                        <i class="fas fa-plus"></i> Carregar Mais Lotes
-                    </button>
+                    @Html.PagedListPager(Model, page => Url.Action("Historico", new { pagina = page }))
+                </div>
+
+                <!-- Informações da paginação -->
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        Mostrando @Model.FirstItemOnPage a @Model.LastItemOnPage de @Model.TotalItemCount lotes
+                        (Página @Model.PageNumber de @Model.PageCount)
+                    </small>
                 </div>
             }
         }
@@ -217,11 +224,6 @@
             document.getElementById('filtroTipo').value = '';
             document.getElementById('filtroDataInicio').value = '';
             document.getElementById('filtroDataFim').value = '';
-        }
-
-        function carregarMais() {
-            // Implementar paginação
-            console.log('Carregando mais lotes...');
         }
 
         function exportarCSV() {

@@ -6,6 +6,8 @@ using ClassificadorDoc.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.IO.Compression;
+using X.PagedList;
+using X.PagedList.Extensions;
 
 namespace ClassificadorDoc.Controllers.Mvc
 {
@@ -45,11 +47,13 @@ namespace ClassificadorDoc.Controllers.Mvc
         }
 
         // GET: /Classificacao/Historico
-        public async Task<IActionResult> Historico()
+        public async Task<IActionResult> Historico(int? pagina)
         {
             var userId = _userManager.GetUserId(User);
+            int paginaAtual = pagina ?? 1;
+            int itensPorPagina = 20;
 
-            // Nova abordagem: Buscar LOTES em vez de documentos individuais
+            // Buscar LOTES em vez de documentos individuais
             var lotes = await _context.BatchProcessingHistories
                 .Where(b => b.UserId == userId)
                 .OrderByDescending(b => b.StartedAt)
@@ -67,10 +71,11 @@ namespace ClassificadorDoc.Controllers.Mvc
                     TempoProcessamento = b.ProcessingDuration,
                     TamanhoArquivo = b.FileSizeBytes
                 })
-                .Take(20) // Paginação: 20 lotes por página
                 .ToListAsync();
 
-            return View(lotes);
+            var lotesPaginados = lotes.ToPagedList(paginaAtual, itensPorPagina);
+
+            return View(lotesPaginados);
         }
 
         // GET: /Classificacao/DetalhesLote/5
