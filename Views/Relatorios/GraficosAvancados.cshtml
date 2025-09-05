@@ -708,11 +708,18 @@
 
             // Gerar dados históricos + predição
             const dadosHistoricos = dadosEstatisticos.documentos;
-            const predicao = gerarPredicao(dadosHistoricos, 7);
+            const modelo = document.getElementById('modeloPredicao')?.value || 'linear';
+            const periodos = parseInt(document.getElementById('periodoPredicao')?.value || '7');
+
+            const predicao = gerarPredicaoAvancada(dadosHistoricos, periodos, modelo);
 
             const labelsCompletos = [...dadosEstatisticos.labels, ...predicao.labels];
             const dadosCompletos = [...dadosHistoricos, ...new Array(predicao.valores.length).fill(null)];
             const dadosPredicao = [...new Array(dadosHistoricos.length).fill(null), ...predicao.valores];
+
+            // Calcular intervalos de confiança
+            const intervaloSuperior = [...new Array(dadosHistoricos.length).fill(null), ...predicao.intervaloSuperior];
+            const intervaloInferior = [...new Array(dadosHistoricos.length).fill(null), ...predicao.intervaloInferior];
 
             graficoSeriesTempo = new Chart(ctx, {
                 type: 'line',
@@ -723,14 +730,34 @@
                         data: dadosCompletos,
                         borderColor: 'rgb(54, 162, 235)',
                         backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                        tension: 0.4
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
                     }, {
-                        label: 'Predição',
+                        label: 'Predição (' + modelo + ')',
                         data: dadosPredicao,
                         borderColor: 'rgb(255, 99, 132)',
                         backgroundColor: 'rgba(255, 99, 132, 0.1)',
                         borderDash: [5, 5],
-                        tension: 0.4
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }, {
+                        label: 'Intervalo de Confiança',
+                        data: intervaloSuperior,
+                        borderColor: 'rgba(75, 192, 192, 0.3)',
+                        backgroundColor: 'transparent',
+                        borderDash: [2, 2],
+                        pointRadius: 0,
+                        fill: '+1'
+                    }, {
+                        label: '',
+                        data: intervaloInferior,
+                        borderColor: 'rgba(75, 192, 192, 0.3)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        borderDash: [2, 2],
+                        pointRadius: 0,
+                        fill: false
                     }]
                 },
                 options: {
@@ -738,12 +765,32 @@
                     maintainAspectRatio: false,
                     scales: {
                         y: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Documentos Processados'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Período'
+                            }
                         }
                     },
                     plugins: {
                         legend: {
-                            display: true
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                filter: function (item) {
+                                    return item.text !== '';
+                                }
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
                         }
                     }
                 }
@@ -804,6 +851,117 @@
             }
 
             return { valores, labels };
+        }
+
+        function gerarPredicaoAvancada(dados, periodos, modelo) {
+            const n = dados.length;
+            let valores = [];
+            let labels = [];
+            let intervaloSuperior = [];
+            let intervaloInferior = [];
+
+            // Calcular erro padrão baseado nos dados históricos
+            const erroMedio = calcularErroMedio(dados);
+            const multiplicadorConfianca = 1.96; // 95% de confiança
+
+            switch (modelo) {
+                case 'linear':
+                    const regressao = calcularRegressaoLinear(dados);
+                    for (let i = 0; i < periodos; i++) {
+                        const proximoX = n + i;
+                        const valor = Math.max(0, Math.round(regressao.slope * proximoX + regressao.intercept));
+                        valores.push(valor);
+                        intervaloSuperior.push(valor + multiplicadorConfianca * erroMedio);
+                        intervaloInferior.push(Math.max(0, valor - multiplicadorConfianca * erroMedio));
+                    }
+                    break;
+
+                case 'moving_average':
+                    const janela = Math.min(7, Math.floor(n / 3));
+                    const media = dados.slice(-janela).reduce((a, b) => a + b, 0) / janela;
+                    for (let i = 0; i < periodos; i++) {
+                        // Usar variação determinística baseada no período
+                        const variacao = Math.sin(i * 0.5) * erroMedio * 0.3;
+                        const valor = Math.max(0, Math.round(media + variacao));
+                        valores.push(valor);
+                        intervaloSuperior.push(valor + multiplicadorConfianca * erroMedio);
+                        intervaloInferior.push(Math.max(0, valor - multiplicadorConfianca * erroMedio));
+                    }
+                    break;
+
+                case 'exponential':
+                    const alpha = 0.3; // Fator de suavização
+                    let ultimoValor = dados[dados.length - 1];
+                    for (let i = 0; i < periodos; i++) {
+                        const valor = Math.max(0, Math.round(ultimoValor));
+                        valores.push(valor);
+                        intervaloSuperior.push(valor + multiplicadorConfianca * erroMedio * (i + 1) * 0.5);
+                        intervaloInferior.push(Math.max(0, valor - multiplicadorConfianca * erroMedio * (i + 1) * 0.5));
+                        ultimoValor = alpha * ultimoValor + (1 - alpha) * valor;
+                    }
+                    break;
+
+                default:
+                    // Fallback para linear
+                    return gerarPredicaoAvancada(dados, periodos, 'linear');
+            }
+
+            // Gerar labels de data
+            for (let i = 0; i < periodos; i++) {
+                const data = new Date();
+                data.setDate(data.getDate() + i + 1);
+                labels.push(data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+            }
+
+            // Debug: Log para verificar se os modelos estão gerando valores diferentes
+            console.log('Predição - Modelo: ' + modelo + ', Períodos: ' + periodos + ', Primeiros valores:', valores.slice(0, 3));
+
+            return { valores, labels, intervaloSuperior, intervaloInferior, modelo, r2: calcularR2(dados) };
+        }
+
+        function calcularRegressaoLinear(dados) {
+            const n = dados.length;
+            const x = Array.from({ length: n }, (_, i) => i);
+            const y = dados;
+
+            const sumX = x.reduce((a, b) => a + b, 0);
+            const sumY = y.reduce((a, b) => a + b, 0);
+            const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+            const sumXX = x.reduce((sum, xi) => sum + xi * xi, 0);
+
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            return { slope, intercept };
+        }
+
+        function calcularErroMedio(dados) {
+            if (dados.length < 2) return 10;
+
+            const diferencas = [];
+            for (let i = 1; i < dados.length; i++) {
+                diferencas.push(Math.abs(dados[i] - dados[i - 1]));
+            }
+
+            return diferencas.reduce((a, b) => a + b, 0) / diferencas.length;
+        }
+
+        function calcularR2(dados) {
+            if (dados.length < 3) return 0.5;
+
+            const regressao = calcularRegressaoLinear(dados);
+            const media = dados.reduce((a, b) => a + b, 0) / dados.length;
+
+            let ssRes = 0; // Soma dos quadrados dos resíduos
+            let ssTot = 0; // Soma total dos quadrados
+
+            dados.forEach((valor, i) => {
+                const predicao = regressao.slope * i + regressao.intercept;
+                ssRes += Math.pow(valor - predicao, 2);
+                ssTot += Math.pow(valor - media, 2);
+            });
+
+            return ssTot === 0 ? 0 : Math.max(0, 1 - (ssRes / ssTot));
         }
 
         // Funções de interação
@@ -1048,12 +1206,17 @@
             const periodo = parseInt(document.getElementById('periodoPredicao').value);
             const modelo = document.getElementById('modeloPredicao').value;
 
-            showToast.info('Calculando', `Gerando predição para ${periodo} dias usando ${modelo}`);
+            showToast.info('Calculando', 'Gerando predição para ' + periodo + ' dias usando modelo ' + modelo);
 
-            setTimeout(() => {
-                criarGraficoSeriesTempo();
-                showToast.success('Concluído', 'Predição calculada com sucesso');
-            }, 1500);
+            // Destruir gráfico existente se houver
+            if (graficoSeriesTempo) {
+                graficoSeriesTempo.destroy();
+                graficoSeriesTempo = null;
+            }
+
+            // Recriar imediatamente com novos parâmetros
+            criarGraficoSeriesTempo();
+            showToast.success('Concluído', 'Predição calculada com sucesso');
         }
 
         function exportarGraficos() {
@@ -1132,56 +1295,56 @@
                 };
 
                 const relatorio = `
-            RELATÓRIO ESTATÍSTICO - CLASSIFICADOR DE DOCUMENTOS
-            ================================================
+                RELATÓRIO ESTATÍSTICO - CLASSIFICADOR DE DOCUMENTOS
+                ================================================
 
-            Período: ${dataInicio} a ${dataFim}
-            Data do Relatório: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}
+                Período: ${dataInicio} a ${dataFim}
+                Data do Relatório: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}
 
-            RESUMO EXECUTIVO
-            ================
-            • Total de documentos processados: ${dadosEstatisticos.documentos.reduce((a, b) => a + b, 0)}
-            • Confiança média: ${stats.confianca.media.toFixed(2)}%
-            • Tempo médio de processamento: ${stats.tempo.media.toFixed(1)}s
-            • Usuários ativos (média): ${stats.usuarios.media.toFixed(0)}
+                RESUMO EXECUTIVO
+                ================
+                • Total de documentos processados: ${dadosEstatisticos.documentos.reduce((a, b) => a + b, 0)}
+                • Confiança média: ${stats.confianca.media.toFixed(2)}%
+                • Tempo médio de processamento: ${stats.tempo.media.toFixed(1)}s
+                • Usuários ativos (média): ${stats.usuarios.media.toFixed(0)}
 
-            ESTATÍSTICAS DETALHADAS
-            ======================
+                ESTATÍSTICAS DETALHADAS
+                ======================
 
-            Documentos Processados:
-            • Média: ${stats.documentos.media.toFixed(1)}
-            • Mediana: ${stats.documentos.mediana.toFixed(1)}
-            • Desvio Padrão: ${stats.documentos.desvio.toFixed(1)}
-            • Mínimo: ${stats.documentos.min}
-            • Máximo: ${stats.documentos.max}
+                Documentos Processados:
+                • Média: ${stats.documentos.media.toFixed(1)}
+                • Mediana: ${stats.documentos.mediana.toFixed(1)}
+                • Desvio Padrão: ${stats.documentos.desvio.toFixed(1)}
+                • Mínimo: ${stats.documentos.min}
+                • Máximo: ${stats.documentos.max}
 
-            Confiança (%):
-            • Média: ${stats.confianca.media.toFixed(2)}%
-            • Mediana: ${stats.confianca.mediana.toFixed(2)}%
-            • Desvio Padrão: ${stats.confianca.desvio.toFixed(2)}%
-            • Mínimo: ${stats.confianca.min.toFixed(2)}%
-            • Máximo: ${stats.confianca.max.toFixed(2)}%
+                Confiança (%):
+                • Média: ${stats.confianca.media.toFixed(2)}%
+                • Mediana: ${stats.confianca.mediana.toFixed(2)}%
+                • Desvio Padrão: ${stats.confianca.desvio.toFixed(2)}%
+                • Mínimo: ${stats.confianca.min.toFixed(2)}%
+                • Máximo: ${stats.confianca.max.toFixed(2)}%
 
-            Tempo de Processamento (segundos):
-            • Média: ${stats.tempo.media.toFixed(1)}s
-            • Mediana: ${stats.tempo.mediana.toFixed(1)}s
-            • Desvio Padrão: ${stats.tempo.desvio.toFixed(1)}s
-            • Mínimo: ${stats.tempo.min.toFixed(1)}s
-            • Máximo: ${stats.tempo.max.toFixed(1)}s
+                Tempo de Processamento (segundos):
+                • Média: ${stats.tempo.media.toFixed(1)}s
+                • Mediana: ${stats.tempo.mediana.toFixed(1)}s
+                • Desvio Padrão: ${stats.tempo.desvio.toFixed(1)}s
+                • Mínimo: ${stats.tempo.min.toFixed(1)}s
+                • Máximo: ${stats.tempo.max.toFixed(1)}s
 
-            Usuários Ativos:
-            • Média: ${stats.usuarios.media.toFixed(1)}
-            • Mediana: ${stats.usuarios.mediana.toFixed(1)}
-            • Desvio Padrão: ${stats.usuarios.desvio.toFixed(1)}
-            • Mínimo: ${stats.usuarios.min}
-            • Máximo: ${stats.usuarios.max}
+                Usuários Ativos:
+                • Média: ${stats.usuarios.media.toFixed(1)}
+                • Mediana: ${stats.usuarios.mediana.toFixed(1)}
+                • Desvio Padrão: ${stats.usuarios.desvio.toFixed(1)}
+                • Mínimo: ${stats.usuarios.min}
+                • Máximo: ${stats.usuarios.max}
 
-            ANÁLISE DE TENDÊNCIAS
-            ====================
-            ${analisarTendencias()}
+                ANÁLISE DE TENDÊNCIAS
+                ====================
+                ${analisarTendencias()}
 
-            Relatório gerado automaticamente pelo Sistema Classificador de Documentos
-            `;
+                Relatório gerado automaticamente pelo Sistema Classificador de Documentos
+                `;
 
                 const blob = new Blob([relatorio], { type: 'text/plain;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
