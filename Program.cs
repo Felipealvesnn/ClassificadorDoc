@@ -2,6 +2,7 @@ using ClassificadorDoc.Services;
 using ClassificadorDoc.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Quartz;
 // using OpenAI; // Descomente quando usar OpenAI
 
 var builder = WebApplication.CreateBuilder(args);
@@ -90,6 +91,30 @@ builder.Services.AddSwaggerGen();
 
 // Register PdfExtractorService
 builder.Services.AddScoped<PdfExtractorService>();
+
+// Register Alert Services
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IAlertConditionEngine, AlertConditionEngine>();
+builder.Services.AddScoped<IAlertExecutionService, AlertExecutionService>();
+builder.Services.AddScoped<ISystemNotificationService, SystemNotificationService>();
+
+// Configure SignalR for real-time notifications
+builder.Services.AddSignalR();
+
+// Configure Quartz.NET for automatic alert execution
+builder.Services.AddQuartz(q =>
+{
+    // Configure job to run every 5 minutes
+    var jobKey = new JobKey("AlertExecutionJob");
+    q.AddJob<AlertExecutionJob>(opts => opts.WithIdentity(jobKey));
+
+    q.AddTrigger(opts => opts
+        .ForJob(jobKey)
+        .WithIdentity("AlertExecutionTrigger")
+        .WithCronSchedule("0 */5 * * * ?")); // Every 5 minutes
+});
+
+builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 var app = builder.Build();
 

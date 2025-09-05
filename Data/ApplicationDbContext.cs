@@ -28,6 +28,7 @@ namespace ClassificadorDoc.Data
         public DbSet<DashboardWidget> DashboardWidgets { get; set; }
         public DbSet<LGPDCompliance> LGPDCompliances { get; set; }
         public DbSet<DataExport> DataExports { get; set; }
+        public DbSet<SystemNotification> SystemNotifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

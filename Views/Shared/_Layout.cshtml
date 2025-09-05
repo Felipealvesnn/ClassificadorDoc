@@ -77,6 +77,9 @@
                                             <li><a class="dropdown-item" asp-controller="Relatorios" asp-action="Index">
                                                     <i class="fas fa-chart-bar me-2"></i>Relatórios
                                                 </a></li>
+                                            <li><a class="dropdown-item" asp-controller="Alertas" asp-action="Index">
+                                                    <i class="fas fa-bell me-2"></i>Alertas Automáticos
+                                                </a></li>
                                             <li>
                                                 <hr class="dropdown-divider">
                                             </li>
@@ -210,6 +213,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js"></script>
     <!-- Custom JS -->
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/alerts.js" asp-append-version="true"></script>
 
     <script>
         // Configuração global do Toastr
@@ -274,6 +278,12 @@
             showToast[typeMap[type] || 'info'](title, message);
         };
     </script>
+
+    <!-- SignalR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.11/signalr.min.js"></script>
+
+    <!-- Sistema de Notificações -->
+    <script src="~/js/notifications.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

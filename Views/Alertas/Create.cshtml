@@ -1,0 +1,266 @@
+@model ClassificadorDoc.Controllers.Mvc.CreateAlertViewModel
+@{
+    ViewData["Title"] = "Criar Novo Alerta";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">
+                        <i class="fas fa-plus"></i> Criar Novo Alerta Automático
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Create" method="post" id="alertForm">
+                        @Html.AntiForgeryToken()
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Name" class="form-label">
+                                        <i class="fas fa-tag"></i> Nome do Alerta
+                                    </label>
+                                    <input asp-for="Name" class="form-control" placeholder="Ex: Alto Uso de CPU" />
+                                    <span asp-validation-for="Name" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="Priority" class="form-label">
+                                        <i class="fas fa-exclamation-triangle"></i> Prioridade
+                                    </label>
+                                    <select asp-for="Priority" class="form-select">
+                                        <option value="LOW">Baixa</option>
+                                        <option value="MEDIUM" selected>Média</option>
+                                        <option value="HIGH">Alta</option>
+                                    </select>
+                                    <span asp-validation-for="Priority" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Description" class="form-label">
+                                <i class="fas fa-info"></i> Descrição
+                            </label>
+                            <textarea asp-for="Description" class="form-control" rows="2" placeholder="Descrição detalhada do que este alerta monitora"></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label asp-for="AlertType" class="form-label">
+                                        <i class="fas fa-bell"></i> Tipo de Alerta
+                                    </label>
+                                    <select asp-for="AlertType" class="form-select" id="alertTypeSelect">
+                                        <option value="EMAIL" selected>Email</option>
+                                        <option value="SYSTEM">Sistema</option>
+                                        <option value="WEBHOOK">Webhook</option>
+                                    </select>
+                                    <span asp-validation-for="AlertType" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3" id="recipientsDiv">
+                                    <label asp-for="Recipients" class="form-label">
+                                        <i class="fas fa-users"></i> Destinatários
+                                    </label>
+                                    <input asp-for="Recipients" class="form-control" placeholder="email1@exemplo.com, email2@exemplo.com" />
+                                    <div class="form-text">Separe múltiplos emails com vírgulas</div>
+                                    <span asp-validation-for="Recipients" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-magic"></i> Assistente de Condições
+                            </label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <select id="templateSelect" class="form-select">
+                                        <option value="">Selecione um template...</option>
+                                        @if (ViewBag.Templates != null)
+                                        {
+                                            @foreach (var template in (List<dynamic>)ViewBag.Templates)
+                                            {
+                                                <option value="@template.Condition">@template.Name</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#variablesModal">
+                                        <i class="fas fa-list"></i> Ver Variáveis Disponíveis
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Condition" class="form-label">
+                                <i class="fas fa-filter"></i> Condição do Alerta
+                            </label>
+                            <div class="input-group">
+                                <textarea asp-for="Condition" class="form-control" rows="4" id="conditionTextarea" placeholder="Ex: error_count_today > 10 AND system_cpu_usage > 80"></textarea>
+                                <button type="button" class="btn btn-outline-secondary" id="validateBtn">
+                                    <i class="fas fa-check"></i> Validar
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                Use operadores como: >, <, >=, <=, ==, !=, AND, OR<br>
+                                Exemplo: <code>error_count_today > 10</code> ou <code>processing_time_avg > 30 AND success_rate < 95</code>
+                            </div>
+                            <div id="conditionValidation"></div>
+                            <span asp-validation-for="Condition" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input asp-for="IsActive" class="form-check-input" type="checkbox" checked />
+                                <label asp-for="IsActive" class="form-check-label">
+                                    <i class="fas fa-power-off"></i> Alerta ativo
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="@Url.Action("Index")" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Salvar Alerta
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Variáveis -->
+<div class="modal fade" id="variablesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-list"></i> Variáveis Disponíveis
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    @if (ViewBag.AvailableVariables != null)
+                    {
+                        @foreach (var variable in (List<dynamic>)ViewBag.AvailableVariables)
+                        {
+                            <div class="col-md-6 mb-2">
+                                <div class="card h-100">
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title mb-1">
+                                            <code>@variable.Name</code>
+                                        </h6>
+                                        <p class="card-text small text-muted mb-0">@variable.Description</p>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Gerenciar exibição do campo Recipients baseado no tipo de alerta
+            $('#alertTypeSelect').change(function() {
+                const alertType = $(this).val();
+                const recipientsDiv = $('#recipientsDiv');
+                
+                if (alertType === 'EMAIL') {
+                    recipientsDiv.show();
+                    recipientsDiv.find('label').html('<i class="fas fa-envelope"></i> Emails dos Destinatários');
+                    recipientsDiv.find('input').attr('placeholder', 'email1@exemplo.com, email2@exemplo.com');
+                } else if (alertType === 'WEBHOOK') {
+                    recipientsDiv.show();
+                    recipientsDiv.find('label').html('<i class="fas fa-link"></i> URLs dos Webhooks');
+                    recipientsDiv.find('input').attr('placeholder', 'https://webhook1.com/alert, https://webhook2.com/alert');
+                } else {
+                    recipientsDiv.hide();
+                }
+            });
+
+            // Aplicar template selecionado
+            $('#templateSelect').change(function() {
+                const selectedCondition = $(this).val();
+                if (selectedCondition) {
+                    $('#conditionTextarea').val(selectedCondition);
+                    validateCondition();
+                }
+            });
+
+            // Validar condição
+            $('#validateBtn').click(function() {
+                validateCondition();
+            });
+
+            function validateCondition() {
+                const condition = $('#conditionTextarea').val();
+                if (!condition.trim()) {
+                    $('#conditionValidation').html('');
+                    return;
+                }
+
+                $.get('@Url.Action("ValidateCondition")', { condition: condition })
+                    .done(function(response) {
+                        const validationDiv = $('#conditionValidation');
+                        if (response.isValid) {
+                            validationDiv.html('<div class="alert alert-success mt-2"><i class="fas fa-check"></i> Condição válida!</div>');
+                        } else {
+                            validationDiv.html('<div class="alert alert-danger mt-2"><i class="fas fa-times"></i> ' + response.message + '</div>');
+                        }
+                    })
+                    .fail(function() {
+                        $('#conditionValidation').html('<div class="alert alert-warning mt-2"><i class="fas fa-exclamation-triangle"></i> Erro ao validar condição</div>');
+                    });
+            }
+
+            // Validar automaticamente enquanto digita (debounced)
+            let validationTimeout;
+            $('#conditionTextarea').on('input', function() {
+                clearTimeout(validationTimeout);
+                validationTimeout = setTimeout(validateCondition, 1000);
+            });
+
+            // Inicializar campo Recipients baseado no tipo atual
+            $('#alertTypeSelect').trigger('change');
+        });
+    </script>
+}
+
+@section Styles {
+    <style>
+        .form-text code {
+            background-color: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        .card-title code {
+            font-size: 0.9em;
+            color: #0066cc;
+        }
+        
+        #conditionTextarea {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+    </style>
+}
