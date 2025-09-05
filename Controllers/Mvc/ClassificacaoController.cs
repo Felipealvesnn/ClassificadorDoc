@@ -51,7 +51,7 @@ namespace ClassificadorDoc.Controllers.Mvc
         {
             var userId = _userManager.GetUserId(User);
             int paginaAtual = pagina ?? 1;
-            int itensPorPagina = 20;
+            int itensPorPagina = 10;
 
             // Buscar LOTES em vez de documentos individuais
             var lotes = await _context.BatchProcessingHistories
@@ -69,7 +69,8 @@ namespace ClassificadorDoc.Controllers.Mvc
                     ConfiancaMedia = b.AverageConfidence,
                     Status = b.Status,
                     TempoProcessamento = b.ProcessingDuration,
-                    TamanhoArquivo = b.FileSizeBytes
+                    TamanhoArquivo = b.FileSizeBytes,
+                    NomeUsuario = b.UserName
                 })
                 .ToListAsync();
 
@@ -509,6 +510,7 @@ namespace ClassificadorDoc.Controllers.Mvc
         public string Status { get; set; } = string.Empty;
         public TimeSpan? TempoProcessamento { get; set; }
         public long TamanhoArquivo { get; set; }
+        public string NomeUsuario { get; set; } = string.Empty;
 
         // Propriedades calculadas
         public decimal TaxaSucesso => TotalDocumentos > 0 ? Math.Round((decimal)DocumentosSucesso / TotalDocumentos * 100, 1) : 0;
