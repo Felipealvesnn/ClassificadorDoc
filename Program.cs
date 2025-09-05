@@ -120,6 +120,9 @@ builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 var app = builder.Build();
 
+// ===== INICIALIZAÇÃO AUTOMÁTICA DO BANCO DE DADOS =====
+await DatabaseInitializer.InitializeAsync(app);
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -172,22 +175,5 @@ else // Full mode
 
 // Log do modo atual
 app.Logger.LogInformation("Aplicação iniciada no modo: {AppMode}", appMode);
-
-// Seed inicial de dados (apenas se não for ApiOnly)
-if (appMode != "ApiOnly")
-{
-    using (var scope = app.Services.CreateScope())
-    {
-        try
-        {
-            await SeedData.InitializeAsync(scope.ServiceProvider);
-            app.Logger.LogInformation("Seed de dados executado com sucesso");
-        }
-        catch (Exception ex)
-        {
-            app.Logger.LogError(ex, "Erro ao executar seed de dados");
-        }
-    }
-}
 
 app.Run();
