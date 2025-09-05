@@ -29,7 +29,8 @@
         <div class="row">
             <div class="col-md-3">
                 <label for="dataInicio" class="form-label">Data Início</label>
-                <input type="date" class="form-control" id="dataInicio" value="@DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd")">
+                <input type="date" class="form-control" id="dataInicio"
+                    value="@DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd")">
             </div>
             <div class="col-md-3">
                 <label for="dataFim" class="form-label">Data Fim</label>
@@ -84,23 +85,26 @@
                     Evolução Temporal - Documentos Processados
                 </h6>
                 <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown">
                         <i class="fas fa-cog"></i> Opções
                     </button>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="#" onclick="toggleAnimacao()">
-                            <i class="fas fa-play"></i> Toggle Animação
-                        </a></li>
+                                <i class="fas fa-play"></i> Toggle Animação
+                            </a></li>
                         <li><a class="dropdown-item" href="#" onclick="alterarEscala()">
-                            <i class="fas fa-expand-arrows-alt"></i> Escala Logarítmica
-                        </a></li>
+                                <i class="fas fa-expand-arrows-alt"></i> Escala Logarítmica
+                            </a></li>
                         <li><a class="dropdown-item" href="#" onclick="mostrarTendencia()">
-                            <i class="fas fa-chart-line"></i> Linha de Tendência
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
+                                <i class="fas fa-chart-line"></i> Linha de Tendência
+                            </a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
                         <li><a class="dropdown-item" href="#" onclick="exportarGrafico('principal')">
-                            <i class="fas fa-download"></i> Exportar PNG
-                        </a></li>
+                                <i class="fas fa-download"></i> Exportar PNG
+                            </a></li>
                     </ul>
                 </div>
             </div>
@@ -154,9 +158,9 @@
                 </div>
                 <div class="mt-2">
                     <small class="text-muted">
-                        <strong>Quartis:</strong> 
-                        Q1: <span id="q1">-</span> | 
-                        Mediana: <span id="mediana">-</span> | 
+                        <strong>Quartis:</strong>
+                        Q1: <span id="q1">-</span> |
+                        Mediana: <span id="mediana">-</span> |
                         Q3: <span id="q3">-</span>
                     </small>
                 </div>
@@ -289,17 +293,35 @@
                     <div class="col-md-6">
                         <h6>Medidas de Tendência Central</h6>
                         <table class="table table-sm">
-                            <tr><td><strong>Média:</strong></td><td id="estatMedia">-</td></tr>
-                            <tr><td><strong>Mediana:</strong></td><td id="estatMediana">-</td></tr>
-                            <tr><td><strong>Moda:</strong></td><td id="estatModa">-</td></tr>
+                            <tr>
+                                <td><strong>Média:</strong></td>
+                                <td id="estatMedia">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Mediana:</strong></td>
+                                <td id="estatMediana">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Moda:</strong></td>
+                                <td id="estatModa">-</td>
+                            </tr>
                         </table>
                     </div>
                     <div class="col-md-6">
                         <h6>Medidas de Dispersão</h6>
                         <table class="table table-sm">
-                            <tr><td><strong>Desvio Padrão:</strong></td><td id="estatDesvio">-</td></tr>
-                            <tr><td><strong>Variância:</strong></td><td id="estatVariancia">-</td></tr>
-                            <tr><td><strong>Amplitude:</strong></td><td id="estatAmplitude">-</td></tr>
+                            <tr>
+                                <td><strong>Desvio Padrão:</strong></td>
+                                <td id="estatDesvio">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Variância:</strong></td>
+                                <td id="estatVariancia">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Amplitude:</strong></td>
+                                <td id="estatAmplitude">-</td>
+                            </tr>
                         </table>
                     </div>
                 </div>
@@ -307,8 +329,8 @@
                     <div class="col-12">
                         <h6>Análise de Quartis</h6>
                         <div id="quartisInfo" class="alert alert-info">
-                            <strong>Q1:</strong> <span id="estatQ1">-</span> | 
-                            <strong>Q2 (Mediana):</strong> <span id="estatQ2">-</span> | 
+                            <strong>Q1:</strong> <span id="estatQ1">-</span> |
+                            <strong>Q2 (Mediana):</strong> <span id="estatQ2">-</span> |
                             <strong>Q3:</strong> <span id="estatQ3">-</span>
                             <br><small>IQR (Amplitude Interquartil): <span id="estatIQR">-</span></small>
                         </div>
@@ -331,7 +353,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs"></script>
-    
+
     <script>
         // Variáveis globais dos gráficos
         let graficoPrincipal = null;
@@ -340,18 +362,106 @@
         let graficoHeatmap = null;
         let graficoSeriesTempo = null;
 
-        // Dados simulados (em produção, vir da API)
-        const dadosSimulados = {
-            documentos: [45, 52, 38, 47, 63, 41, 58, 69, 72, 55, 48, 61, 67, 59, 44],
-            confianca: [0.89, 0.92, 0.87, 0.91, 0.94, 0.88, 0.93, 0.95, 0.96, 0.90, 0.86, 0.92, 0.94, 0.91, 0.87],
-            tempo: [234, 189, 267, 201, 156, 245, 178, 134, 123, 198, 289, 167, 145, 187, 256],
-            usuarios: [12, 15, 9, 14, 18, 11, 16, 19, 21, 13, 10, 17, 20, 16, 12],
-            labels: ['01/08', '02/08', '03/08', '04/08', '05/08', '06/08', '07/08', '08/08', '09/08', '10/08', '11/08', '12/08', '13/08', '14/08', '15/08']
+        // Dados carregados dinamicamente da API
+        let dadosEstatisticos = {
+            documentos: [],
+            confianca: [],
+            tempo: [],
+            usuarios: [],
+            labels: []
         };
 
-        document.addEventListener('DOMContentLoaded', function() {
-            inicializarGraficos();
+        document.addEventListener('DOMContentLoaded', function () {
+            carregarDadosIniciais();
+
+            // Event listeners para recarregar dados quando filtros mudarem
+            document.getElementById('dataInicio').addEventListener('change', aplicarFiltros);
+            document.getElementById('dataFim').addEventListener('change', aplicarFiltros);
         });
+
+        async function carregarDadosIniciais() {
+            await carregarDadosEstatisticos();
+            inicializarGraficos();
+            // Garantir que o gráfico de distribuição use os dados carregados
+            setTimeout(() => atualizarGraficoDistribuicao(), 100);
+        }
+
+        async function carregarDadosEstatisticos() {
+            try {
+                const dataInicio = document.getElementById('dataInicio').value;
+                const dataFim = document.getElementById('dataFim').value;
+
+                // Carregar dados de todas as métricas
+                const [docsData, confData, tempoData, usersData, tiposData] = await Promise.all([
+                    fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=documentos`).then(r => r.json()),
+                    fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=confianca`).then(r => r.json()),
+                    fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=tempo`).then(r => r.json()),
+                    fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=usuarios`).then(r => r.json()),
+                    fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=tipos`).then(r => r.json())
+                ]);
+
+                // Extrair dados da resposta da API
+                const extractData = (response) => response.success ? response.data : { labels: [], valores: [] };
+
+                const docsDataExtracted = extractData(docsData);
+                const confDataExtracted = extractData(confData);
+                const tempoDataExtracted = extractData(tempoData);
+                const usersDataExtracted = extractData(usersData);
+                const tiposDataExtracted = extractData(tiposData);
+
+                // Unificar labels (usar o maior conjunto de datas)
+                const todasLabels = [...new Set([
+                    ...docsDataExtracted.labels || [],
+                    ...confDataExtracted.labels || [],
+                    ...tempoDataExtracted.labels || [],
+                    ...usersDataExtracted.labels || []
+                ])].sort();
+
+                dadosEstatisticos = {
+                    labels: todasLabels,
+                    documentos: preencherDados(docsDataExtracted, todasLabels),
+                    confianca: preencherDados(confDataExtracted, todasLabels),
+                    tempo: preencherDados(tempoDataExtracted, todasLabels),
+                    usuarios: preencherDados(usersDataExtracted, todasLabels),
+                    // Dados de tipos são diferentes (não temporais)
+                    tipos: tiposDataExtracted.valores || [],
+                    tiposLabels: tiposDataExtracted.labels || []
+                };
+
+                console.log('Dados carregados:', dadosEstatisticos);
+                console.log('Dados de tipos específicos:', {
+                    tipos: dadosEstatisticos.tipos,
+                    tiposLabels: dadosEstatisticos.tiposLabels
+                });
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                // Fallback para dados de exemplo se houver erro
+                carregarDadosExemplo();
+            }
+        }
+
+        function preencherDados(apiData, todasLabels) {
+            if (!apiData || !apiData.labels || !apiData.valores) {
+                return new Array(todasLabels.length).fill(0);
+            }
+
+            return todasLabels.map(label => {
+                const index = apiData.labels.indexOf(label);
+                return index >= 0 ? apiData.valores[index] : 0;
+            });
+        }
+
+        function carregarDadosExemplo() {
+            dadosEstatisticos = {
+                documentos: [45, 52, 38, 47, 63, 41, 58, 69, 72, 55, 48, 61, 67, 59, 44],
+                confianca: [89, 92, 87, 91, 94, 88, 93, 95, 96, 90, 86, 92, 94, 91, 87],
+                tempo: [234, 189, 267, 201, 156, 245, 178, 134, 123, 198, 289, 167, 145, 187, 256],
+                usuarios: [12, 15, 9, 14, 18, 11, 16, 19, 21, 13, 10, 17, 20, 16, 12],
+                tipos: [45, 23, 18, 14],
+                tiposLabels: ['Autuação', 'Defesa', 'Notificação', 'Outros'],
+                labels: ['01/08', '02/08', '03/08', '04/08', '05/08', '06/08', '07/08', '08/08', '09/08', '10/08', '11/08', '12/08', '13/08', '14/08', '15/08']
+            };
+        }
 
         function inicializarGraficos() {
             criarGraficoPrincipal();
@@ -363,14 +473,14 @@
 
         function criarGraficoPrincipal() {
             const ctx = document.getElementById('graficoPrincipal').getContext('2d');
-            
+
             graficoPrincipal = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: dadosSimulados.labels,
+                    labels: dadosEstatisticos.labels,
                     datasets: [{
                         label: 'Documentos Processados',
-                        data: dadosSimulados.documentos,
+                        data: dadosEstatisticos.documentos,
                         borderColor: 'rgb(54, 162, 235)',
                         backgroundColor: 'rgba(54, 162, 235, 0.1)',
                         tension: 0.4,
@@ -429,19 +539,37 @@
 
         function criarGraficoDistribuicao() {
             const ctx = document.getElementById('graficoDistribuicao').getContext('2d');
-            
+
+            // Usar dados dinâmicos de tipos de documento
+            const labels = dadosEstatisticos.tiposLabels && dadosEstatisticos.tiposLabels.length > 0
+                ? dadosEstatisticos.tiposLabels
+                : ['Autuação', 'Defesa', 'Notificação', 'Outros'];
+
+            const data = dadosEstatisticos.tipos && dadosEstatisticos.tipos.length > 0
+                ? dadosEstatisticos.tipos
+                : [45, 23, 18, 14];
+
+            // Gerar cores dinâmicas baseadas no número de categorias
+            const cores = [
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 206, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(153, 102, 255, 0.8)',
+                'rgba(255, 159, 64, 0.8)',
+                'rgba(199, 199, 199, 0.8)',
+                'rgba(83, 102, 255, 0.8)'
+            ];
+
+            const backgroundColor = labels.map((_, index) => cores[index % cores.length]);
+
             graficoDistribuicao = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Autuação', 'Defesa', 'Notificação', 'Outros'],
+                    labels: labels,
                     datasets: [{
-                        data: [45, 23, 18, 14],
-                        backgroundColor: [
-                            'rgba(255, 99, 132, 0.8)',
-                            'rgba(54, 162, 235, 0.8)',
-                            'rgba(255, 206, 86, 0.8)',
-                            'rgba(75, 192, 192, 0.8)'
-                        ],
+                        data: data,
+                        backgroundColor: backgroundColor,
                         borderWidth: 2,
                         borderColor: '#fff'
                     }]
@@ -461,10 +589,10 @@
         function criarGraficoBoxplot() {
             // Simular boxplot com dados de confiança
             const ctx = document.getElementById('graficoBoxplot').getContext('2d');
-            
-            const confiancaDados = dadosSimulados.confianca.map(v => v * 100);
+
+            const confiancaDados = dadosEstatisticos.confianca;
             const quartis = calcularQuartis(confiancaDados);
-            
+
             // Atualizar elementos de quartis
             document.getElementById('q1').textContent = quartis.q1.toFixed(1) + '%';
             document.getElementById('mediana').textContent = quartis.mediana.toFixed(1) + '%';
@@ -494,7 +622,7 @@
                             beginAtZero: true,
                             max: 100,
                             ticks: {
-                                callback: function(value) {
+                                callback: function (value) {
                                     return value + '%';
                                 }
                             }
@@ -507,7 +635,7 @@
         function criarGraficoHeatmap() {
             // Simular heatmap de correlação
             const ctx = document.getElementById('graficoHeatmap').getContext('2d');
-            
+
             // Dados de correlação simulados
             const correlacoes = [
                 [1.0, 0.73, -0.45, 0.62],
@@ -515,10 +643,10 @@
                 [-0.45, -0.38, 1.0, -0.29],
                 [0.62, 0.81, -0.29, 1.0]
             ];
-            
+
             const labels = ['Docs', 'Conf.', 'Tempo', 'Users'];
             const heatmapData = [];
-            
+
             for (let i = 0; i < labels.length; i++) {
                 for (let j = 0; j < labels.length; j++) {
                     heatmapData.push({
@@ -539,7 +667,7 @@
                             y: labels.indexOf(d.y),
                             r: Math.abs(d.v) * 20
                         })),
-                        backgroundColor: heatmapData.map(d => 
+                        backgroundColor: heatmapData.map(d =>
                             d.v > 0 ? `rgba(54, 162, 235, ${Math.abs(d.v)})` : `rgba(255, 99, 132, ${Math.abs(d.v)})`
                         )
                     }]
@@ -555,7 +683,7 @@
                             max: 3.5,
                             ticks: {
                                 stepSize: 1,
-                                callback: function(value, index) {
+                                callback: function (value, index) {
                                     return labels[value];
                                 }
                             }
@@ -565,7 +693,7 @@
                             max: 3.5,
                             ticks: {
                                 stepSize: 1,
-                                callback: function(value, index) {
+                                callback: function (value, index) {
                                     return labels[value];
                                 }
                             }
@@ -577,12 +705,12 @@
 
         function criarGraficoSeriesTempo() {
             const ctx = document.getElementById('graficoSeriesTempo').getContext('2d');
-            
+
             // Gerar dados históricos + predição
-            const dadosHistoricos = dadosSimulados.documentos;
+            const dadosHistoricos = dadosEstatisticos.documentos;
             const predicao = gerarPredicao(dadosHistoricos, 7);
-            
-            const labelsCompletos = [...dadosSimulados.labels, ...predicao.labels];
+
+            const labelsCompletos = [...dadosEstatisticos.labels, ...predicao.labels];
             const dadosCompletos = [...dadosHistoricos, ...new Array(predicao.valores.length).fill(null)];
             const dadosPredicao = [...new Array(dadosHistoricos.length).fill(null), ...predicao.valores];
 
@@ -628,7 +756,7 @@
             const q1 = percentil(sorted, 25);
             const mediana = percentil(sorted, 50);
             const q3 = percentil(sorted, 75);
-            
+
             return {
                 min: Math.min(...sorted),
                 q1: q1,
@@ -643,7 +771,7 @@
             const lower = Math.floor(index);
             const upper = Math.ceil(index);
             const weight = index % 1;
-            
+
             if (upper >= arr.length) return arr[lower];
             return arr[lower] * (1 - weight) + arr[upper] * weight;
         }
@@ -651,76 +779,54 @@
         function gerarPredicao(dados, periodos) {
             // Regressão linear simples
             const n = dados.length;
-            const x = Array.from({length: n}, (_, i) => i);
+            const x = Array.from({ length: n }, (_, i) => i);
             const y = dados;
-            
+
             const sumX = x.reduce((a, b) => a + b, 0);
             const sumY = y.reduce((a, b) => a + b, 0);
             const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
             const sumXX = x.reduce((sum, xi) => sum + xi * xi, 0);
-            
+
             const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
             const intercept = (sumY - slope * sumX) / n;
-            
+
             const valores = [];
             const labels = [];
-            
+
             for (let i = 0; i < periodos; i++) {
                 const proximoX = n + i;
                 const valor = Math.round(slope * proximoX + intercept);
                 valores.push(valor > 0 ? valor : 0);
-                
+
                 const data = new Date();
                 data.setDate(data.getDate() + i + 1);
                 labels.push(data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
             }
-            
+
             return { valores, labels };
         }
 
         // Funções de interação
         function alterarTipoGrafico() {
             const tipo = document.getElementById('tipoGrafico').value;
-            
+
             if (graficoPrincipal) {
                 graficoPrincipal.config.type = tipo;
                 graficoPrincipal.update();
             }
         }
 
-        function aplicarFiltros() {
-            const dataInicio = document.getElementById('dataInicio').value;
-            const dataFim = document.getElementById('dataFim').value;
-            const metrica = document.getElementById('metrica').value;
-            
-            showToast.info('Filtros Aplicados', 'Gráficos atualizados com novos filtros');
-            
-            // Aqui você faria uma chamada AJAX para buscar novos dados
-            // Por enquanto, apenas recriar com dados simulados
-            atualizarDados();
-        }
-
-        function atualizarDados() {
-            // Simular atualização de dados
-            showToast.info('Atualizando', 'Buscando novos dados...');
-            
-            setTimeout(() => {
-                // Recriar gráficos com novos dados
-                inicializarGraficos();
-                showToast.success('Atualizado', 'Gráficos atualizados com sucesso');
-            }, 1000);
-        }
-
         function mostrarEstatisticas() {
             const metrica = document.getElementById('metrica').value;
-            let dados = dadosSimulados.documentos;
-            
-            switch(metrica) {
-                case 'confianca': dados = dadosSimulados.confianca.map(v => v * 100); break;
-                case 'tempo': dados = dadosSimulados.tempo; break;
-                case 'usuarios': dados = dadosSimulados.usuarios; break;
+            let dados = dadosEstatisticos.documentos;
+
+            switch (metrica) {
+                case 'confianca': dados = dadosEstatisticos.confianca; break;
+                case 'tempo': dados = dadosEstatisticos.tempo; break;
+                case 'usuarios': dados = dadosEstatisticos.usuarios; break;
+                case 'tipos': dados = dadosEstatisticos.tipos; break;
             }
-            
+
             // Calcular estatísticas
             const media = dados.reduce((a, b) => a + b) / dados.length;
             const mediana = percentil(dados.slice().sort((a, b) => a - b), 50);
@@ -729,7 +835,7 @@
             const variancia = Math.pow(desvio, 2);
             const amplitude = Math.max(...dados) - Math.min(...dados);
             const quartis = calcularQuartis(dados);
-            
+
             // Preencher modal
             document.getElementById('estatMedia').textContent = media.toFixed(2);
             document.getElementById('estatMediana').textContent = mediana.toFixed(2);
@@ -741,7 +847,7 @@
             document.getElementById('estatQ2').textContent = quartis.mediana.toFixed(2);
             document.getElementById('estatQ3').textContent = quartis.q3.toFixed(2);
             document.getElementById('estatIQR').textContent = (quartis.q3 - quartis.q1).toFixed(2);
-            
+
             new bootstrap.Modal(document.getElementById('modalEstatisticas')).show();
         }
 
@@ -750,10 +856,10 @@
             dados.forEach(valor => {
                 frequencia[valor] = (frequencia[valor] || 0) + 1;
             });
-            
+
             let maxFreq = 0;
             let moda = [];
-            
+
             for (let valor in frequencia) {
                 if (frequencia[valor] > maxFreq) {
                     maxFreq = frequencia[valor];
@@ -762,8 +868,165 @@
                     moda.push(valor);
                 }
             }
-            
+
             return moda.length === dados.length ? 'Sem moda' : moda.join(', ');
+        }
+
+        async function aplicarFiltros() {
+            showToast.info('Atualizando', 'Carregando dados com novos filtros...');
+
+            try {
+                await carregarDadosEstatisticos();
+                atualizarTodosGraficos();
+                // Garantir que o gráfico de distribuição seja atualizado com os novos dados
+                atualizarGraficoDistribuicao();
+                showToast.success('Concluído', 'Gráficos atualizados com sucesso!');
+            } catch (error) {
+                showToast.error('Erro', 'Falha ao atualizar dados: ' + error.message);
+            }
+        }
+
+        function atualizarTodosGraficos() {
+            // Destruir gráficos existentes
+            if (graficoPrincipal) graficoPrincipal.destroy();
+            if (graficoDistribuicao) graficoDistribuicao.destroy();
+            if (graficoBoxplot) graficoBoxplot.destroy();
+            if (graficoHeatmap) graficoHeatmap.destroy();
+            if (graficoSeriesTempo) graficoSeriesTempo.destroy();
+
+            // Recriar gráficos com novos dados
+            inicializarGraficos();
+        }
+
+        function atualizarGraficoDistribuicao() {
+            if (graficoDistribuicao) {
+                // Usar dados dinâmicos de tipos de documento
+                const labels = dadosEstatisticos.tiposLabels && dadosEstatisticos.tiposLabels.length > 0
+                    ? dadosEstatisticos.tiposLabels
+                    : ['Autuação', 'Defesa', 'Notificação', 'Outros'];
+
+                const data = dadosEstatisticos.tipos && dadosEstatisticos.tipos.length > 0
+                    ? dadosEstatisticos.tipos
+                    : [45, 23, 18, 14];
+
+                console.log('Atualizando gráfico de distribuição com:', { labels, data });
+
+                // Gerar cores dinâmicas baseadas no número de categorias
+                const cores = [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(153, 102, 255, 0.8)',
+                    'rgba(255, 159, 64, 0.8)',
+                    'rgba(199, 199, 199, 0.8)',
+                    'rgba(83, 102, 255, 0.8)'
+                ];
+
+                const backgroundColor = labels.map((_, index) => cores[index % cores.length]);
+
+                // Atualizar dados do gráfico
+                graficoDistribuicao.data.labels = labels;
+                graficoDistribuicao.data.datasets[0].data = data;
+                graficoDistribuicao.data.datasets[0].backgroundColor = backgroundColor;
+
+                graficoDistribuicao.update('active');
+            } else {
+                console.warn('Gráfico de distribuição não está inicializado');
+            }
+        }
+
+        function atualizarDados() {
+            const metrica = document.getElementById('metrica').value;
+
+            if (graficoPrincipal) {
+                let dados, label, cor;
+
+                switch (metrica) {
+                    case 'documentos':
+                        dados = dadosEstatisticos.documentos;
+                        label = 'Documentos Processados';
+                        cor = 'rgb(54, 162, 235)';
+                        break;
+                    case 'confianca':
+                        dados = dadosEstatisticos.confianca;
+                        label = 'Confiança Média (%)';
+                        cor = 'rgb(75, 192, 192)';
+                        break;
+                    case 'tempo':
+                        dados = dadosEstatisticos.tempo;
+                        label = 'Tempo de Processamento (s)';
+                        cor = 'rgb(255, 99, 132)';
+                        break;
+                    case 'usuarios':
+                        dados = dadosEstatisticos.usuarios;
+                        label = 'Usuários Ativos';
+                        cor = 'rgb(255, 205, 86)';
+                        break;
+                    case 'tipos':
+                        dados = dadosEstatisticos.tipos || [];
+                        label = 'Tipos de Documento';
+                        cor = 'rgb(153, 102, 255)';
+                        // Para tipos de documento, mudar para gráfico de barras
+                        if (graficoPrincipal.config.type !== 'bar') {
+                            graficoPrincipal.config.type = 'bar';
+                            document.getElementById('tipoGrafico').value = 'bar';
+                        }
+                        break;
+                    default:
+                        dados = dadosEstatisticos.documentos;
+                        label = 'Documentos Processados';
+                        cor = 'rgb(54, 162, 235)';
+                }
+
+                graficoPrincipal.data.datasets[0].data = dados;
+                graficoPrincipal.data.datasets[0].label = label;
+                graficoPrincipal.data.datasets[0].borderColor = cor;
+                graficoPrincipal.data.datasets[0].backgroundColor = cor.replace('rgb', 'rgba').replace(')', ', 0.1)');
+
+                // Atualizar labels baseado na métrica
+                if (metrica === 'tipos' && dadosEstatisticos.tiposLabels) {
+                    graficoPrincipal.data.labels = dadosEstatisticos.tiposLabels;
+                } else {
+                    graficoPrincipal.data.labels = dadosEstatisticos.labels;
+                }
+
+                // Atualizar título do gráfico
+                document.getElementById('tituloGraficoPrincipal').textContent = `Evolução Temporal - ${label}`;
+
+                graficoPrincipal.update('active');
+            }
+
+            // Sempre atualizar o gráfico de distribuição quando os dados mudarem
+            atualizarGraficoDistribuicao();
+        }
+
+        function resetarFiltros() {
+            document.getElementById('dataInicio').value = '@DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd")';
+            document.getElementById('dataFim').value = '@DateTime.Now.ToString("yyyy-MM-dd")';
+            document.getElementById('tipoGrafico').value = 'line';
+            document.getElementById('metrica').value = 'documentos';
+            aplicarFiltros();
+        }
+
+        function alterarTipoGrafico() {
+            const novoTipo = document.getElementById('tipoGrafico').value;
+
+            if (graficoPrincipal) {
+                graficoPrincipal.config.type = novoTipo;
+
+                // Ajustar configurações específicas por tipo
+                if (novoTipo === 'doughnut' || novoTipo === 'pie') {
+                    graficoPrincipal.config.options.scales = {};
+                } else {
+                    graficoPrincipal.config.options.scales = {
+                        x: { display: true },
+                        y: { display: true, beginAtZero: true }
+                    };
+                }
+
+                graficoPrincipal.update('active');
+            }
         }
 
         function resetZoom() {
@@ -776,12 +1039,17 @@
             showToast.info('Pan/Zoom', 'Use a roda do mouse para zoom e arraste para navegar');
         }
 
+        function atualizarPredicao() {
+            // Automaticamente recalcula a predição quando os parâmetros mudam
+            calcularPredicao();
+        }
+
         function calcularPredicao() {
             const periodo = parseInt(document.getElementById('periodoPredicao').value);
             const modelo = document.getElementById('modeloPredicao').value;
-            
+
             showToast.info('Calculando', `Gerando predição para ${periodo} dias usando ${modelo}`);
-            
+
             setTimeout(() => {
                 criarGraficoSeriesTempo();
                 showToast.success('Concluído', 'Predição calculada com sucesso');
@@ -790,29 +1058,334 @@
 
         function exportarGraficos() {
             showToast.info('Exportando', 'Gerando arquivo com todos os gráficos...');
-            
-            // Simular export
-            setTimeout(() => {
-                showToast.success('Exportado', 'Gráficos exportados como imagens PNG');
-            }, 2000);
+
+            try {
+                const graficos = [];
+
+                // Capturar cada gráfico como imagem
+                if (graficoPrincipal) {
+                    graficos.push({
+                        nome: 'Gráfico Principal',
+                        imagem: graficoPrincipal.toBase64Image()
+                    });
+                }
+
+                if (graficoDistribuicao) {
+                    graficos.push({
+                        nome: 'Distribuição',
+                        imagem: graficoDistribuicao.toBase64Image()
+                    });
+                }
+
+                if (graficoBoxplot) {
+                    graficos.push({
+                        nome: 'Box Plot',
+                        imagem: graficoBoxplot.toBase64Image()
+                    });
+                }
+
+                // Criar um arquivo de download com as imagens
+                const dataAtual = new Date().toLocaleDateString('pt-BR');
+                const nomeArquivo = `graficos_estatisticos_${dataAtual.replace(/\//g, '-')}.json`;
+
+                const dadosExport = {
+                    data: dataAtual,
+                    filtros: {
+                        dataInicio: document.getElementById('dataInicio').value,
+                        dataFim: document.getElementById('dataFim').value,
+                        metrica: document.getElementById('metrica').value
+                    },
+                    graficos: graficos,
+                    dadosEstatisticos: dadosEstatisticos
+                };
+
+                const blob = new Blob([JSON.stringify(dadosExport, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = nomeArquivo;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                showToast.success('Exportado', 'Gráficos e dados exportados com sucesso!');
+            } catch (error) {
+                showToast.error('Erro', 'Falha ao exportar: ' + error.message);
+            }
         }
 
         function gerarRelatorio() {
             showToast.info('Gerando', 'Criando relatório completo da análise...');
-            
-            // Simular geração de relatório
-            setTimeout(() => {
-                showToast.success('Relatório Pronto', 'Relatório estatístico gerado com sucesso');
-            }, 3000);
+
+            try {
+                const dataInicio = document.getElementById('dataInicio').value;
+                const dataFim = document.getElementById('dataFim').value;
+
+                // Calcular estatísticas resumidas
+                const stats = {
+                    documentos: calcularEstatisticas(dadosEstatisticos.documentos),
+                    confianca: calcularEstatisticas(dadosEstatisticos.confianca),
+                    tempo: calcularEstatisticas(dadosEstatisticos.tempo),
+                    usuarios: calcularEstatisticas(dadosEstatisticos.usuarios)
+                };
+
+                const relatorio = `
+            RELATÓRIO ESTATÍSTICO - CLASSIFICADOR DE DOCUMENTOS
+            ================================================
+
+            Período: ${dataInicio} a ${dataFim}
+            Data do Relatório: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}
+
+            RESUMO EXECUTIVO
+            ================
+            • Total de documentos processados: ${dadosEstatisticos.documentos.reduce((a, b) => a + b, 0)}
+            • Confiança média: ${stats.confianca.media.toFixed(2)}%
+            • Tempo médio de processamento: ${stats.tempo.media.toFixed(1)}s
+            • Usuários ativos (média): ${stats.usuarios.media.toFixed(0)}
+
+            ESTATÍSTICAS DETALHADAS
+            ======================
+
+            Documentos Processados:
+            • Média: ${stats.documentos.media.toFixed(1)}
+            • Mediana: ${stats.documentos.mediana.toFixed(1)}
+            • Desvio Padrão: ${stats.documentos.desvio.toFixed(1)}
+            • Mínimo: ${stats.documentos.min}
+            • Máximo: ${stats.documentos.max}
+
+            Confiança (%):
+            • Média: ${stats.confianca.media.toFixed(2)}%
+            • Mediana: ${stats.confianca.mediana.toFixed(2)}%
+            • Desvio Padrão: ${stats.confianca.desvio.toFixed(2)}%
+            • Mínimo: ${stats.confianca.min.toFixed(2)}%
+            • Máximo: ${stats.confianca.max.toFixed(2)}%
+
+            Tempo de Processamento (segundos):
+            • Média: ${stats.tempo.media.toFixed(1)}s
+            • Mediana: ${stats.tempo.mediana.toFixed(1)}s
+            • Desvio Padrão: ${stats.tempo.desvio.toFixed(1)}s
+            • Mínimo: ${stats.tempo.min.toFixed(1)}s
+            • Máximo: ${stats.tempo.max.toFixed(1)}s
+
+            Usuários Ativos:
+            • Média: ${stats.usuarios.media.toFixed(1)}
+            • Mediana: ${stats.usuarios.mediana.toFixed(1)}
+            • Desvio Padrão: ${stats.usuarios.desvio.toFixed(1)}
+            • Mínimo: ${stats.usuarios.min}
+            • Máximo: ${stats.usuarios.max}
+
+            ANÁLISE DE TENDÊNCIAS
+            ====================
+            ${analisarTendencias()}
+
+            Relatório gerado automaticamente pelo Sistema Classificador de Documentos
+            `;
+
+                const blob = new Blob([relatorio], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `relatorio_estatistico_${new Date().toISOString().split('T')[0]}.txt`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                showToast.success('Relatório Pronto', 'Relatório estatístico gerado e baixado com sucesso!');
+            } catch (error) {
+                showToast.error('Erro', 'Falha ao gerar relatório: ' + error.message);
+            }
         }
 
-        function resetarFiltros() {
-            document.getElementById('dataInicio').value = '@DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd")';
-            document.getElementById('dataFim').value = '@DateTime.Now.ToString("yyyy-MM-dd")';
-            document.getElementById('tipoGrafico').value = 'line';
-            document.getElementById('metrica').value = 'documentos';
-            
-            atualizarDados();
+        function calcularEstatisticas(dados) {
+            if (!dados || dados.length === 0) return { media: 0, mediana: 0, desvio: 0, min: 0, max: 0 };
+
+            const ordenados = [...dados].sort((a, b) => a - b);
+            const media = dados.reduce((a, b) => a + b, 0) / dados.length;
+            const mediana = ordenados.length % 2 === 0
+                ? (ordenados[ordenados.length / 2 - 1] + ordenados[ordenados.length / 2]) / 2
+                : ordenados[Math.floor(ordenados.length / 2)];
+
+            const variancia = dados.reduce((acc, val) => acc + Math.pow(val - media, 2), 0) / dados.length;
+            const desvio = Math.sqrt(variancia);
+
+            return {
+                media,
+                mediana,
+                desvio,
+                min: Math.min(...dados),
+                max: Math.max(...dados)
+            };
+        }
+
+        function analisarTendencias() {
+            const docs = dadosEstatisticos.documentos;
+            const conf = dadosEstatisticos.confianca;
+
+            if (docs.length < 2) return 'Dados insuficientes para análise de tendências.';
+
+            // Calcular tendência simples (linear)
+            const tendenciaDocs = docs[docs.length - 1] - docs[0];
+            const tendenciaConf = conf[conf.length - 1] - conf[0];
+
+            let analise = '';
+
+            if (tendenciaDocs > 0) {
+                analise += '• Tendência crescente no processamento de documentos.\n';
+            } else if (tendenciaDocs < 0) {
+                analise += '• Tendência decrescente no processamento de documentos.\n';
+            } else {
+                analise += '• Processamento de documentos estável.\n';
+            }
+
+            if (tendenciaConf > 0) {
+                analise += '• Melhoria na confiança das classificações.\n';
+            } else if (tendenciaConf < 0) {
+                analise += '• Diminuição na confiança das classificações.\n';
+            } else {
+                analise += '• Confiança das classificações estável.\n';
+            }
+
+            return analise;
+        }
+
+        // Funções para opções dos gráficos
+        function toggleAnimacao() {
+            if (graficoPrincipal) {
+                const animacaoAtiva = graficoPrincipal.options.animation !== false;
+                graficoPrincipal.options.animation = !animacaoAtiva;
+                graficoPrincipal.update();
+                showToast.info('Animação', animacaoAtiva ? 'Animação desabilitada' : 'Animação habilitada');
+            }
+        }
+
+        function alterarEscala() {
+            if (graficoPrincipal) {
+                const escalaLinear = graficoPrincipal.options.scales.y.type !== 'logarithmic';
+                graficoPrincipal.options.scales.y.type = escalaLinear ? 'logarithmic' : 'linear';
+                graficoPrincipal.update();
+                showToast.info('Escala', escalaLinear ? 'Escala logarítmica ativada' : 'Escala linear ativada');
+            }
+        }
+
+        function mostrarTendencia() {
+            if (graficoPrincipal) {
+                // Adicionar linha de tendência simples
+                const dados = graficoPrincipal.data.datasets[0].data;
+                const tendencia = calcularTendenciaLinear(dados);
+
+                // Verificar se já existe dataset de tendência
+                const indiceTendencia = graficoPrincipal.data.datasets.findIndex(d => d.label === 'Tendência');
+
+                if (indiceTendencia >= 0) {
+                    // Remover tendência existente
+                    graficoPrincipal.data.datasets.splice(indiceTendencia, 1);
+                    showToast.info('Tendência', 'Linha de tendência removida');
+                } else {
+                    // Adicionar nova tendência
+                    graficoPrincipal.data.datasets.push({
+                        label: 'Tendência',
+                        data: tendencia,
+                        borderColor: 'rgba(255, 99, 132, 0.8)',
+                        backgroundColor: 'transparent',
+                        borderDash: [10, 5],
+                        pointRadius: 0,
+                        tension: 0
+                    });
+                    showToast.info('Tendência', 'Linha de tendência adicionada');
+                }
+
+                graficoPrincipal.update();
+            }
+        }
+
+        function calcularTendenciaLinear(dados) {
+            const n = dados.length;
+            const x = Array.from({ length: n }, (_, i) => i);
+            const y = dados;
+
+            const sumX = x.reduce((a, b) => a + b, 0);
+            const sumY = y.reduce((a, b) => a + b, 0);
+            const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+            const sumXX = x.reduce((sum, xi) => sum + xi * xi, 0);
+
+            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+
+            return x.map(xi => slope * xi + intercept);
+        }
+
+        function exportarGrafico(tipo) {
+            let grafico = null;
+            let nome = '';
+
+            switch (tipo) {
+                case 'principal':
+                    grafico = graficoPrincipal;
+                    nome = 'grafico_principal';
+                    break;
+                case 'distribuicao':
+                    grafico = graficoDistribuicao;
+                    nome = 'grafico_distribuicao';
+                    break;
+                case 'boxplot':
+                    grafico = graficoBoxplot;
+                    nome = 'grafico_boxplot';
+                    break;
+                case 'heatmap':
+                    grafico = graficoHeatmap;
+                    nome = 'grafico_heatmap';
+                    break;
+                case 'series':
+                    grafico = graficoSeriesTempo;
+                    nome = 'grafico_series_tempo';
+                    break;
+            }
+
+            if (grafico) {
+                const link = document.createElement('a');
+                link.download = `${nome}_${new Date().toISOString().split('T')[0]}.png`;
+                link.href = grafico.toBase64Image();
+                link.click();
+                showToast.success('Exportado', `Gráfico ${nome} exportado como PNG`);
+            }
+        }
+
+        function exportarEstatisticas() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalEstatisticas'));
+            if (modal) modal.hide();
+
+            const dados = {
+                data: new Date().toLocaleDateString('pt-BR'),
+                estatisticas: {
+                    media: document.getElementById('estatMedia').textContent,
+                    mediana: document.getElementById('estatMediana').textContent,
+                    moda: document.getElementById('estatModa').textContent,
+                    desvio: document.getElementById('estatDesvio').textContent,
+                    variancia: document.getElementById('estatVariancia').textContent,
+                    amplitude: document.getElementById('estatAmplitude').textContent,
+                    q1: document.getElementById('estatQ1').textContent,
+                    q2: document.getElementById('estatQ2').textContent,
+                    q3: document.getElementById('estatQ3').textContent,
+                    iqr: document.getElementById('estatIQR').textContent
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `estatisticas_descritivas_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast.success('Exportado', 'Estatísticas descritivas exportadas');
         }
     </script>
 }
@@ -822,22 +1395,30 @@
         .card {
             transition: transform 0.2s;
         }
-        
+
         .card:hover {
             transform: translateY(-2px);
         }
-        
+
         .chart-container {
             position: relative;
             height: 400px;
         }
-        
+
         .stat-card {
             border-left: 4px solid #007bff;
         }
-        
-        .correlation-high { background-color: rgba(54, 162, 235, 0.8) !important; }
-        .correlation-medium { background-color: rgba(255, 206, 86, 0.8) !important; }
-        .correlation-low { background-color: rgba(255, 99, 132, 0.8) !important; }
+
+        .correlation-high {
+            background-color: rgba(54, 162, 235, 0.8) !important;
+        }
+
+        .correlation-medium {
+            background-color: rgba(255, 206, 86, 0.8) !important;
+        }
+
+        .correlation-low {
+            background-color: rgba(255, 99, 132, 0.8) !important;
+        }
     </style>
 }

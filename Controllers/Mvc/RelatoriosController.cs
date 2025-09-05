@@ -453,6 +453,8 @@ namespace ClassificadorDoc.Controllers.Mvc
                     return await ObterDadosTempo(dataInicio, dataFim);
                 case "usuarios":
                     return await ObterDadosUsuarios(dataInicio, dataFim);
+                case "tipos":
+                    return await ObterDadosTiposDocumento(dataInicio, dataFim);
                 default:
                     return await ObterDadosDocumentos(dataInicio, dataFim);
             }
@@ -546,6 +548,51 @@ namespace ClassificadorDoc.Controllers.Mvc
             };
         }
 
+        private async Task<object> ObterDadosTiposDocumento(DateTime dataInicio, DateTime dataFim)
+        {
+            var dados = await _context.BatchProcessingHistories
+                .Where(b => b.StartedAt >= dataInicio && b.StartedAt <= dataFim && !string.IsNullOrEmpty(b.PredominantDocumentType))
+                .GroupBy(b => b.PredominantDocumentType)
+                .Select(g => new
+                {
+                    tipo = g.Key ?? "Outros",
+                    count = g.Sum(b => b.TotalDocuments),
+                    batches = g.Count(),
+                    confiancaMedia = g.Average(b => b.AverageConfidence)
+                })
+                .OrderByDescending(x => x.count)
+                .ToListAsync();
+
+            // Se não há dados, retornar dados de exemplo
+            if (!dados.Any())
+            {
+                return new
+                {
+                    labels = new[] { "Autuação", "Defesa", "Notificação", "Outros" },
+                    valores = new[] { 45, 23, 18, 14 },
+                    detalhes = new[] {
+                        new { tipo = "Autuação", documentos = 45, lotes = 12, confianca = 92.0 },
+                        new { tipo = "Defesa", documentos = 23, lotes = 8, confianca = 89.0 },
+                        new { tipo = "Notificação", documentos = 18, lotes = 6, confianca = 94.0 },
+                        new { tipo = "Outros", documentos = 14, lotes = 4, confianca = 87.0 }
+                    }
+                };
+            }
+
+            return new
+            {
+                labels = dados.Select(d => d.tipo).ToArray(),
+                valores = dados.Select(d => d.count).ToArray(),
+                detalhes = dados.Select(d => new
+                {
+                    tipo = d.tipo,
+                    documentos = d.count,
+                    lotes = d.batches,
+                    confianca = Math.Round(d.confiancaMedia * 100, 1)
+                }).ToArray()
+            };
+        }
+
         private async Task<double[]> ObterDadosHistoricos(string metrica, int periodos)
         {
             var dataInicio = DateTime.Now.AddDays(-periodos);
@@ -609,6 +656,86 @@ namespace ClassificadorDoc.Controllers.Mvc
             return Math.Round(varianciaExplicada / varianciaTotal, 2);
         }
 
+        [HttpPost]
+        public async Task<IActionResult> InserirDadosTeste()
+        {
+            try
+            {
+                // Verificar se já existem dados
+                var existem = await _context.BatchProcessingHistories.AnyAsync();
+                if (existem)
+                {
+                    return Json(new { success = false, message = "Dados já existem" });
+                }
+
+                var adminUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == "admin@classificador.com");
+                if (adminUser == null)
+                {
+                    return Json(new { success = false, message = "Usuário admin não encontrado" });
+                }
+
+                // Inserir dados de BatchProcessingHistories
+                var batches = new List<BatchProcessingHistory>();
+                for (int i = 15; i >= 1; i--)
+                {
+                    var random = new Random(i * 100); // Seed fixo para dados consistentes
+                    var totalDocs = 30 + random.Next(50);
+                    var successfulDocs = (int)(totalDocs * (0.85 + random.NextDouble() * 0.13)); // 85-98% sucesso
+
+                    batches.Add(new BatchProcessingHistory
+                    {
+                        BatchName = $"Lote_{i:D3}",
+                        UserId = adminUser.Id,
+                        UserName = adminUser.FullName ?? "Admin",
+                        TotalDocuments = totalDocs,
+                        SuccessfulDocuments = successfulDocs,
+                        FailedDocuments = totalDocs - successfulDocs,
+                        AverageConfidence = 0.80 + (random.NextDouble() * 0.18), // 80% - 98%
+                        StartedAt = DateTime.Now.AddDays(-i),
+                        CompletedAt = DateTime.Now.AddDays(-i).AddMinutes(10 + random.Next(20)),
+                        ProcessingDuration = TimeSpan.FromMinutes(10 + random.Next(20)),
+                        Status = "Completed"
+                    });
+                }
+
+                _context.BatchProcessingHistories.AddRange(batches);
+
+                // Inserir dados de UserProductivities
+                var users = await _context.Users.ToListAsync();
+                var productivities = new List<UserProductivity>();
+
+                foreach (var user in users)
+                {
+                    for (int i = 15; i >= 1; i--)
+                    {
+                        var random = new Random(i + user.Id.GetHashCode());
+                        var date = DateTime.Now.AddDays(-i).Date;
+
+                        productivities.Add(new UserProductivity
+                        {
+                            UserId = user.Id,
+                            Date = date,
+                            LoginCount = 1 + random.Next(5),
+                            TotalTimeOnline = TimeSpan.FromMinutes(180 + random.Next(360)), // 3-9 horas
+                            PagesAccessed = 10 + random.Next(50),
+                            FirstLogin = date.AddHours(8 + random.Next(4)), // 8h-12h
+                            LastActivity = date.AddHours(16 + random.Next(6)) // 16h-22h
+                        });
+                    }
+                }
+
+                _context.UserProductivities.AddRange(productivities);
+
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Dados de teste inseridos com sucesso!" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
         public class PredicaoRequest
         {
             public string Metrica { get; set; } = "documentos";
@@ -653,5 +780,11 @@ namespace ClassificadorDoc.Controllers.Mvc
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public List<ClassificationHierarchy> Classifications { get; set; } = new();
+    }
+
+    public class SeedTestDataResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 }
