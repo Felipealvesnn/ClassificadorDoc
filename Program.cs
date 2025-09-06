@@ -60,6 +60,15 @@ if (appMode != "ApiOnly")
 {
     builder.Services.AddControllersWithViews();
 
+    // Configurar sessão para FastReport WebReport
+    builder.Services.AddDistributedMemoryCache();
+    builder.Services.AddSession(options =>
+    {
+        options.IdleTimeout = TimeSpan.FromMinutes(30);
+        options.Cookie.HttpOnly = true;
+        options.Cookie.IsEssential = true;
+    });
+
     // Add Authorization com políticas
     builder.Services.AddAuthorization(options =>
     {
@@ -94,6 +103,9 @@ builder.Services.AddScoped<PdfExtractorService>();
 
 // Register ReportService
 builder.Services.AddScoped<IReportService, ReportService>();
+
+// Configure FastReport Web
+builder.Services.AddFastReport();
 
 // Register Alert Services
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -150,6 +162,7 @@ app.UseRouting();
 // Authentication/Authorization apenas se não for modo "ApiOnly"
 if (appMode != "ApiOnly")
 {
+    app.UseSession(); // Adicionar antes de Authentication
     app.UseAuthentication();
     app.UseAuthorization();
 }

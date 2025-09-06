@@ -1,4 +1,4 @@
-@model dynamic
+@model ClassificadorDoc.Controllers.RelatorioPreviewModel
 @{
     ViewData["Title"] = "Visualizar Relatório";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -22,332 +22,136 @@
             <div class="card">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0">
-                        <i class="fas fa-file-alt"></i> @ViewBag.TituloRelatorio
+                        <i class="fas fa-file-alt"></i> @Model.TipoRelatorio
                     </h5>
-                    <small>Período: @ViewBag.PeriodoRelatorio</small>
+                    <small>Período: @Model.DataInicio.ToString("dd/MM/yyyy") a @Model.DataFim.ToString("dd/MM/yyyy")</small>
+                    @if (!string.IsNullOrEmpty(Model.Categoria))
+                    {
+                        <small class="ms-3">Categoria: @Model.Categoria</small>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.Status))
+                    {
+                        <small class="ms-3">Status: @Model.Status</small>
+                    }
                 </div>
                 <div class="card-body">
-                    @if (ViewBag.TipoRelatorio == "auditoria")
+                    @if (!string.IsNullOrEmpty(Model.ReportId))
                     {
+                        <!-- FastReport WebReport Iframe -->
+                        <div class="report-container">
+                            <iframe 
+                                src="@Url.Action("WebReport", new { id = Model.ReportId })" 
+                                width="100%" 
+                                height="800px" 
+                                style="border: 1px solid #ddd; border-radius: 0.375rem;">
+                                <p>Seu navegador não suporta iframes. 
+                                   <a href="@Url.Action("WebReport", new { id = Model.ReportId })" target="_blank">
+                                       Clique aqui para abrir o relatório em uma nova janela
+                                   </a>
+                                </p>
+                            </iframe>
+                        </div>
+                        
+                        <div class="mt-3 text-center">
+                            <a href="@Url.Action("WebReport", new { id = Model.ReportId })" 
+                               target="_blank"
+                               class="btn btn-primary">
+                                <i class="fas fa-external-link-alt"></i> Abrir em Nova Janela
+                            </a>
+                            <a href="@Url.Action("Gerar", new { 
+                                   tipoRelatorio = Model.TipoRelatorio.ToLower().Replace("relatório de ", "").Replace("relatório ", ""),
+                                   dataInicio = Model.DataInicio.ToString("yyyy-MM-dd"),
+                                   dataFim = Model.DataFim.ToString("yyyy-MM-dd"),
+                                   categoria = Model.Categoria,
+                                   status = Model.Status,
+                                   formato = "pdf"
+                               })"
+                               class="btn btn-success">
+                                <i class="fas fa-download"></i> Baixar PDF
+                            </a>
+                        </div>
+                    }
+                    else if (Model.PdfBytes != null && Model.PdfBytes.Length > 0)
+                    {
+                        <!-- Fallback: PDF inline se não houver WebReport -->
+                        <div class="pdf-container" style="height: 800px; border: 1px solid #ddd;">
+                            <iframe 
+                                src="data:application/pdf;base64,@Model.PdfBase64" 
+                                width="100%" 
+                                height="100%" 
+                                style="border: none;">
+                                <p>Seu navegador não suporta a visualização de PDF inline. 
+                                   <a href="data:application/pdf;base64,@Model.PdfBase64" download="relatorio_@(Model.TipoRelatorio.ToLower())_@(Model.DataInicio.ToString("yyyyMMdd")).pdf">
+                                       Clique aqui para baixar o PDF
+                                   </a>
+                                </p>
+                            </iframe>
+                        </div>
+                        
+                        <div class="mt-3 text-center">
+                            <a href="data:application/pdf;base64,@Model.PdfBase64" 
+                               download="relatorio_@(Model.TipoRelatorio.ToLower())_@(Model.DataInicio.ToString("yyyyMMdd")).pdf"
+                               class="btn btn-success">
+                                <i class="fas fa-download"></i> Baixar PDF
+                            </a>
+                        </div>
+                    }
+                    else if (Model.Dados != null && Model.Dados.Rows.Count > 0)
+                    {
+                        <!-- Fallback: Tabela HTML se não houver PDF -->
                         <div class="table-responsive">
                             <table class="table table-striped table-hover">
                                 <thead class="table-dark">
                                     <tr>
-                                        <th>Data/Hora</th>
-                                        <th>Usuário</th>
-                                        <th>Ação</th>
-                                        <th>Documento</th>
-                                        <th>Detalhes</th>
-                                        <th>IP</th>
+                                        @foreach (System.Data.DataColumn column in Model.Dados.Columns)
+                                        {
+                                            <th>@column.ColumnName</th>
+                                        }
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @if (Model != null && Model.Count > 0)
-                                    {
-                                        @foreach (var item in Model)
-                                        {
-                                            <tr>
-                                                <td>@item.DataHora.ToString("dd/MM/yyyy HH:mm")</td>
-                                                <td>@item.Usuario</td>
-                                                <td>
-                                                    <span class="badge bg-@(item.TipoAcao == "CREATE" ? "success" : 
-                                                        item.TipoAcao == "UPDATE" ? "warning" : 
-                                                        item.TipoAcao == "DELETE" ? "danger" : "info")">
-                                                        @item.TipoAcao
-                                                    </span>
-                                                </td>
-                                                <td>@item.NomeDocumento</td>
-                                                <td>@item.Detalhes</td>
-                                                <td>@item.EnderecoIP</td>
-                                            </tr>
-                                        }
-                                    }
-                                    else
+                                    @foreach (System.Data.DataRow row in Model.Dados.Rows)
                                     {
                                         <tr>
-                                            <td colspan="6" class="text-center text-muted">
-                                                <i class="fas fa-search"></i> Nenhum registro encontrado para o período selecionado
-                                            </td>
+                                            @foreach (var item in row.ItemArray)
+                                            {
+                                                <td>
+                                                    @if (item != null)
+                                                    {
+                                                        @if (item is DateTime dateTime)
+                                                        {
+                                                            @dateTime.ToString("dd/MM/yyyy HH:mm")
+                                                        }
+                                                        else if (item is decimal || item is double || item is float)
+                                                        {
+                                                            @string.Format("{0:N2}", item)
+                                                        }
+                                                        else
+                                                        {
+                                                            @item.ToString()
+                                                        }
+                                                    }
+                                                </td>
+                                            }
                                         </tr>
                                     }
                                 </tbody>
                             </table>
-                        </div>
-                    }
-                    else if (ViewBag.TipoRelatorio == "produtividade")
-                    {
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="table-responsive">
-                                    <table class="table table-striped">
-                                        <thead class="table-dark">
-                                            <tr>
-                                                <th>Usuário</th>
-                                                <th>Documentos Processados</th>
-                                                <th>Taxa de Sucesso</th>
-                                                <th>Tempo Médio</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @if (Model != null && Model.Count > 0)
-                                            {
-                                                @foreach (var item in Model)
-                                                {
-                                                    <tr>
-                                                        <td>@item.Usuario</td>
-                                                        <td>@item.TotalProcessados</td>
-                                                        <td>
-                                                            <span class="badge bg-@(item.TaxaSucesso >= 90 ? "success" : 
-                                                                item.TaxaSucesso >= 70 ? "warning" : "danger")">
-                                                                @item.TaxaSucesso.ToString("F1")%
-                                                            </span>
-                                                        </td>
-                                                        <td>@item.TempoMedio</td>
-                                                    </tr>
-                                                }
-                                            }
-                                            else
-                                            {
-                                                <tr>
-                                                    <td colspan="4" class="text-center text-muted">
-                                                        <i class="fas fa-search"></i> Nenhum dado encontrado
-                                                    </td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <canvas id="produtividadeChart" width="400" height="200"></canvas>
-                            </div>
-                        </div>
-                    }
-                    else if (ViewBag.TipoRelatorio == "classificacao")
-                    {
-                        <div class="row">
-                            <div class="col-md-12">
-                                <div class="table-responsive">
-                                    <table class="table table-striped">
-                                        <thead class="table-dark">
-                                            <tr>
-                                                <th>Categoria</th>
-                                                <th>Total Documentos</th>
-                                                <th>Sucesso</th>
-                                                <th>Erro</th>
-                                                <th>Pendente</th>
-                                                <th>Taxa de Sucesso</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @if (Model != null && Model.Count > 0)
-                                            {
-                                                @foreach (var item in Model)
-                                                {
-                                                    <tr>
-                                                        <td>@item.Categoria</td>
-                                                        <td>@item.Total</td>
-                                                        <td><span class="text-success">@item.Sucesso</span></td>
-                                                        <td><span class="text-danger">@item.Erro</span></td>
-                                                        <td><span class="text-warning">@item.Pendente</span></td>
-                                                        <td>
-                                                            <div class="progress" style="height: 20px;">
-                                                                <div class="progress-bar bg-success" role="progressbar" 
-                                                                     style="width: @item.TaxaSucesso%" 
-                                                                     aria-valuenow="@item.TaxaSucesso" 
-                                                                     aria-valuemin="0" aria-valuemax="100">
-                                                                    @item.TaxaSucesso.ToString("F1")%
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                }
-                                            }
-                                            else
-                                            {
-                                                <tr>
-                                                    <td colspan="6" class="text-center text-muted">
-                                                        <i class="fas fa-search"></i> Nenhum dado encontrado
-                                                    </td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                    else if (ViewBag.TipoRelatorio == "lotes")
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>ID Lote</th>
-                                        <th>Data Criação</th>
-                                        <th>Total Documentos</th>
-                                        <th>Processados</th>
-                                        <th>Status</th>
-                                        <th>Progresso</th>
-                                        <th>Usuário</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @if (Model != null && Model.Count > 0)
-                                    {
-                                        @foreach (var item in Model)
-                                        {
-                                            <tr>
-                                                <td>@item.IdLote</td>
-                                                <td>@item.DataCriacao.ToString("dd/MM/yyyy HH:mm")</td>
-                                                <td>@item.TotalDocumentos</td>
-                                                <td>@item.Processados</td>
-                                                <td>
-                                                    <span class="badge bg-@(item.Status == "Concluído" ? "success" : 
-                                                        item.Status == "Em Processamento" ? "primary" : 
-                                                        item.Status == "Erro" ? "danger" : "secondary")">
-                                                        @item.Status
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <div class="progress" style="height: 20px;">
-                                                        <div class="progress-bar" role="progressbar" 
-                                                             style="width: @item.Progresso%" 
-                                                             aria-valuenow="@item.Progresso" 
-                                                             aria-valuemin="0" aria-valuemax="100">
-                                                            @item.Progresso.ToString("F0")%
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>@item.Usuario</td>
-                                            </tr>
-                                        }
-                                    }
-                                    else
-                                    {
-                                        <tr>
-                                            <td colspan="7" class="text-center text-muted">
-                                                <i class="fas fa-search"></i> Nenhum lote encontrado
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                    else if (ViewBag.TipoRelatorio == "consolidado")
-                    {
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="card bg-primary text-white">
-                                    <div class="card-body">
-                                        <h5>Total Documentos</h5>
-                                        <h3>@ViewBag.TotalDocumentos</h3>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-success text-white">
-                                    <div class="card-body">
-                                        <h5>Classificados</h5>
-                                        <h3>@ViewBag.TotalClassificados</h3>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-warning text-white">
-                                    <div class="card-body">
-                                        <h5>Em Processamento</h5>
-                                        <h3>@ViewBag.TotalProcessando</h3>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card bg-danger text-white">
-                                    <div class="card-body">
-                                        <h5>Com Erro</h5>
-                                        <h3>@ViewBag.TotalErros</h3>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                         
-                        <div class="mt-4">
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead class="table-dark">
-                                        <tr>
-                                            <th>Métrica</th>
-                                            <th>Valor</th>
-                                            <th>Descrição</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>Taxa de Sucesso Geral</td>
-                                            <td><span class="badge bg-success">@ViewBag.TaxaSucessoGeral%</span></td>
-                                            <td>Porcentagem de documentos classificados com sucesso</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Tempo Médio de Processamento</td>
-                                            <td>@ViewBag.TempoMedioProcessamento</td>
-                                            <td>Tempo médio para classificar um documento</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Documentos por Dia</td>
-                                            <td>@ViewBag.DocumentosPorDia</td>
-                                            <td>Média de documentos processados por dia no período</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                        <div class="mt-3">
+                            <p class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                Total de registros: @Model.Dados.Rows.Count
+                            </p>
                         </div>
                     }
-                    else if (ViewBag.TipoRelatorio == "lgpd")
+                    else
                     {
-                        <div class="alert alert-info">
-                            <i class="fas fa-shield-alt"></i> <strong>Relatório de Conformidade LGPD</strong>
-                            <p>Este relatório demonstra a conformidade do sistema com a Lei Geral de Proteção de Dados.</p>
-                        </div>
-                        
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>Item de Conformidade</th>
-                                        <th>Status</th>
-                                        <th>Última Verificação</th>
-                                        <th>Observações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @if (Model != null && Model.Count > 0)
-                                    {
-                                        @foreach (var item in Model)
-                                        {
-                                            <tr>
-                                                <td>@item.ItemConformidade</td>
-                                                <td>
-                                                    <span class="badge bg-@(item.Status == "Conforme" ? "success" : 
-                                                        item.Status == "Parcialmente Conforme" ? "warning" : "danger")">
-                                                        @item.Status
-                                                    </span>
-                                                </td>
-                                                <td>@item.UltimaVerificacao.ToString("dd/MM/yyyy")</td>
-                                                <td>@item.Observacoes</td>
-                                            </tr>
-                                        }
-                                    }
-                                    else
-                                    {
-                                        <tr>
-                                            <td colspan="4" class="text-center text-muted">
-                                                <i class="fas fa-search"></i> Nenhum item de conformidade encontrado
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
+                        <div class="text-center py-5">
+                            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Nenhum registro encontrado</h5>
+                            <p class="text-muted">Não há dados para o período e filtros selecionados.</p>
                         </div>
                     }
 
@@ -361,7 +165,7 @@
                             </div>
                             <div class="col-md-6 text-end">
                                 <small class="text-muted">
-                                    <i class="fas fa-user"></i> Usuário: @User.Identity.Name
+                                    <i class="fas fa-user"></i> Sistema ClassificadorDoc
                                 </small>
                             </div>
                         </div>
@@ -372,38 +176,14 @@
     </div>
 </div>
 
-@section Scripts {
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    // Gráfico de produtividade (se for relatório de produtividade)
-    @if (ViewBag.TipoRelatorio == "produtividade" && Model != null)
-    {
-        <text>
-        const ctx = document.getElementById('produtividadeChart').getContext('2d');
-        const chart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: [@Html.Raw(string.Join(",", ((IEnumerable<dynamic>)Model).Select(x => $"'{x.Usuario}'")))],
-                datasets: [{
-                    label: 'Documentos Processados',
-                    data: [@Html.Raw(string.Join(",", ((IEnumerable<dynamic>)Model).Select(x => x.TotalProcessados)))],
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-        </text>
+<style>
+    @@media print {
+        .btn, .d-flex {
+            display: none !important;
+        }
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
     }
-</script>
-}
-
-
+</style>

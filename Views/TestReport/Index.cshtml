@@ -1,0 +1,89 @@
+@{
+    ViewData["Title"] = "Teste FastReport WebReport";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>🧪 Teste do FastReport WebReport</h2>
+            <p class="text-muted">Demonstração do visualizador nativo do FastReport com dados de exemplo</p>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📊 Relatórios Disponíveis</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="@Url.Action("Preview", "TestReport", new { templateName = "ClassificacaoTemplate" })"
+                            class="list-group-item list-group-item-action">
+                            <h6 class="mb-1">Classificação de Documentos</h6>
+                            <p class="mb-1">Relatório de documentos processados e suas classificações</p>
+                            <small>Template: ClassificacaoTemplate.frx</small>
+                        </a>
+
+                        <a href="@Url.Action("Preview", "TestReport", new { templateName = "ConsolidadoTemplate" })"
+                            class="list-group-item list-group-item-action">
+                            <h6 class="mb-1">Relatório Consolidado</h6>
+                            <p class="mb-1">Visão consolidada de todas as operações</p>
+                            <small>Template: ConsolidadoTemplate.frx</small>
+                        </a>
+
+                        <a href="@Url.Action("Preview", "TestReport", new { templateName = "ProdutividadeTemplate" })"
+                            class="list-group-item list-group-item-action">
+                            <h6 class="mb-1">Produtividade</h6>
+                            <p class="mb-1">Análise de produtividade do sistema</p>
+                            <small>Template: ProdutividadeTemplate.frx</small>
+                        </a>
+
+                        <a href="@Url.Action("Preview", "TestReport", new { templateName = "AuditoriaTemplate" })"
+                            class="list-group-item list-group-item-action">
+                            <h6 class="mb-1">Auditoria</h6>
+                            <p class="mb-1">Relatório de auditoria e logs</p>
+                            <small>Template: AuditoriaTemplate.frx</small>
+                        </a>
+
+                        <a href="@Url.Action("Preview", "TestReport", new { templateName = "LGPDTemplate" })"
+                            class="list-group-item list-group-item-action">
+                            <h6 class="mb-1">LGPD</h6>
+                            <p class="mb-1">Relatório de conformidade LGPD</p>
+                            <small>Template: LGPDTemplate.frx</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>📋 Recursos do WebReport</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check text-success"></i> Visualização nativa do FastReport</li>
+                        <li><i class="fas fa-check text-success"></i> Toolbar completa com controles</li>
+                        <li><i class="fas fa-check text-success"></i> Zoom e navegação</li>
+                        <li><i class="fas fa-check text-success"></i> Exportação para PDF, Excel, Word</li>
+                        <li><i class="fas fa-check text-success"></i> Impressão direta</li>
+                        <li><i class="fas fa-check text-success"></i> Paginação automática</li>
+                        <li><i class="fas fa-check text-success"></i> Busca no relatório</li>
+                        <li><i class="fas fa-check text-success"></i> Interface responsiva</li>
+                    </ul>
+
+                    <div class="alert alert-info mt-3">
+                        <h6>💡 Como funciona</h6>
+                        <p class="mb-0">
+                            O WebReport carrega os templates .frx existentes e exibe
+                            com o visualizador nativo do FastReport, oferecendo todos
+                            os recursos profissionais de visualização e exportação.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
