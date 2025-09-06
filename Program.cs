@@ -92,6 +92,9 @@ builder.Services.AddSwaggerGen();
 // Register PdfExtractorService
 builder.Services.AddScoped<PdfExtractorService>();
 
+// Register ReportService
+builder.Services.AddScoped<IReportService, ReportService>();
+
 // Register Alert Services
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAlertConditionEngine, AlertConditionEngine>();

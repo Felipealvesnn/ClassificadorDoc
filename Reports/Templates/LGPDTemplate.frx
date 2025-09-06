@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report ScriptLanguage="CSharp" ReportInfo.Created="09/05/2025 23:19:00" ReportInfo.Modified="09/05/2025 23:19:00" ReportInfo.CreatorVersion="2024.2.0.0">
+  <Dictionary>
+    <TableDataSource Name="LGPDData" ReferenceName="LGPDData" DataType="System.Int32" Enabled="true">
+      <Column Name="Id" DataType="System.String"/>
+      <Column Name="EventType" DataType="System.String"/>
+      <Column Name="DataSubject" DataType="System.String"/>
+      <Column Name="PersonalDataType" DataType="System.String"/>
+      <Column Name="LegalBasis" DataType="System.String"/>
+      <Column Name="ProcessingPurpose" DataType="System.String"/>
+      <Column Name="Timestamp" DataType="System.String"/>
+      <Column Name="ComplianceStatus" DataType="System.String"/>
+    </TableDataSource>
+  </Dictionary>
+  <ReportPage Name="Page1" Watermark.Font="Arial, 60pt" FirstPageSource="15" OtherPagesSource="15">
+    <ReportTitleBand Name="ReportTitle1" Width="718.2" Height="113.4">
+      <TextObject Name="Text1" Left="9.45" Top="9.45" Width="699.3" Height="37.8" Text="RELATÓRIO DE CONFORMIDADE LGPD" HorzAlign="Center" VertAlign="Center" Font="Arial, 16pt, style=Bold" TextFill.Color="Purple"/>
+      <TextObject Name="Text2" Left="9.45" Top="47.25" Width="699.3" Height="18.9" Text="Sistema ClassificadorDoc - Lei Geral de Proteção de Dados" HorzAlign="Center" Font="Arial, 11pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text3" Left="9.45" Top="75.6" Width="699.3" Height="18.9" Text="[FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm&quot;)]" HorzAlign="Center" Font="Arial, 9pt" TextFill.Color="Gray"/>
+      <LineObject Name="Line1" Left="9.45" Top="103.95" Width="699.3" Border.Color="Purple" Border.Width="2"/>
+    </ReportTitleBand>
+    <PageHeaderBand Name="PageHeader1" Top="117.4" Width="718.2" Height="37.8">
+      <TextObject Name="Text4" Left="9.45" Top="9.45" Width="75.6" Height="18.9" Text="DATA/HORA" Font="Arial, 7pt, style=Bold" TextFill.Color="White" Fill.Color="Purple"/>
+      <TextObject Name="Text5" Left="94.5" Top="9.45" Width="85.05" Height="18.9" Text="EVENTO" Font="Arial, 7pt, style=Bold" TextFill.Color="White" Fill.Color="Purple"/>
+      <TextObject Name="Text6" Left="189" Top="9.45" Width="94.5" Height="18.9" Text="TITULAR" Font="Arial, 7pt, style=Bold" TextFill.Color="White" Fill.Color="Purple"/>
+      <TextObject Name="Text7" Left="292.95" Top="9.45" Width="94.5" Height="18.9" Text="TIPO DADOS" Font="Arial, 7pt, style=Bold" TextFill.Color="White" Fill.Color="Purple"/>
+      <TextObject Name="Text8" Left="396.9" Top="9.45" Width="85.05" Height="18.9" Text="BASE LEGAL" Font="Arial, 7pt, style=Bold" TextFill.Color="White" Fill.Color="Purple"/>
+      <TextObject Name="Text9" Left="491.4" Top="9.45" Width="113.4" Height="18.9" Text="FINALIDADE" Font="Arial, 7pt, style=Bold" TextFill.Color="White" Fill.Color="Purple"/>
+      <TextObject Name="Text10" Left="614.25" Top="9.45" Width="94.5" Height="18.9" Text="STATUS" Font="Arial, 7pt, style=Bold" TextFill.Color="White" Fill.Color="Purple"/>
+    </PageHeaderBand>
+    <DataBand Name="Data1" Top="159.2" Width="718.2" Height="28.35" DataSource="LGPDData">
+      <TextObject Name="Text11" Left="9.45" Top="4.725" Width="75.6" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LGPDData.Timestamp]" VertAlign="Center" Font="Arial, 6pt"/>
+      <TextObject Name="Text12" Left="94.5" Top="4.725" Width="85.05" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LGPDData.EventType]" VertAlign="Center" Font="Arial, 7pt, style=Bold"/>
+      <TextObject Name="Text13" Left="189" Top="4.725" Width="94.5" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LGPDData.DataSubject]" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text14" Left="292.95" Top="4.725" Width="94.5" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LGPDData.PersonalDataType]" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text15" Left="396.9" Top="4.725" Width="85.05" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LGPDData.LegalBasis]" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text16" Left="491.4" Top="4.725" Width="113.4" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LGPDData.ProcessingPurpose]" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text17" Left="614.25" Top="4.725" Width="94.5" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LGPDData.ComplianceStatus]" HorzAlign="Center" VertAlign="Center" Font="Arial, 7pt, style=Bold" TextFill.Color="Purple"/>
+    </DataBand>
+    <ReportSummaryBand Name="ReportSummary1" Top="191.55" Width="718.2" Height="94.5">
+      <LineObject Name="Line2" Left="9.45" Top="9.45" Width="699.3" Border.Color="Purple" Border.Width="1"/>
+      <TextObject Name="Text18" Left="9.45" Top="18.9" Width="699.3" Height="18.9" Text="Relatório de Conformidade LGPD - Sistema ClassificadorDoc" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text19" Left="9.45" Top="37.8" Width="699.3" Height="18.9" Text="Dados extraídos em [FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm:ss&quot;)]" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text20" Left="9.45" Top="56.7" Width="699.3" Height="18.9" Text="Total de eventos LGPD registrados: [Count(LGPDData)]" HorzAlign="Center" Font="Arial, 8pt, style=Bold" TextFill.Color="Purple"/>
+      <TextObject Name="Text21" Left="9.45" Top="75.6" Width="699.3" Height="18.9" Text="⚖️ Este relatório atende aos requisitos da Lei 13.709/2018 (LGPD)" HorzAlign="Center" Font="Arial, 8pt, style=Bold" TextFill.Color="DarkGreen"/>
+    </ReportSummaryBand>
+    <PageFooterBand Name="PageFooter1" Top="290.05" Width="718.2" Height="18.9">
+      <TextObject Name="Text22" Left="567" Top="0" Width="141.75" Height="18.9" Text="Página [Page] de [TotalPages]" HorzAlign="Right" VertAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text23" Left="9.45" Top="0" Width="141.75" Height="18.9" Text="ClassificadorDoc v1.0" VertAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+    </PageFooterBand>
+  </ReportPage>
+</Report>

@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Report ScriptLanguage="CSharp" ReportInfo.Created="09/05/2025 23:12:52" ReportInfo.Modified="09/05/2025 23:12:52" ReportInfo.CreatorVersion="2024.2.0.0">
+  <Dictionary>
+    <TableDataSource Name="ConsolidadoData" ReferenceName="ConsolidadoData" DataType="System.Int32" Enabled="true">
+      <Column Name="Metrica" DataType="System.String"/>
+      <Column Name="Valor" DataType="System.String"/>
+      <Column Name="Descricao" DataType="System.String"/>
+    </TableDataSource>
+  </Dictionary>
+  <ReportPage Name="Page1" Watermark.Font="Arial, 60pt" FirstPageSource="15" OtherPagesSource="15">
+    <ReportTitleBand Name="ReportTitle1" Width="718.2" Height="113.4">
+      <TextObject Name="Text1" Left="9.45" Top="9.45" Width="699.3" Height="37.8" Text="RELATÓRIO CONSOLIDADO DO SISTEMA" HorzAlign="Center" VertAlign="Center" Font="Arial, 16pt, style=Bold" TextFill.Color="DarkBlue"/>
+      <TextObject Name="Text2" Left="9.45" Top="47.25" Width="699.3" Height="18.9" Text="Classificador de Documentos - Métricas Gerais" HorzAlign="Center" Font="Arial, 11pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text3" Left="9.45" Top="75.6" Width="699.3" Height="18.9" Text="[FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm&quot;)]" HorzAlign="Center" Font="Arial, 9pt" TextFill.Color="Gray"/>
+      <LineObject Name="Line1" Left="9.45" Top="103.95" Width="699.3" Border.Color="DarkBlue" Border.Width="2"/>
+    </ReportTitleBand>
+    <PageHeaderBand Name="PageHeader1" Top="117.4" Width="718.2" Height="37.8">
+      <TextObject Name="Text4" Left="9.45" Top="9.45" Width="132.3" Height="18.9" Text="MÉTRICA" Font="Arial, 10pt, style=Bold" TextFill.Color="White" Fill.Color="DarkBlue"/>
+      <TextObject Name="Text5" Left="151.2" Top="9.45" Width="132.3" Height="18.9" Text="VALOR" Font="Arial, 10pt, style=Bold" TextFill.Color="White" Fill.Color="DarkBlue"/>
+      <TextObject Name="Text6" Left="292.95" Top="9.45" Width="415.8" Height="18.9" Text="DESCRIÇÃO" Font="Arial, 10pt, style=Bold" TextFill.Color="White" Fill.Color="DarkBlue"/>
+    </PageHeaderBand>
+    <DataBand Name="Data1" Top="159.2" Width="718.2" Height="28.35" DataSource="ConsolidadoData">
+      <TextObject Name="Text7" Left="9.45" Top="4.725" Width="132.3" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[ConsolidadoData.Metrica]" VertAlign="Center" Font="Arial, 9pt"/>
+      <TextObject Name="Text8" Left="151.2" Top="4.725" Width="132.3" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[ConsolidadoData.Valor]" HorzAlign="Center" VertAlign="Center" Font="Arial, 9pt, style=Bold" TextFill.Color="DarkBlue"/>
+      <TextObject Name="Text9" Left="292.95" Top="4.725" Width="415.8" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[ConsolidadoData.Descricao]" VertAlign="Center" Font="Arial, 9pt"/>
+    </DataBand>
+    <ReportSummaryBand Name="ReportSummary1" Top="191.55" Width="718.2" Height="75.6">
+      <LineObject Name="Line2" Left="9.45" Top="9.45" Width="699.3" Border.Color="DarkBlue" Border.Width="1"/>
+      <TextObject Name="Text10" Left="9.45" Top="18.9" Width="699.3" Height="18.9" Text="Relatório gerado automaticamente pelo Sistema ClassificadorDoc" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text11" Left="9.45" Top="37.8" Width="699.3" Height="18.9" Text="Dados extraídos em [FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm:ss&quot;)]" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text12" Left="9.45" Top="56.7" Width="699.3" Height="18.9" Text="Página [Page] de [TotalPages]" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+    </ReportSummaryBand>
+    <PageFooterBand Name="PageFooter1" Top="271.15" Width="718.2" Height="18.9">
+      <TextObject Name="Text13" Left="567" Top="0" Width="141.75" Height="18.9" Text="[FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm&quot;)]" HorzAlign="Right" VertAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text14" Left="9.45" Top="0" Width="141.75" Height="18.9" Text="ClassificadorDoc v1.0" VertAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+    </PageFooterBand>
+  </ReportPage>
+</Report>

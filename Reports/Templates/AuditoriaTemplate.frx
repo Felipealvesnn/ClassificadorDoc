@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report ScriptLanguage="CSharp" ReportInfo.Created="09/05/2025 23:15:00" ReportInfo.Modified="09/05/2025 23:15:00" ReportInfo.CreatorVersion="2024.2.0.0">
+  <Dictionary>
+    <TableDataSource Name="AuditoriaData" ReferenceName="AuditoriaData" DataType="System.Int32" Enabled="true">
+      <Column Name="Id" DataType="System.String"/>
+      <Column Name="UserId" DataType="System.String"/>
+      <Column Name="UserName" DataType="System.String"/>
+      <Column Name="Action" DataType="System.String"/>
+      <Column Name="Category" DataType="System.String"/>
+      <Column Name="Details" DataType="System.String"/>
+      <Column Name="IpAddress" DataType="System.String"/>
+      <Column Name="Timestamp" DataType="System.String"/>
+    </TableDataSource>
+  </Dictionary>
+  <ReportPage Name="Page1" Watermark.Font="Arial, 60pt" FirstPageSource="15" OtherPagesSource="15">
+    <ReportTitleBand Name="ReportTitle1" Width="718.2" Height="113.4">
+      <TextObject Name="Text1" Left="9.45" Top="9.45" Width="699.3" Height="37.8" Text="RELATÓRIO DE AUDITORIA" HorzAlign="Center" VertAlign="Center" Font="Arial, 16pt, style=Bold" TextFill.Color="DarkRed"/>
+      <TextObject Name="Text2" Left="9.45" Top="47.25" Width="699.3" Height="18.9" Text="Sistema ClassificadorDoc - Log de Atividades" HorzAlign="Center" Font="Arial, 11pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text3" Left="9.45" Top="75.6" Width="699.3" Height="18.9" Text="[FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm&quot;)]" HorzAlign="Center" Font="Arial, 9pt" TextFill.Color="Gray"/>
+      <LineObject Name="Line1" Left="9.45" Top="103.95" Width="699.3" Border.Color="DarkRed" Border.Width="2"/>
+    </ReportTitleBand>
+    <PageHeaderBand Name="PageHeader1" Top="117.4" Width="718.2" Height="37.8">
+      <TextObject Name="Text4" Left="9.45" Top="9.45" Width="75.6" Height="18.9" Text="DATA/HORA" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkRed"/>
+      <TextObject Name="Text5" Left="94.5" Top="9.45" Width="94.5" Height="18.9" Text="USUÁRIO" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkRed"/>
+      <TextObject Name="Text6" Left="198.45" Top="9.45" Width="94.5" Height="18.9" Text="AÇÃO" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkRed"/>
+      <TextObject Name="Text7" Left="302.4" Top="9.45" Width="75.6" Height="18.9" Text="CATEGORIA" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkRed"/>
+      <TextObject Name="Text8" Left="387.45" Top="9.45" Width="75.6" Height="18.9" Text="IP" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkRed"/>
+      <TextObject Name="Text9" Left="472.5" Top="9.45" Width="236.25" Height="18.9" Text="DETALHES" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkRed"/>
+    </PageHeaderBand>
+    <DataBand Name="Data1" Top="159.2" Width="718.2" Height="28.35" DataSource="AuditoriaData">
+      <TextObject Name="Text10" Left="9.45" Top="4.725" Width="75.6" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[AuditoriaData.Timestamp]" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text11" Left="94.5" Top="4.725" Width="94.5" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[AuditoriaData.UserName]" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text12" Left="198.45" Top="4.725" Width="94.5" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[AuditoriaData.Action]" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text13" Left="302.4" Top="4.725" Width="75.6" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[AuditoriaData.Category]" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text14" Left="387.45" Top="4.725" Width="75.6" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[AuditoriaData.IpAddress]" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text15" Left="472.5" Top="4.725" Width="236.25" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[AuditoriaData.Details]" VertAlign="Center" Font="Arial, 7pt"/>
+    </DataBand>
+    <ReportSummaryBand Name="ReportSummary1" Top="191.55" Width="718.2" Height="75.6">
+      <LineObject Name="Line2" Left="9.45" Top="9.45" Width="699.3" Border.Color="DarkRed" Border.Width="1"/>
+      <TextObject Name="Text16" Left="9.45" Top="18.9" Width="699.3" Height="18.9" Text="Relatório de Auditoria - Sistema ClassificadorDoc" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text17" Left="9.45" Top="37.8" Width="699.3" Height="18.9" Text="Dados extraídos em [FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm:ss&quot;)]" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text18" Left="9.45" Top="56.7" Width="699.3" Height="18.9" Text="Total de registros: [Count(AuditoriaData)]" HorzAlign="Center" Font="Arial, 8pt, style=Bold" TextFill.Color="DarkRed"/>
+    </ReportSummaryBand>
+    <PageFooterBand Name="PageFooter1" Top="271.15" Width="718.2" Height="18.9">
+      <TextObject Name="Text19" Left="567" Top="0" Width="141.75" Height="18.9" Text="Página [Page] de [TotalPages]" HorzAlign="Right" VertAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text20" Left="9.45" Top="0" Width="141.75" Height="18.9" Text="ClassificadorDoc v1.0" VertAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+    </PageFooterBand>
+  </ReportPage>
+</Report>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report ScriptLanguage="CSharp" ReportInfo.Created="09/05/2025 23:18:00" ReportInfo.Modified="09/05/2025 23:18:00" ReportInfo.CreatorVersion="2024.2.0.0">
+  <Dictionary>
+    <TableDataSource Name="LotesData" ReferenceName="LotesData" DataType="System.Int32" Enabled="true">
+      <Column Name="Id" DataType="System.String"/>
+      <Column Name="BatchName" DataType="System.String"/>
+      <Column Name="Status" DataType="System.String"/>
+      <Column Name="StartedAt" DataType="System.String"/>
+      <Column Name="CompletedAt" DataType="System.String"/>
+      <Column Name="TotalDocuments" DataType="System.String"/>
+      <Column Name="ProcessedDocuments" DataType="System.String"/>
+      <Column Name="SuccessRate" DataType="System.String"/>
+      <Column Name="UserId" DataType="System.String"/>
+    </TableDataSource>
+  </Dictionary>
+  <ReportPage Name="Page1" Watermark.Font="Arial, 60pt" FirstPageSource="15" OtherPagesSource="15">
+    <ReportTitleBand Name="ReportTitle1" Width="718.2" Height="113.4">
+      <TextObject Name="Text1" Left="9.45" Top="9.45" Width="699.3" Height="37.8" Text="RELATÓRIO DE LOTES" HorzAlign="Center" VertAlign="Center" Font="Arial, 16pt, style=Bold" TextFill.Color="DarkOrange"/>
+      <TextObject Name="Text2" Left="9.45" Top="47.25" Width="699.3" Height="18.9" Text="Sistema ClassificadorDoc - Status e Progresso dos Lotes de Processamento" HorzAlign="Center" Font="Arial, 11pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text3" Left="9.45" Top="75.6" Width="699.3" Height="18.9" Text="[FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm&quot;)]" HorzAlign="Center" Font="Arial, 9pt" TextFill.Color="Gray"/>
+      <LineObject Name="Line1" Left="9.45" Top="103.95" Width="699.3" Border.Color="DarkOrange" Border.Width="2"/>
+    </ReportTitleBand>
+    <PageHeaderBand Name="PageHeader1" Top="117.4" Width="718.2" Height="37.8">
+      <TextObject Name="Text4" Left="9.45" Top="9.45" Width="94.5" Height="18.9" Text="LOTE" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkOrange"/>
+      <TextObject Name="Text5" Left="113.4" Top="9.45" Width="75.6" Height="18.9" Text="STATUS" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkOrange"/>
+      <TextObject Name="Text6" Left="198.45" Top="9.45" Width="85.05" Height="18.9" Text="INICIADO" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkOrange"/>
+      <TextObject Name="Text7" Left="292.95" Top="9.45" Width="85.05" Height="18.9" Text="CONCLUÍDO" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkOrange"/>
+      <TextObject Name="Text8" Left="387.45" Top="9.45" Width="66.15" Height="18.9" Text="TOTAL" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkOrange"/>
+      <TextObject Name="Text9" Left="463.05" Top="9.45" Width="85.05" Height="18.9" Text="PROCESSADOS" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkOrange"/>
+      <TextObject Name="Text10" Left="557.55" Top="9.45" Width="151.2" Height="18.9" Text="TAXA SUCESSO" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkOrange"/>
+    </PageHeaderBand>
+    <DataBand Name="Data1" Top="159.2" Width="718.2" Height="28.35" DataSource="LotesData">
+      <TextObject Name="Text11" Left="9.45" Top="4.725" Width="94.5" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LotesData.BatchName]" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text12" Left="113.4" Top="4.725" Width="75.6" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LotesData.Status]" HorzAlign="Center" VertAlign="Center" Font="Arial, 8pt, style=Bold"/>
+      <TextObject Name="Text13" Left="198.45" Top="4.725" Width="85.05" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LotesData.StartedAt]" HorzAlign="Center" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text14" Left="292.95" Top="4.725" Width="85.05" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LotesData.CompletedAt]" HorzAlign="Center" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text15" Left="387.45" Top="4.725" Width="66.15" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LotesData.TotalDocuments]" HorzAlign="Center" VertAlign="Center" Font="Arial, 8pt"/>
+      <TextObject Name="Text16" Left="463.05" Top="4.725" Width="85.05" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LotesData.ProcessedDocuments]" HorzAlign="Center" VertAlign="Center" Font="Arial, 8pt"/>
+      <TextObject Name="Text17" Left="557.55" Top="4.725" Width="151.2" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[LotesData.SuccessRate]" HorzAlign="Center" VertAlign="Center" Font="Arial, 8pt, style=Bold" TextFill.Color="DarkOrange"/>
+    </DataBand>
+    <ReportSummaryBand Name="ReportSummary1" Top="191.55" Width="718.2" Height="75.6">
+      <LineObject Name="Line2" Left="9.45" Top="9.45" Width="699.3" Border.Color="DarkOrange" Border.Width="1"/>
+      <TextObject Name="Text18" Left="9.45" Top="18.9" Width="699.3" Height="18.9" Text="Relatório de Lotes - Sistema ClassificadorDoc" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text19" Left="9.45" Top="37.8" Width="699.3" Height="18.9" Text="Dados extraídos em [FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm:ss&quot;)]" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text20" Left="9.45" Top="56.7" Width="699.3" Height="18.9" Text="Total de lotes processados: [Count(LotesData)]" HorzAlign="Center" Font="Arial, 8pt, style=Bold" TextFill.Color="DarkOrange"/>
+    </ReportSummaryBand>
+    <PageFooterBand Name="PageFooter1" Top="271.15" Width="718.2" Height="18.9">
+      <TextObject Name="Text21" Left="567" Top="0" Width="141.75" Height="18.9" Text="Página [Page] de [TotalPages]" HorzAlign="Right" VertAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text22" Left="9.45" Top="0" Width="141.75" Height="18.9" Text="ClassificadorDoc v1.0" VertAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+    </PageFooterBand>
+  </ReportPage>
+</Report>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report ScriptLanguage="CSharp" ReportInfo.Created="09/05/2025 23:17:00" ReportInfo.Modified="09/05/2025 23:17:00" ReportInfo.CreatorVersion="2024.2.0.0">
+  <Dictionary>
+    <TableDataSource Name="ClassificacaoData" ReferenceName="ClassificacaoData" DataType="System.Int32" Enabled="true">
+      <Column Name="Id" DataType="System.String"/>
+      <Column Name="DocumentName" DataType="System.String"/>
+      <Column Name="Category" DataType="System.String"/>
+      <Column Name="Confidence" DataType="System.String"/>
+      <Column Name="ProcessedAt" DataType="System.String"/>
+      <Column Name="IsSuccessful" DataType="System.String"/>
+      <Column Name="ProcessingTime" DataType="System.String"/>
+    </TableDataSource>
+  </Dictionary>
+  <ReportPage Name="Page1" Watermark.Font="Arial, 60pt" FirstPageSource="15" OtherPagesSource="15">
+    <ReportTitleBand Name="ReportTitle1" Width="718.2" Height="113.4">
+      <TextObject Name="Text1" Left="9.45" Top="9.45" Width="699.3" Height="37.8" Text="RELATÓRIO DE CLASSIFICAÇÃO" HorzAlign="Center" VertAlign="Center" Font="Arial, 16pt, style=Bold" TextFill.Color="DarkBlue"/>
+      <TextObject Name="Text2" Left="9.45" Top="47.25" Width="699.3" Height="18.9" Text="Sistema ClassificadorDoc - Estatísticas de Documentos Classificados" HorzAlign="Center" Font="Arial, 11pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text3" Left="9.45" Top="75.6" Width="699.3" Height="18.9" Text="[FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm&quot;)]" HorzAlign="Center" Font="Arial, 9pt" TextFill.Color="Gray"/>
+      <LineObject Name="Line1" Left="9.45" Top="103.95" Width="699.3" Border.Color="DarkBlue" Border.Width="2"/>
+    </ReportTitleBand>
+    <PageHeaderBand Name="PageHeader1" Top="117.4" Width="718.2" Height="37.8">
+      <TextObject Name="Text4" Left="9.45" Top="9.45" Width="132.3" Height="18.9" Text="DOCUMENTO" Font="Arial, 9pt, style=Bold" TextFill.Color="White" Fill.Color="DarkBlue"/>
+      <TextObject Name="Text5" Left="151.2" Top="9.45" Width="94.5" Height="18.9" Text="CATEGORIA" Font="Arial, 9pt, style=Bold" TextFill.Color="White" Fill.Color="DarkBlue"/>
+      <TextObject Name="Text6" Left="255.15" Top="9.45" Width="75.6" Height="18.9" Text="CONFIANÇA" Font="Arial, 9pt, style=Bold" TextFill.Color="White" Fill.Color="DarkBlue"/>
+      <TextObject Name="Text7" Left="340.2" Top="9.45" Width="94.5" Height="18.9" Text="PROCESSADO" Font="Arial, 9pt, style=Bold" TextFill.Color="White" Fill.Color="DarkBlue"/>
+      <TextObject Name="Text8" Left="444.15" Top="9.45" Width="75.6" Height="18.9" Text="STATUS" Font="Arial, 9pt, style=Bold" TextFill.Color="White" Fill.Color="DarkBlue"/>
+      <TextObject Name="Text9" Left="529.2" Top="9.45" Width="179.55" Height="18.9" Text="TEMPO (ms)" Font="Arial, 9pt, style=Bold" TextFill.Color="White" Fill.Color="DarkBlue"/>
+    </PageHeaderBand>
+    <DataBand Name="Data1" Top="159.2" Width="718.2" Height="28.35" DataSource="ClassificacaoData">
+      <TextObject Name="Text10" Left="9.45" Top="4.725" Width="132.3" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[ClassificacaoData.DocumentName]" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text11" Left="151.2" Top="4.725" Width="94.5" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[ClassificacaoData.Category]" VertAlign="Center" Font="Arial, 8pt, style=Bold" TextFill.Color="DarkBlue"/>
+      <TextObject Name="Text12" Left="255.15" Top="4.725" Width="75.6" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[ClassificacaoData.Confidence]" HorzAlign="Center" VertAlign="Center" Font="Arial, 8pt"/>
+      <TextObject Name="Text13" Left="340.2" Top="4.725" Width="94.5" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[ClassificacaoData.ProcessedAt]" HorzAlign="Center" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text14" Left="444.15" Top="4.725" Width="75.6" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[ClassificacaoData.IsSuccessful]" HorzAlign="Center" VertAlign="Center" Font="Arial, 8pt, style=Bold"/>
+      <TextObject Name="Text15" Left="529.2" Top="4.725" Width="179.55" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[ClassificacaoData.ProcessingTime]" HorzAlign="Center" VertAlign="Center" Font="Arial, 8pt"/>
+    </DataBand>
+    <ReportSummaryBand Name="ReportSummary1" Top="191.55" Width="718.2" Height="75.6">
+      <LineObject Name="Line2" Left="9.45" Top="9.45" Width="699.3" Border.Color="DarkBlue" Border.Width="1"/>
+      <TextObject Name="Text16" Left="9.45" Top="18.9" Width="699.3" Height="18.9" Text="Relatório de Classificação - Sistema ClassificadorDoc" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text17" Left="9.45" Top="37.8" Width="699.3" Height="18.9" Text="Dados extraídos em [FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm:ss&quot;)]" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text18" Left="9.45" Top="56.7" Width="699.3" Height="18.9" Text="Total de documentos processados: [Count(ClassificacaoData)]" HorzAlign="Center" Font="Arial, 8pt, style=Bold" TextFill.Color="DarkBlue"/>
+    </ReportSummaryBand>
+    <PageFooterBand Name="PageFooter1" Top="271.15" Width="718.2" Height="18.9">
+      <TextObject Name="Text19" Left="567" Top="0" Width="141.75" Height="18.9" Text="Página [Page] de [TotalPages]" HorzAlign="Right" VertAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text20" Left="9.45" Top="0" Width="141.75" Height="18.9" Text="ClassificadorDoc v1.0" VertAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+    </PageFooterBand>
+  </ReportPage>
+</Report>

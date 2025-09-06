@@ -1,0 +1,257 @@
+@{
+    ViewData["Title"] = "Relatórios";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4><i class="fas fa-file-alt"></i> Gerador de Relatórios</h4>
+                    <p class="mb-0">Selecione os filtros e o formato desejado para gerar seus relatórios</p>
+                </div>
+                <div class="card-body">
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i> @TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <form id="reportForm">
+                        <div class="row">
+                            <!-- Tipo de Relatório -->
+                            <div class="col-md-6 mb-3">
+                                <label for="tipoRelatorio" class="form-label">
+                                    <i class="fas fa-chart-bar"></i> Tipo de Relatório
+                                </label>
+                                <select class="form-select" id="tipoRelatorio" name="tipoRelatorio" required>
+                                    <option value="">Selecione um tipo...</option>
+                                    @foreach (var tipo in ViewBag.TiposRelatorio)
+                                    {
+                                        <option value="@tipo.Value">@tipo.Text</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- Formato de Export -->
+                            <div class="col-md-6 mb-3">
+                                <label for="formato" class="form-label">
+                                    <i class="fas fa-file-export"></i> Formato de Exportação
+                                </label>
+                                <select class="form-select" id="formato" name="formato" required>
+                                    @foreach (var formato in ViewBag.FormatosExport)
+                                    {
+                                        <option value="@formato.Value">@formato.Text</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Data Início -->
+                            <div class="col-md-6 mb-3">
+                                <label for="dataInicio" class="form-label">
+                                    <i class="fas fa-calendar-alt"></i> Data Início
+                                </label>
+                                <input type="date" class="form-control" id="dataInicio" name="dataInicio" 
+                                       value="@DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd")">
+                                <div class="form-text">Deixe em branco para últimos 30 dias</div>
+                            </div>
+
+                            <!-- Data Fim -->
+                            <div class="col-md-6 mb-3">
+                                <label for="dataFim" class="form-label">
+                                    <i class="fas fa-calendar-alt"></i> Data Fim
+                                </label>
+                                <input type="date" class="form-control" id="dataFim" name="dataFim" 
+                                       value="@DateTime.Now.ToString("yyyy-MM-dd")">
+                                <div class="form-text">Deixe em branco para data atual</div>
+                            </div>
+                        </div>
+
+                        <!-- Filtros Específicos -->
+                        <div class="row" id="filtrosEspecificos" style="display: none;">
+                            <div class="col-md-6 mb-3">
+                                <label for="categoria" class="form-label">
+                                    <i class="fas fa-tags"></i> Categoria (opcional)
+                                </label>
+                                <select class="form-select" id="categoria" name="categoria">
+                                    <option value="">Todas as categorias</option>
+                                    <option value="Contratos">Contratos</option>
+                                    <option value="Faturas">Faturas</option>
+                                    <option value="Certidões">Certidões</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label">
+                                    <i class="fas fa-info-circle"></i> Status (opcional)
+                                </label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="">Todos os status</option>
+                                    <option value="Concluído">Concluído</option>
+                                    <option value="Em Processamento">Em Processamento</option>
+                                    <option value="Erro">Erro</option>
+                                    <option value="Pendente">Pendente</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="button" class="btn btn-info me-md-2" onclick="visualizarRelatorio()">
+                                        <i class="fas fa-eye"></i> Visualizar
+                                    </button>
+                                    <button type="button" class="btn btn-success" onclick="gerarRelatorio()">
+                                        <i class="fas fa-download"></i> Gerar e Baixar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Informações dos Relatórios -->
+                    <div class="mt-4">
+                        <h5><i class="fas fa-info-circle"></i> Tipos de Relatórios Disponíveis</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <strong>Auditoria:</strong> Histórico completo de ações no sistema
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Produtividade:</strong> Métricas de performance por usuário
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Classificação:</strong> Estatísticas de documentos processados
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <strong>Lotes:</strong> Status e progresso dos lotes de processamento
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Consolidado:</strong> Visão geral de todas as métricas
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>LGPD:</strong> Conformidade com Lei Geral de Proteção de Dados
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-3">Gerando relatório, aguarde...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Mostrar filtros específicos baseado no tipo de relatório
+    document.getElementById('tipoRelatorio').addEventListener('change', function() {
+        const tipo = this.value;
+        const filtros = document.getElementById('filtrosEspecificos');
+        
+        if (tipo === 'classificacao' || tipo === 'lotes') {
+            filtros.style.display = 'block';
+        } else {
+            filtros.style.display = 'none';
+        }
+    });
+
+    function gerarRelatorio() {
+        const form = document.getElementById('reportForm');
+        const formData = new FormData(form);
+        
+        if (!formData.get('tipoRelatorio')) {
+            alert('Por favor, selecione um tipo de relatório.');
+            return;
+        }
+
+        // Mostrar loading
+        const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+        loadingModal.show();
+
+        // Criar formulário para submit
+        const submitForm = document.createElement('form');
+        submitForm.method = 'POST';
+        submitForm.action = '@Url.Action("GerarRelatorio")';
+        
+        for (let [key, value] of formData.entries()) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = value;
+            submitForm.appendChild(input);
+        }
+        
+        document.body.appendChild(submitForm);
+        submitForm.submit();
+        
+        // Esconder loading após um tempo
+        setTimeout(() => {
+            loadingModal.hide();
+            document.body.removeChild(submitForm);
+        }, 3000);
+    }
+
+    function visualizarRelatorio() {
+        const form = document.getElementById('reportForm');
+        const formData = new FormData(form);
+        
+        if (!formData.get('tipoRelatorio')) {
+            alert('Por favor, selecione um tipo de relatório.');
+            return;
+        }
+
+        // Mostrar loading
+        const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+        loadingModal.show();
+
+        // Criar formulário para visualizar
+        const submitForm = document.createElement('form');
+        submitForm.method = 'POST';
+        submitForm.action = '@Url.Action("VisualizarRelatorio")';
+        submitForm.target = '_blank';
+        
+        for (let [key, value] of formData.entries()) {
+            if (key !== 'formato') { // Não precisamos do formato para visualizar
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = value;
+                submitForm.appendChild(input);
+            }
+        }
+        
+        document.body.appendChild(submitForm);
+        submitForm.submit();
+        document.body.removeChild(submitForm);
+        
+        // Esconder loading
+        loadingModal.hide();
+    }
+</script>
+}
