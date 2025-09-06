@@ -26,11 +26,11 @@ namespace ClassificadorDoc.Data
                 // Verificar se o banco de dados existe
                 logger.LogInformation("🔍 Verificando se o banco de dados existe...");
                 bool canConnect = await context.Database.CanConnectAsync();
-                
+
                 if (!canConnect)
                 {
                     logger.LogInformation("📊 Banco de dados não encontrado. Verificando se há migrations para aplicar...");
-                    
+
                     // Verificar se existem migrations
                     var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
                     if (pendingMigrations.Any())
