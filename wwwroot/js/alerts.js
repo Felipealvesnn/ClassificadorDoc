@@ -69,28 +69,45 @@ window.AlertNotificationSystem = {
     },
 
     /**
-     * Mostrar notificação de alerta usando o sistema existente
+     * Mostrar notificação de alerta usando Toastr (já instalado)
      */
     showAlertNotification: function (notification) {
-        // Usar a função existente do site.js
-        const type = this.mapAlertTypeToBootstrap(notification.type);
+        // Usar o Toastr existente configurado no layout
+        const type = this.mapAlertTypeToToastr(notification.type);
 
-        // Criar mensagem rica
-        let message = `<strong>${notification.title}</strong>`;
-        if (notification.message) {
-            message += `<br><small>${notification.message}</small>`;
-        }
+        // Criar mensagem rica com HTML se necessário
+        let message = notification.message || '';
 
         // Adicionar link de ação se disponível
         if (notification.actionUrl) {
-            message += `<br><a href="${notification.actionUrl}" class="btn btn-sm btn-outline-${type} mt-2">Ver Detalhes</a>`;
+            message += `<br><a href="${notification.actionUrl}" class="btn btn-sm btn-outline-light mt-2" style="text-decoration: none;">Ver Detalhes</a>`;
         }
 
-        // Usar sistema existente com duração maior para alertas
-        const duration = notification.priority === 'HIGH' ? 10000 : 6000;
+        // Configurações específicas para alertas
+        const alertOptions = {
+            timeOut: notification.priority === 'HIGH' ? 15000 : 8000, // Mais tempo para alertas críticos
+            extendedTimeOut: 3000,
+            closeButton: true,
+            progressBar: true,
+            allowHtml: true,
+            tapToDismiss: notification.priority !== 'HIGH', // Alertas críticos não fecham ao clicar
+            preventDuplicates: true
+        };
 
-        if (typeof showModernNotification === 'function') {
-            showModernNotification(message, type, duration);
+        // Usar o Toastr global já configurado
+        if (typeof toastr !== 'undefined') {
+            // Aplicar configurações temporariamente
+            const originalOptions = { ...toastr.options };
+            Object.assign(toastr.options, alertOptions);
+
+            // Mostrar notificação
+            toastr[type](message, notification.title);
+
+            // Restaurar configurações originais
+            toastr.options = originalOptions;
+        } else if (typeof window.showToast !== 'undefined') {
+            // Usar a função wrapper existente
+            window.showToast[type](notification.title, message);
         } else {
             // Fallback para alert do navegador
             alert(`${notification.title}\n${notification.message}`);
@@ -108,17 +125,17 @@ window.AlertNotificationSystem = {
     },
 
     /**
-     * Mapear tipos de alerta para classes do Bootstrap
+     * Mapear tipos de alerta para métodos do Toastr
      */
-    mapAlertTypeToBootstrap: function (type) {
+    mapAlertTypeToToastr: function (type) {
         const mapping = {
-            'ALERT': 'danger',
-            'ERROR': 'danger',
+            'ALERT': 'error',
+            'ERROR': 'error',
             'WARNING': 'warning',
             'SUCCESS': 'success',
             'INFO': 'info'
         };
-        return mapping[type] || 'primary';
+        return mapping[type] || 'info';
     },
 
     /**
@@ -156,6 +173,12 @@ window.AlertNotificationSystem = {
 // Inicializar quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function () {
     window.AlertNotificationSystem.init();
+
+    // Adicionar função de teste ao console para desenvolvimento
+    if (typeof console !== 'undefined') {
+        console.log('🔔 Sistema de Alertas carregado!');
+        console.log('Para testar: testAlertSystem() ou showAlertNotification(titulo, mensagem, tipo, prioridade, som, url)');
+    }
 });
 
 // Função global para disparar alertas (compatibilidade)
@@ -174,12 +197,24 @@ window.showAlertNotification = function (title, message, type = 'INFO', priority
 
 // Exemplo de teste (remover em produção)
 window.testAlertSystem = function () {
+    // Teste simples com Toastr
     showAlertNotification(
-        'Teste de Alerta',
-        'Este é um teste do sistema de alertas com som.',
-        'ALERT',
+        'Sistema de Alertas Ativo! 🔔',
+        'O sistema está monitorando suas métricas em tempo real. Alertas críticos serão exibidos aqui.',
+        'SUCCESS',
         'HIGH',
         true,
         '/Alertas'
     );
+
+    // Teste adicional com diferentes tipos
+    setTimeout(() => {
+        showAlertNotification(
+            'Aviso de Monitoramento',
+            'Taxa de erro está sendo monitorada. Limite atual: 10%',
+            'WARNING',
+            'NORMAL',
+            false
+        );
+    }, 2000);
 };

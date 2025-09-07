@@ -179,6 +179,9 @@ else if (appMode == "WebOnly")
     app.MapControllerRoute(
         name: "default",
         pattern: "{controller=Home}/{action=Index}/{id?}");
+
+    // Map SignalR Hub for notifications
+    app.MapHub<ClassificadorDoc.Services.NotificationHub>("/notificationHub");
 }
 else // Full mode
 {
@@ -187,6 +190,9 @@ else // Full mode
         name: "default",
         pattern: "{controller=Home}/{action=Index}/{id?}");
     app.MapControllers();
+
+    // Map SignalR Hub for notifications
+    app.MapHub<ClassificadorDoc.Services.NotificationHub>("/notificationHub");
 }
 
 // Log do modo atual
