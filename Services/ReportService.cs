@@ -66,24 +66,15 @@ namespace ClassificadorDoc.Services
         {
             try
             {
-                var produtividade = await _context.UserProductivities
-                    .Where(up => up.Date >= dataInicio && up.Date <= dataFim)
-                    .OrderByDescending(up => up.Date)
-                    .ToListAsync();
-
-                // Buscar nomes dos usuários separadamente
-                var userIds = produtividade.Select(p => p.UserId).Distinct().ToList();
-                var users = await _context.Users
-                    .Where(u => userIds.Contains(u.Id))
-                    .ToDictionaryAsync(u => u.Id, u => u.FullName ?? u.UserName ?? "N/A");
-
-                var dataTable = CriarDataTableProdutividade(produtividade, users);
+                // Usar o novo método para obter dados reais combinados
+                var dadosProdutividade = await ObterDadosProdutividadeAsync(dataInicio, dataFim);
+                var dataTable = CriarDataTableProdutividadeCombinada(dadosProdutividade);
 
                 return await GerarPdfComTemplate("ProdutividadeTemplate.frx", dataTable, new
                 {
                     DataInicio = dataInicio.ToString("dd/MM/yyyy"),
                     DataFim = dataFim.ToString("dd/MM/yyyy"),
-                    TotalUsuarios = produtividade.Select(p => p.UserId).Distinct().Count(),
+                    TotalUsuarios = dadosProdutividade.Count(),
                     DataGeracao = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
                 });
             }

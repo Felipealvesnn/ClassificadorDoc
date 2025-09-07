@@ -1,39 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Report ScriptLanguage="CSharp" ReportInfo.Created="09/05/2025 23:16:00" ReportInfo.Modified="09/05/2025 23:16:00" ReportInfo.CreatorVersion="2024.2.0.0">
+<Report ScriptLanguage="CSharp" ReportInfo.Created="09/05/2025 23:16:00" ReportInfo.Modified="09/07/2025 15:30:00" ReportInfo.CreatorVersion="2024.2.0.0">
   <Dictionary>
     <TableDataSource Name="Data" ReferenceName="Data" DataType="System.Int32" Enabled="true">
       <Column Name="Usuario" DataType="System.String"/>
-      <Column Name="TotalProcessados" DataType="System.Int32"/>
+      <Column Name="TotalLotes" DataType="System.Int32"/>
+      <Column Name="TotalDocumentosProcessados" DataType="System.Int32"/>
+      <Column Name="DocumentosComSucesso" DataType="System.Int32"/>
+      <Column Name="DocumentosComErro" DataType="System.Int32"/>
       <Column Name="TaxaSucesso" DataType="System.Double"/>
-      <Column Name="TempoMedio" DataType="System.String"/>
+      <Column Name="ConfiancaMedia" DataType="System.Double"/>
+      <Column Name="TempoMedioProcessamento" DataType="System.String"/>
+      <Column Name="TotalLogins" DataType="System.Int32"/>
+      <Column Name="TempoTotalOnline" DataType="System.String"/>
+      <Column Name="PaginasAcessadas" DataType="System.Int32"/>
+      <Column Name="DiasAtivos" DataType="System.Int32"/>
+      <Column Name="UltimaAtividade" DataType="System.DateTime"/>
     </TableDataSource>
   </Dictionary>
   <ReportPage Name="Page1" Watermark.Font="Arial, 60pt" FirstPageSource="15" OtherPagesSource="15">
     <ReportTitleBand Name="ReportTitle1" Width="718.2" Height="113.4">
       <TextObject Name="Text1" Left="9.45" Top="9.45" Width="699.3" Height="37.8" Text="RELATÓRIO DE PRODUTIVIDADE" HorzAlign="Center" VertAlign="Center" Font="Arial, 16pt, style=Bold" TextFill.Color="DarkGreen"/>
       <TextObject Name="Text2" Left="9.45" Top="47.25" Width="699.3" Height="18.9" Text="Sistema ClassificadorDoc - Métricas de Performance por Usuário" HorzAlign="Center" Font="Arial, 11pt" TextFill.Color="Gray"/>
-      <TextObject Name="Text3" Left="9.45" Top="75.6" Width="699.3" Height="18.9" Text="[FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm&quot;)]" HorzAlign="Center" Font="Arial, 9pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text3" Left="9.45" Top="75.6" Width="699.3" Height="18.9" Text="Período: [DataInicio] a [DataFim]" HorzAlign="Center" Font="Arial, 9pt" TextFill.Color="Gray"/>
       <LineObject Name="Line1" Left="9.45" Top="103.95" Width="699.3" Border.Color="DarkGreen" Border.Width="2"/>
     </ReportTitleBand>
-    <PageHeaderBand Name="PageHeader1" Top="117.4" Width="718.2" Height="37.8">
-      <TextObject Name="Text4" Left="9.45" Top="9.45" Width="150" Height="18.9" Text="USUÁRIO" Font="Arial, 9pt, style=Bold" TextFill.Color="White" Fill.Color="DarkGreen"/>
-      <TextObject Name="Text5" Left="170" Top="9.45" Width="130" Height="18.9" Text="TOTAL PROCESSADOS" Font="Arial, 9pt, style=Bold" TextFill.Color="White" Fill.Color="DarkGreen"/>
-      <TextObject Name="Text6" Left="310" Top="9.45" Width="120" Height="18.9" Text="TAXA SUCESSO (%)" Font="Arial, 9pt, style=Bold" TextFill.Color="White" Fill.Color="DarkGreen"/>
-      <TextObject Name="Text7" Left="440" Top="9.45" Width="120" Height="18.9" Text="TEMPO MÉDIO" Font="Arial, 9pt, style=Bold" TextFill.Color="White" Fill.Color="DarkGreen"/>
+    <PageHeaderBand Name="PageHeader1" Top="117.4" Width="718.2" Height="56.7">
+      <TextObject Name="Text4" Left="9.45" Top="9.45" Width="120" Height="18.9" Text="USUÁRIO" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkGreen"/>
+      <TextObject Name="Text5" Left="135" Top="9.45" Width="80" Height="18.9" Text="DOCS PROC." Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkGreen"/>
+      <TextObject Name="Text6" Left="220" Top="9.45" Width="70" Height="18.9" Text="SUCESSO" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkGreen"/>
+      <TextObject Name="Text7" Left="295" Top="9.45" Width="70" Height="18.9" Text="TAXA (%)" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkGreen"/>
+      <TextObject Name="Text8" Left="370" Top="9.45" Width="80" Height="18.9" Text="TEMPO MÉD." Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkGreen"/>
+      <TextObject Name="Text9" Left="455" Top="9.45" Width="70" Height="18.9" Text="LOGINS" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkGreen"/>
+      <TextObject Name="Text21" Left="530" Top="9.45" Width="80" Height="18.9" Text="TEMPO ONL." Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkGreen"/>
+      <TextObject Name="Text22" Left="615" Top="9.45" Width="90" Height="18.9" Text="PÁGINAS" Font="Arial, 8pt, style=Bold" TextFill.Color="White" Fill.Color="DarkGreen"/>
     </PageHeaderBand>
-    <DataBand Name="Data1" Top="159.2" Width="718.2" Height="28.35" DataSource="Data">
-      <TextObject Name="Text10" Left="9.45" Top="4.725" Width="150" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[Data.Usuario]" VertAlign="Center" Font="Arial, 8pt"/>
-      <TextObject Name="Text11" Left="170" Top="4.725" Width="130" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[Data.TotalProcessados]" HorzAlign="Center" VertAlign="Center" Font="Arial, 8pt, style=Bold"/>
-      <TextObject Name="Text12" Left="310" Top="4.725" Width="120" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[Data.TaxaSucesso]%" HorzAlign="Center" VertAlign="Center" Font="Arial, 8pt"/>
-      <TextObject Name="Text13" Left="440" Top="4.725" Width="120" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[Data.TempoMedio]" HorzAlign="Center" VertAlign="Center" Font="Arial, 8pt"/>
+    <DataBand Name="Data1" Top="178.1" Width="718.2" Height="28.35" DataSource="Data">
+      <TextObject Name="Text10" Left="9.45" Top="4.725" Width="120" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[Data.Usuario]" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text11" Left="135" Top="4.725" Width="80" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[Data.TotalDocumentosProcessados]" HorzAlign="Center" VertAlign="Center" Font="Arial, 7pt, style=Bold"/>
+      <TextObject Name="Text12" Left="220" Top="4.725" Width="70" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[Data.DocumentosComSucesso]" HorzAlign="Center" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text13" Left="295" Top="4.725" Width="70" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[Data.TaxaSucesso]%" HorzAlign="Center" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text14" Left="370" Top="4.725" Width="80" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[Data.TempoMedioProcessamento]" HorzAlign="Center" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text15" Left="455" Top="4.725" Width="70" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[Data.TotalLogins]" HorzAlign="Center" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text23" Left="530" Top="4.725" Width="80" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[Data.TempoTotalOnline]" HorzAlign="Center" VertAlign="Center" Font="Arial, 7pt"/>
+      <TextObject Name="Text24" Left="615" Top="4.725" Width="90" Height="18.9" Border.Lines="All" Border.Color="LightGray" Text="[Data.PaginasAcessadas]" HorzAlign="Center" VertAlign="Center" Font="Arial, 7pt"/>
     </DataBand>
-    <ReportSummaryBand Name="ReportSummary1" Top="191.55" Width="718.2" Height="75.6">
+    <ReportSummaryBand Name="ReportSummary1" Top="210.45" Width="718.2" Height="75.6">
       <LineObject Name="Line2" Left="9.45" Top="9.45" Width="699.3" Border.Color="DarkGreen" Border.Width="1"/>
       <TextObject Name="Text16" Left="9.45" Top="18.9" Width="699.3" Height="18.9" Text="Relatório de Produtividade - Sistema ClassificadorDoc" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
-      <TextObject Name="Text17" Left="9.45" Top="37.8" Width="699.3" Height="18.9" Text="Dados extraídos em [FormatDateTime([Date], &quot;dd/MM/yyyy HH:mm:ss&quot;)]" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
-      <TextObject Name="Text18" Left="9.45" Top="56.7" Width="699.3" Height="18.9" Text="Total de usuários analisados: [RowCount]" HorzAlign="Center" Font="Arial, 8pt, style=Bold" TextFill.Color="DarkGreen"/>
+      <TextObject Name="Text17" Left="9.45" Top="37.8" Width="699.3" Height="18.9" Text="Dados extraídos em [DataGeracao]" HorzAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
+      <TextObject Name="Text18" Left="9.45" Top="56.7" Width="699.3" Height="18.9" Text="Total de usuários analisados: [TotalUsuarios]" HorzAlign="Center" Font="Arial, 8pt, style=Bold" TextFill.Color="DarkGreen"/>
     </ReportSummaryBand>
-    <PageFooterBand Name="PageFooter1" Top="271.15" Width="718.2" Height="18.9">
+    <PageFooterBand Name="PageFooter1" Top="290.05" Width="718.2" Height="18.9">
       <TextObject Name="Text19" Left="567" Top="0" Width="141.75" Height="18.9" Text="Página [Page] de [TotalPages]" HorzAlign="Right" VertAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
       <TextObject Name="Text20" Left="9.45" Top="0" Width="141.75" Height="18.9" Text="ClassificadorDoc v1.0" VertAlign="Center" Font="Arial, 8pt" TextFill.Color="Gray"/>
     </PageFooterBand>
