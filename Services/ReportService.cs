@@ -309,26 +309,82 @@ namespace ClassificadorDoc.Services
         private DataTable CriarDataTableProdutividade(List<UserProductivity> produtividade, Dictionary<string, string> users)
         {
             var table = new DataTable("Produtividade");
-            table.Columns.Add("Date", typeof(DateTime));
-            table.Columns.Add("UserName", typeof(string));
-            table.Columns.Add("LoginCount", typeof(int));
-            table.Columns.Add("TotalTimeOnline", typeof(string));
-            table.Columns.Add("PagesAccessed", typeof(int));
-            table.Columns.Add("FirstLogin", typeof(DateTime));
-            table.Columns.Add("LastActivity", typeof(DateTime));
+            table.Columns.Add("Usuario", typeof(string));
+            table.Columns.Add("TotalLotes", typeof(int));
+            table.Columns.Add("TotalDocumentosProcessados", typeof(int));
+            table.Columns.Add("DocumentosComSucesso", typeof(int));
+            table.Columns.Add("DocumentosComErro", typeof(int));
+            table.Columns.Add("TaxaSucesso", typeof(double));
+            table.Columns.Add("ConfiancaMedia", typeof(double));
+            table.Columns.Add("TempoMedioProcessamento", typeof(string));
+            table.Columns.Add("TotalLogins", typeof(int));
+            table.Columns.Add("TempoTotalOnline", typeof(string));
+            table.Columns.Add("PaginasAcessadas", typeof(int));
+            table.Columns.Add("DiasAtivos", typeof(int));
+            table.Columns.Add("UltimaAtividade", typeof(DateTime));
 
+            // Nota: Este método agora é uma implementação de compatibilidade
+            // Os dados reais vêm do método ObterDadosProdutividadeAsync
             foreach (var prod in produtividade)
             {
                 var userName = users.ContainsKey(prod.UserId) ? users[prod.UserId] : "N/A";
 
                 table.Rows.Add(
-                    prod.Date,
                     userName,
+                    0, // TotalLotes - será calculado no novo método
+                    0, // TotalDocumentosProcessados - será calculado no novo método
+                    0, // DocumentosComSucesso - será calculado no novo método
+                    0, // DocumentosComErro - será calculado no novo método
+                    0.0, // TaxaSucesso - será calculado no novo método
+                    0.0, // ConfiancaMedia - será calculado no novo método
+                    "N/A", // TempoMedioProcessamento - será calculado no novo método
                     prod.LoginCount,
                     prod.TotalTimeOnline.ToString(@"hh\:mm\:ss"),
                     prod.PagesAccessed,
-                    prod.FirstLogin,
+                    1, // DiasAtivos - simplificado para 1 por registro
                     prod.LastActivity
+                );
+            }
+
+            return table;
+        }
+
+        /// <summary>
+        /// Criar DataTable a partir dos dados combinados de produtividade
+        /// </summary>
+        private DataTable CriarDataTableProdutividadeCombinada(IEnumerable<dynamic> dadosProdutividade)
+        {
+            var table = new DataTable("ProdutividadeCombinada");
+            table.Columns.Add("Usuario", typeof(string));
+            table.Columns.Add("TotalLotes", typeof(int));
+            table.Columns.Add("TotalDocumentosProcessados", typeof(int));
+            table.Columns.Add("DocumentosComSucesso", typeof(int));
+            table.Columns.Add("DocumentosComErro", typeof(int));
+            table.Columns.Add("TaxaSucesso", typeof(double));
+            table.Columns.Add("ConfiancaMedia", typeof(double));
+            table.Columns.Add("TempoMedioProcessamento", typeof(string));
+            table.Columns.Add("TotalLogins", typeof(int));
+            table.Columns.Add("TempoTotalOnline", typeof(string));
+            table.Columns.Add("PaginasAcessadas", typeof(int));
+            table.Columns.Add("DiasAtivos", typeof(int));
+            table.Columns.Add("UltimaAtividade", typeof(DateTime));
+
+            foreach (var item in dadosProdutividade)
+            {
+                table.Rows.Add(
+                    (string)item.Usuario,
+                    (int)item.TotalLotes,
+                    (int)item.TotalDocumentosProcessados,
+                    (int)item.DocumentosComSucesso,
+                    (int)item.DocumentosComErro,
+                    (double)item.TaxaSucesso,
+                    (double)item.ConfiancaMedia,
+                    (string)item.TempoMedioProcessamento,
+                    (int)item.TotalLogins,
+                    (string)item.TempoTotalOnline,
+                    (int)item.PaginasAcessadas,
+                    (int)item.DiasAtivos,
+                    (DateTime?)item.UltimaAtividade ?? DateTime.MinValue
                 );
             }
 
@@ -617,20 +673,148 @@ namespace ClassificadorDoc.Services
             return logs.Cast<dynamic>();
         }
 
-        public Task<IEnumerable<dynamic>> ObterDadosProdutividadeAsync(DateTime? dataInicio, DateTime? dataFim)
+        public async Task<IEnumerable<dynamic>> ObterDadosProdutividadeAsync(DateTime? dataInicio, DateTime? dataFim)
         {
             var inicio = dataInicio ?? DateTime.Now.AddDays(-30);
             var fim = dataFim ?? DateTime.Now;
 
-            // Simulação de dados de produtividade
-            var dados = new List<dynamic>
+            try
             {
-                new { Usuario = "Admin", TotalProcessados = 150, TaxaSucesso = 95.5, TempoMedio = "2m 30s" },
-                new { Usuario = "Operador1", TotalProcessados = 120, TaxaSucesso = 92.0, TempoMedio = "3m 15s" },
-                new { Usuario = "Operador2", TotalProcessados = 98, TaxaSucesso = 88.5, TempoMedio = "4m 10s" }
-            };
+                // Buscar dados de produtividade (atividade na plataforma) - trazer para memória primeiro
+                var produtividadeRaw = await _context.UserProductivities
+                    .Where(up => up.Date >= inicio && up.Date <= fim)
+                    .ToListAsync();
 
-            return Task.FromResult(dados.AsEnumerable());
+                // Agrupar em memória para evitar problemas de tradução SQL
+                var produtividadeUsuarios = produtividadeRaw
+                    .GroupBy(up => up.UserId)
+                    .Select(g => new
+                    {
+                        UserId = g.Key,
+                        TotalLogins = g.Sum(up => up.LoginCount),
+                        TempoTotalOnline = g.Sum(up => up.TotalTimeOnline.TotalMinutes),
+                        PaginasAcessadas = g.Sum(up => up.PagesAccessed),
+                        PrimeiroLogin = g.Min(up => up.FirstLogin),
+                        UltimaAtividade = g.Max(up => up.LastActivity),
+                        DiasAtivos = g.Count()
+                    })
+                    .ToList();
+
+                // Buscar dados de processamento de lotes - trazer para memória primeiro
+                var processamentoRaw = await _context.BatchProcessingHistories
+                    .Where(bph => bph.StartedAt >= inicio && bph.StartedAt <= fim)
+                    .ToListAsync();
+
+                // Agrupar em memória para evitar problemas de tradução SQL
+                var processamentoLotes = processamentoRaw
+                    .GroupBy(bph => bph.UserId)
+                    .Select(g => new
+                    {
+                        UserId = g.Key,
+                        UserName = g.First().UserName,
+                        TotalLotes = g.Count(),
+                        TotalDocumentosProcessados = g.Sum(bph => bph.TotalDocuments),
+                        DocumentosComSucesso = g.Sum(bph => bph.SuccessfulDocuments),
+                        DocumentosComErro = g.Sum(bph => bph.FailedDocuments),
+                        TempoTotalProcessamento = g.Sum(bph => bph.ProcessingDuration?.TotalMinutes ?? 0),
+                        ConfiancaMedia = g.Average(bph => bph.AverageConfidence),
+                        UltimoProcessamento = g.Max(bph => bph.StartedAt)
+                    })
+                    .ToList();
+
+                // Buscar nomes dos usuários
+                var userIds = processamentoLotes.Select(p => p.UserId)
+                    .Union(produtividadeUsuarios.Select(p => p.UserId))
+                    .Distinct()
+                    .ToList();
+
+                var usuarios = await _context.Users
+                    .Where(u => userIds.Contains(u.Id))
+                    .ToDictionaryAsync(u => u.Id, u => u.FullName ?? u.UserName ?? "N/A");
+
+                // Combinar dados de produtividade e processamento
+                var dadosCombinados = from proc in processamentoLotes
+                                      join prod in produtividadeUsuarios on proc.UserId equals prod.UserId into prodJoin
+                                      from prod in prodJoin.DefaultIfEmpty()
+                                      select new
+                                      {
+                                          UserId = proc.UserId,
+                                          Usuario = usuarios.ContainsKey(proc.UserId) ? usuarios[proc.UserId] : proc.UserName,
+
+                                          // Dados de processamento de documentos
+                                          TotalLotes = proc.TotalLotes,
+                                          TotalDocumentosProcessados = proc.TotalDocumentosProcessados,
+                                          DocumentosComSucesso = proc.DocumentosComSucesso,
+                                          DocumentosComErro = proc.DocumentosComErro,
+                                          TaxaSucesso = proc.TotalDocumentosProcessados > 0
+                                              ? Math.Round((double)proc.DocumentosComSucesso / proc.TotalDocumentosProcessados * 100, 1)
+                                              : 0,
+                                          ConfiancaMedia = Math.Round(proc.ConfiancaMedia, 1),
+                                          TempoMedioProcessamento = proc.TotalLotes > 0
+                                              ? TimeSpan.FromMinutes(proc.TempoTotalProcessamento / proc.TotalLotes).ToString(@"mm\:ss")
+                                              : "N/A",
+                                          UltimoProcessamento = (DateTime?)proc.UltimoProcessamento,
+
+                                          // Dados de atividade na plataforma
+                                          TotalLogins = prod?.TotalLogins ?? 0,
+                                          TempoTotalOnline = prod != null
+                                              ? TimeSpan.FromMinutes(prod.TempoTotalOnline).ToString(@"hh\:mm")
+                                              : "N/A",
+                                          PaginasAcessadas = prod?.PaginasAcessadas ?? 0,
+                                          DiasAtivos = prod?.DiasAtivos ?? 0,
+                                          UltimaAtividade = (DateTime?)(prod?.UltimaAtividade ?? proc.UltimoProcessamento)
+                                      };
+
+                // Adicionar usuários que só têm atividade na plataforma (sem processamento)
+                var usuariosSemProcessamento = produtividadeUsuarios
+                    .Where(prod => !processamentoLotes.Any(proc => proc.UserId == prod.UserId))
+                    .Select(prod => new
+                    {
+                        UserId = prod.UserId,
+                        Usuario = usuarios.ContainsKey(prod.UserId) ? usuarios[prod.UserId] : "N/A",
+
+                        // Dados de processamento (zero)
+                        TotalLotes = 0,
+                        TotalDocumentosProcessados = 0,
+                        DocumentosComSucesso = 0,
+                        DocumentosComErro = 0,
+                        TaxaSucesso = 0.0,
+                        ConfiancaMedia = 0.0,
+                        TempoMedioProcessamento = "N/A",
+                        UltimoProcessamento = (DateTime?)null,
+
+                        // Dados de atividade na plataforma
+                        TotalLogins = prod.TotalLogins,
+                        TempoTotalOnline = TimeSpan.FromMinutes(prod.TempoTotalOnline).ToString(@"hh\:mm"),
+                        PaginasAcessadas = prod.PaginasAcessadas,
+                        DiasAtivos = prod.DiasAtivos,
+                        UltimaAtividade = (DateTime?)prod.UltimaAtividade
+                    });
+
+                var resultadoFinal = dadosCombinados
+                    .Concat(usuariosSemProcessamento)
+                    .OrderByDescending(d => d.TotalDocumentosProcessados)
+                    .ThenByDescending(d => d.TotalLogins)
+                    .ToList();
+
+                return resultadoFinal.Cast<dynamic>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao obter dados de produtividade do período {Inicio} a {Fim}", inicio, fim);
+
+                // Fallback para dados básicos em caso de erro
+                return new List<dynamic>
+                {
+                    new {
+                        Usuario = "Erro",
+                        TotalDocumentosProcessados = 0,
+                        TaxaSucesso = 0.0,
+                        TempoMedioProcessamento = "N/A",
+                        Erro = ex.Message
+                    }
+                };
+            }
         }
 
         public Task<IEnumerable<dynamic>> ObterDadosClassificacaoAsync(DateTime? dataInicio, DateTime? dataFim, string? categoria = null, string? status = null)
