@@ -87,7 +87,7 @@
                                         <option value="">Selecione um template...</option>
                                         @if (ViewBag.Templates != null)
                                         {
-                                            @foreach (var template in (List<dynamic>)ViewBag.Templates)
+                                            @foreach (var template in (List<AlertTemplate>)ViewBag.Templates)
                                             {
                                                 <option value="@template.Condition">@template.Name</option>
                                             }

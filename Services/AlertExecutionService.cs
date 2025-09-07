@@ -151,9 +151,13 @@ namespace ClassificadorDoc.Services
                 .CountAsync();
 
             // Taxa de erro hoje
-            var errorRateToday = await _context.DocumentProcessingHistories
+            var todayDocuments = await _context.DocumentProcessingHistories
                 .Where(d => d.ProcessedAt.Date == DateTime.Today)
-                .AverageAsync(d => d.IsSuccessful ? 0.0 : 1.0) * 100;
+                .ToListAsync();
+
+            var errorRateToday = todayDocuments.Any()
+                ? todayDocuments.Average(d => d.IsSuccessful ? 0.0 : 1.0) * 100
+                : 0.0;
 
             // Lotes processados hoje
             var batchesToday = await _context.BatchProcessingHistories
