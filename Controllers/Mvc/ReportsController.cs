@@ -47,55 +47,7 @@ namespace ClassificadorDoc.Controllers
             return View();
         }
 
-        /// <summary>
-        /// Gera relatório baseado nos filtros selecionados
-        /// </summary>
-        [HttpPost]
-        public async Task<IActionResult> GerarRelatorio(
-            string tipoRelatorio,
-            DateTime? dataInicio,
-            DateTime? dataFim,
-            string? categoria,
-            string? status,
-            string formato = "pdf")
-        {
-            try
-            {
-                var inicioData = dataInicio ?? DateTime.Now.AddDays(-30);
-                var fimData = dataFim ?? DateTime.Now;
-
-                _logger.LogInformation("Gerando relatório {Tipo} em formato {Formato} para período: {StartDate} - {EndDate}",
-                    tipoRelatorio, formato, inicioData, fimData);
-
-                byte[] fileBytes;
-                string fileName;
-                string contentType;
-
-                // Usar os métodos do ReportService que já utilizam FastReport
-                if (formato.ToLower() == "excel")
-                {
-                    // FastReport pode exportar para Excel nativamente
-                    fileBytes = await GerarRelatorioExcel(tipoRelatorio, inicioData, fimData, categoria, status);
-                    fileName = $"relatorio_{tipoRelatorio}_{inicioData:yyyyMMdd}_{fimData:yyyyMMdd}.xlsx";
-                    contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-                }
-                else
-                {
-                    // Gerar PDF usando FastReport
-                    fileBytes = await GerarRelatorioPDF(tipoRelatorio, inicioData, fimData, categoria, status);
-                    fileName = $"relatorio_{tipoRelatorio}_{inicioData:yyyyMMdd}_{fimData:yyyyMMdd}.pdf";
-                    contentType = "application/pdf";
-                }
-
-                return File(fileBytes, contentType, fileName);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao gerar relatório {Tipo}", tipoRelatorio);
-                TempData["Error"] = $"Erro ao gerar relatório: {ex.Message}";
-                return RedirectToAction("Index");
-            }
-        }
+      
 
         /// <summary>
         /// Visualizar relatório na tela (preview) - Usa FastReport WebReport
@@ -134,7 +86,7 @@ namespace ClassificadorDoc.Controllers
 
                 var model = new RelatorioPreviewModel
                 {
-                    TipoRelatorio = _reportService.ObterTituloRelatorio(tipoRelatorio),
+                    TipoRelatorio = tipoRelatorio,
                     DataInicio = inicioData,
                     DataFim = fimData,
                     Categoria = categoria,
@@ -212,7 +164,7 @@ namespace ClassificadorDoc.Controllers
                     if (report.Parameters.FindByName("DataFim") != null)
                         report.SetParameterValue("DataFim", dataFim.ToString("dd/MM/yyyy"));
                     if (report.Parameters.FindByName("TituloRelatorio") != null)
-                        report.SetParameterValue("TituloRelatorio", _reportService.ObterTituloRelatorio(tipoRelatorio));
+                        report.SetParameterValue("TituloRelatorio", "");
 
                     // Preparar o relatório
                     report.Prepare();
@@ -255,25 +207,7 @@ namespace ClassificadorDoc.Controllers
             };
         }
 
-        private async Task<byte[]> GerarRelatorioPDF(string tipoRelatorio, DateTime dataInicio, DateTime dataFim, string? categoria, string? status)
-        {
-            return tipoRelatorio.ToLower() switch
-            {
-                "auditoria" => await _reportService.GerarRelatorioAuditoria(dataInicio, dataFim),
-                "produtividade" => await _reportService.GerarRelatorioProdutividade(dataInicio, dataFim),
-                "classificacao" => await _reportService.GerarRelatorioClassificacao(dataInicio, dataFim, categoria),
-                "lotes" => await _reportService.GerarRelatorioLotes(dataInicio, dataFim, status),
-                "consolidado" => await _reportService.GerarRelatorioConsolidado(dataInicio, dataFim),
-                "lgpd" => await _reportService.GerarRelatorioLGPD(dataInicio, dataFim),
-                _ => throw new ArgumentException($"Tipo de relatório inválido: {tipoRelatorio}")
-            };
-        }
-
-        private async Task<byte[]> GerarRelatorioExcel(string tipoRelatorio, DateTime dataInicio, DateTime dataFim, string? categoria, string? status)
-        {
-            // Por enquanto, Excel será igual ao PDF até implementarmos exportação específica
-            return await GerarRelatorioPDF(tipoRelatorio, dataInicio, dataFim, categoria, status);
-        }
+      
 
         private async Task<DataTable> ObterDadosRelatorio(string tipoRelatorio, DateTime dataInicio, DateTime dataFim, string? categoria, string? status)
         {
