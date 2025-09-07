@@ -1,6 +1,7 @@
 using ClassificadorDoc.Data;
 using ClassificadorDoc.Models;
 using ClassificadorDoc.Services;
+using ClassificadorDoc.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -56,8 +57,17 @@ namespace ClassificadorDoc.Controllers.Mvc
         // GET: /Alertas/Create
         public IActionResult Create()
         {
-            ViewBag.Templates = _conditionEngine.GetPredefinedTemplates();
-            ViewBag.AvailableVariables = _conditionEngine.GetAvailableVariables();
+            try
+            {
+                ViewBag.Templates = _conditionEngine.GetPredefinedTemplates() ?? new List<AlertTemplate>();
+                ViewBag.AvailableVariables = _conditionEngine.GetAvailableVariables() ?? new List<dynamic>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao carregar templates e variáveis");
+                ViewBag.Templates = new List<AlertTemplate>();
+                ViewBag.AvailableVariables = new List<dynamic>();
+            }
             return View();
         }
 
@@ -75,10 +85,15 @@ namespace ClassificadorDoc.Controllers.Mvc
                     if (validationResult != "OK")
                     {
                         ModelState.AddModelError("Condition", validationResult);
-                        ViewBag.Templates = _conditionEngine.GetPredefinedTemplates();
-                        ViewBag.AvailableVariables = _conditionEngine.GetAvailableVariables();
+                        ViewBag.Templates = _conditionEngine.GetPredefinedTemplates() ?? new List<AlertTemplate>();
+                        ViewBag.AvailableVariables = _conditionEngine.GetAvailableVariables() ?? new List<dynamic>();
                         return View(model);
                     }
+
+                    var recipientsList = model.Recipients?.Split(',')
+                        .Select(r => r.Trim())
+                        .Where(r => !string.IsNullOrEmpty(r))
+                        .ToList() ?? new List<string>();
 
                     var alerta = new AutomatedAlert
                     {
@@ -86,7 +101,7 @@ namespace ClassificadorDoc.Controllers.Mvc
                         Description = model.Description,
                         Condition = model.Condition,
                         AlertType = model.AlertType,
-                        Recipients = JsonConvert.SerializeObject(model.Recipients?.Split(',').Select(r => r.Trim()).ToList() ?? new List<string>()),
+                        Recipients = JsonConvert.SerializeObject(recipientsList),
                         IsActive = model.IsActive,
                         Priority = model.Priority,
                         CreatedBy = User.Identity?.Name ?? "Sistema",
@@ -106,8 +121,8 @@ namespace ClassificadorDoc.Controllers.Mvc
                 }
             }
 
-            ViewBag.Templates = _conditionEngine.GetPredefinedTemplates();
-            ViewBag.AvailableVariables = _conditionEngine.GetAvailableVariables();
+            ViewBag.Templates = _conditionEngine.GetPredefinedTemplates() ?? new List<AlertTemplate>();
+            ViewBag.AvailableVariables = _conditionEngine.GetAvailableVariables() ?? new List<dynamic>();
             return View(model);
         }
 
@@ -120,19 +135,41 @@ namespace ClassificadorDoc.Controllers.Mvc
                 return NotFound();
             }
 
+            string recipientsString = "";
+            try
+            {
+                if (!string.IsNullOrEmpty(alerta.Recipients))
+                {
+                    if (alerta.Recipients.StartsWith("["))
+                    {
+                        var recipientsList = JsonConvert.DeserializeObject<List<string>>(alerta.Recipients) ?? new List<string>();
+                        recipientsString = string.Join(", ", recipientsList);
+                    }
+                    else
+                    {
+                        recipientsString = alerta.Recipients;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Erro ao deserializar recipients do alerta {Id}", id);
+                recipientsString = alerta.Recipients ?? "";
+            }
+
             var model = new CreateAlertViewModel
             {
                 Name = alerta.Name,
                 Description = alerta.Description,
                 Condition = alerta.Condition,
                 AlertType = alerta.AlertType,
-                Recipients = string.Join(", ", JsonConvert.DeserializeObject<List<string>>(alerta.Recipients ?? "[]") ?? new List<string>()),
+                Recipients = recipientsString,
                 IsActive = alerta.IsActive,
                 Priority = alerta.Priority
             };
 
-            ViewBag.Templates = _conditionEngine.GetPredefinedTemplates();
-            ViewBag.AvailableVariables = _conditionEngine.GetAvailableVariables();
+            ViewBag.Templates = _conditionEngine.GetPredefinedTemplates() ?? new List<AlertTemplate>();
+            ViewBag.AvailableVariables = _conditionEngine.GetAvailableVariables() ?? new List<dynamic>();
             return View(model);
         }
 
@@ -156,8 +193,8 @@ namespace ClassificadorDoc.Controllers.Mvc
                     if (validationResult != "OK")
                     {
                         ModelState.AddModelError("Condition", validationResult);
-                        ViewBag.Templates = _conditionEngine.GetPredefinedTemplates();
-                        ViewBag.AvailableVariables = _conditionEngine.GetAvailableVariables();
+                        ViewBag.Templates = _conditionEngine.GetPredefinedTemplates() ?? new List<AlertTemplate>();
+                        ViewBag.AvailableVariables = _conditionEngine.GetAvailableVariables() ?? new List<dynamic>();
                         return View(model);
                     }
 
@@ -165,7 +202,13 @@ namespace ClassificadorDoc.Controllers.Mvc
                     alerta.Description = model.Description;
                     alerta.Condition = model.Condition;
                     alerta.AlertType = model.AlertType;
-                    alerta.Recipients = JsonConvert.SerializeObject(model.Recipients?.Split(',').Select(r => r.Trim()).ToList() ?? new List<string>());
+
+                    var recipientsList = model.Recipients?.Split(',')
+                        .Select(r => r.Trim())
+                        .Where(r => !string.IsNullOrEmpty(r))
+                        .ToList() ?? new List<string>();
+
+                    alerta.Recipients = JsonConvert.SerializeObject(recipientsList);
                     alerta.IsActive = model.IsActive;
                     alerta.Priority = model.Priority;
 
@@ -181,8 +224,8 @@ namespace ClassificadorDoc.Controllers.Mvc
                 }
             }
 
-            ViewBag.Templates = _conditionEngine.GetPredefinedTemplates();
-            ViewBag.AvailableVariables = _conditionEngine.GetAvailableVariables();
+            ViewBag.Templates = _conditionEngine.GetPredefinedTemplates() ?? new List<AlertTemplate>();
+            ViewBag.AvailableVariables = _conditionEngine.GetAvailableVariables() ?? new List<dynamic>();
             return View(model);
         }
 
@@ -278,15 +321,28 @@ namespace ClassificadorDoc.Controllers.Mvc
         [HttpGet]
         public IActionResult ValidateCondition(string condition)
         {
-            var result = _conditionEngine.ValidateCondition(condition);
-            return Json(new { isValid = result == "OK", message = result });
+            try
+            {
+                if (string.IsNullOrWhiteSpace(condition))
+                {
+                    return Json(new { isValid = false, message = "Condição não pode estar vazia" });
+                }
+
+                var result = _conditionEngine.ValidateCondition(condition);
+                return Json(new { isValid = result == "OK", message = result });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao validar condição: {Condition}", condition);
+                return Json(new { isValid = false, message = "Erro interno na validação" });
+            }
         }
 
         // GET: /Alertas/GetTemplates
         [HttpGet]
         public IActionResult GetTemplates()
         {
-            var templates = _conditionEngine.GetPredefinedTemplates();
+            var templates = _conditionEngine.GetPredefinedTemplates() ?? new List<AlertTemplate>();
             return Json(templates);
         }
 
@@ -294,34 +350,56 @@ namespace ClassificadorDoc.Controllers.Mvc
         [HttpGet]
         public IActionResult GetVariables()
         {
-            var variables = _conditionEngine.GetAvailableVariables();
+            var variables = _conditionEngine.GetAvailableVariables() ?? new List<dynamic>();
             return Json(variables);
         }
-    }
 
-    /// <summary>
-    /// ViewModel para criação/edição de alertas
-    /// </summary>
-    public class CreateAlertViewModel
-    {
-        [Required(ErrorMessage = "Nome é obrigatório")]
-        [StringLength(100, ErrorMessage = "Nome deve ter no máximo 100 caracteres")]
-        public string Name { get; set; } = string.Empty;
+        // POST: /Alertas/FixRecipientsData (método para corrigir dados existentes)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> FixRecipientsData()
+        {
+            try
+            {
+                var alertas = await _context.AutomatedAlerts.ToListAsync();
+                int fixedCount = 0;
 
-        [StringLength(500, ErrorMessage = "Descrição deve ter no máximo 500 caracteres")]
-        public string Description { get; set; } = string.Empty;
+                foreach (var alerta in alertas)
+                {
+                    if (string.IsNullOrEmpty(alerta.Recipients))
+                    {
+                        alerta.Recipients = "[]";
+                        fixedCount++;
+                    }
+                    else if (!alerta.Recipients.StartsWith("[") && !alerta.Recipients.StartsWith("{"))
+                    {
+                        // Converter string simples para JSON
+                        var recipientsList = alerta.Recipients.Split(',')
+                            .Select(r => r.Trim())
+                            .Where(r => !string.IsNullOrEmpty(r))
+                            .ToList();
+                        alerta.Recipients = JsonConvert.SerializeObject(recipientsList);
+                        fixedCount++;
+                    }
+                }
 
-        [Required(ErrorMessage = "Condição é obrigatória")]
-        public string Condition { get; set; } = string.Empty;
+                if (fixedCount > 0)
+                {
+                    await _context.SaveChangesAsync();
+                    TempData["SuccessMessage"] = $"Dados de {fixedCount} alertas foram corrigidos com sucesso!";
+                }
+                else
+                {
+                    TempData["InfoMessage"] = "Todos os dados já estão no formato correto.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao corrigir dados dos recipients");
+                TempData["ErrorMessage"] = "Erro ao corrigir dados. Tente novamente.";
+            }
 
-        [Required(ErrorMessage = "Tipo de alerta é obrigatório")]
-        public string AlertType { get; set; } = "EMAIL";
-
-        public string? Recipients { get; set; }
-
-        public bool IsActive { get; set; } = true;
-
-        [Required(ErrorMessage = "Prioridade é obrigatória")]
-        public string Priority { get; set; } = "MEDIUM";
+            return RedirectToAction(nameof(Index));
+        }
     }
 }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ClassificadorDoc.Data;
 using ClassificadorDoc.Models;
+using Newtonsoft.Json;
 
 namespace ClassificadorDoc.Data
 {
@@ -514,11 +515,11 @@ namespace ClassificadorDoc.Data
                 {
                     Name = "Baixa Confiança na Classificação",
                     Description = "Alerta quando a confiança média cai abaixo de 70%",
-                    AlertType = "Quality",
-                    Priority = "High",
+                    AlertType = "EMAIL",
+                    Priority = "HIGH",
                     IsActive = true,
-                    Condition = "AverageConfidence < 0.7",
-                    Recipients = "admin@sistema.com,supervisor@sistema.com",
+                    Condition = "avg_confidence_today < 70",
+                    Recipients = JsonConvert.SerializeObject(new[] { "admin@sistema.com", "supervisor@sistema.com" }),
                     CreatedAt = DateTime.UtcNow.AddDays(-10),
                     CreatedBy = admin?.Id ?? users.First().Id,
                     LastTriggered = DateTime.UtcNow.AddDays(-2)
@@ -527,23 +528,23 @@ namespace ClassificadorDoc.Data
                 {
                     Name = "Alto Volume de Erros",
                     Description = "Alerta quando há mais de 10% de falhas no processamento",
-                    AlertType = "Error",
-                    Priority = "Critical",
+                    AlertType = "EMAIL",
+                    Priority = "HIGH",
                     IsActive = true,
-                    Condition = "ErrorRate > 0.1",
-                    Recipients = "admin@sistema.com,ti@sistema.com",
+                    Condition = "error_rate_today > 10",
+                    Recipients = JsonConvert.SerializeObject(new[] { "admin@sistema.com", "ti@sistema.com" }),
                     CreatedAt = DateTime.UtcNow.AddDays(-15),
                     CreatedBy = admin?.Id ?? users.First().Id
                 },
                 new AutomatedAlert
                 {
-                    Name = "Usuário Inativo",
-                    Description = "Alerta quando usuário não processa documentos há 7 dias",
-                    AlertType = "Activity",
-                    Priority = "Medium",
+                    Name = "Baixa Produtividade",
+                    Description = "Alerta quando poucos documentos são processados no dia",
+                    AlertType = "SYSTEM",
+                    Priority = "MEDIUM",
                     IsActive = true,
-                    Condition = "DaysSinceLastActivity > 7",
-                    Recipients = "usuarios@sistema.com",
+                    Condition = "documents_today < 50",
+                    Recipients = JsonConvert.SerializeObject(new[] { "usuarios@sistema.com" }),
                     CreatedAt = DateTime.UtcNow.AddDays(-5),
                     CreatedBy = admin?.Id ?? users.First().Id
                 }

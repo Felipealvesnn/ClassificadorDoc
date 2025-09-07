@@ -1,4 +1,4 @@
-@model ClassificadorDoc.Controllers.Mvc.CreateAlertViewModel
+@model ClassificadorDoc.ViewModels.CreateAlertViewModel
 @{
     ViewData["Title"] = "Editar Alerta";
 }
@@ -15,7 +15,7 @@
                 <div class="card-body">
                     <form asp-action="Edit" method="post" id="alertForm">
                         @Html.AntiForgeryToken()
-                        
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -45,7 +45,8 @@
                             <label asp-for="Description" class="form-label">
                                 <i class="fas fa-info"></i> Descrição
                             </label>
-                            <textarea asp-for="Description" class="form-control" rows="2" placeholder="Descrição detalhada do que este alerta monitora"></textarea>
+                            <textarea asp-for="Description" class="form-control" rows="2"
+                                placeholder="Descrição detalhada do que este alerta monitora"></textarea>
                             <span asp-validation-for="Description" class="text-danger"></span>
                         </div>
 
@@ -68,7 +69,8 @@
                                     <label asp-for="Recipients" class="form-label">
                                         <i class="fas fa-users"></i> Destinatários
                                     </label>
-                                    <input asp-for="Recipients" class="form-control" placeholder="email1@exemplo.com, email2@exemplo.com" />
+                                    <input asp-for="Recipients" class="form-control"
+                                        placeholder="email1@exemplo.com, email2@exemplo.com" />
                                     <div class="form-text">Separe múltiplos emails com vírgulas</div>
                                     <span asp-validation-for="Recipients" class="text-danger"></span>
                                 </div>
@@ -93,7 +95,8 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#variablesModal">
+                                    <button type="button" class="btn btn-outline-info" data-bs-toggle="modal"
+                                        data-bs-target="#variablesModal">
                                         <i class="fas fa-list"></i> Ver Variáveis Disponíveis
                                     </button>
                                 </div>
@@ -105,14 +108,16 @@
                                 <i class="fas fa-filter"></i> Condição do Alerta
                             </label>
                             <div class="input-group">
-                                <textarea asp-for="Condition" class="form-control" rows="4" id="conditionTextarea" placeholder="Ex: error_count_today > 10 AND system_cpu_usage > 80"></textarea>
+                                <textarea asp-for="Condition" class="form-control" rows="4" id="conditionTextarea"
+                                    placeholder="Ex: error_count_today > 10 AND system_cpu_usage > 80"></textarea>
                                 <button type="button" class="btn btn-outline-secondary" id="validateBtn">
                                     <i class="fas fa-check"></i> Validar
                                 </button>
                             </div>
                             <div class="form-text">
-                                Use operadores como: >, <, >=, <=, ==, !=, AND, OR<br>
-                                Exemplo: <code>error_count_today > 10</code> ou <code>processing_time_avg > 30 AND success_rate < 95</code>
+                                Use operadores como: >, <,>=, <=,==, !=, AND, OR<br>
+                                        Exemplo: <code>error_count_today > 10</code> ou
+                                        <code>processing_time_avg > 30 AND success_rate < 95</code>
                             </div>
                             <div id="conditionValidation"></div>
                             <span asp-validation-for="Condition" class="text-danger"></span>
@@ -178,12 +183,12 @@
 
 @section Scripts {
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
             // Gerenciar exibição do campo Recipients baseado no tipo de alerta
-            $('#alertTypeSelect').change(function() {
+            $('#alertTypeSelect').change(function () {
                 const alertType = $(this).val();
                 const recipientsDiv = $('#recipientsDiv');
-                
+
                 if (alertType === 'EMAIL') {
                     recipientsDiv.show();
                     recipientsDiv.find('label').html('<i class="fas fa-envelope"></i> Emails dos Destinatários');
@@ -198,7 +203,7 @@
             });
 
             // Aplicar template selecionado
-            $('#templateSelect').change(function() {
+            $('#templateSelect').change(function () {
                 const selectedCondition = $(this).val();
                 if (selectedCondition) {
                     $('#conditionTextarea').val(selectedCondition);
@@ -207,7 +212,7 @@
             });
 
             // Validar condição
-            $('#validateBtn').click(function() {
+            $('#validateBtn').click(function () {
                 validateCondition();
             });
 
@@ -219,29 +224,35 @@
                 }
 
                 $.get('@Url.Action("ValidateCondition")', { condition: condition })
-                    .done(function(response) {
+                    .done(function (response) {
                         const validationDiv = $('#conditionValidation');
-                        if (response.isValid) {
-                            validationDiv.html('<div class="alert alert-success mt-2"><i class="fas fa-check"></i> Condição válida!</div>');
+                        if (response && typeof response.isValid !== 'undefined') {
+                            if (response.isValid) {
+                                validationDiv.html('<div class="alert alert-success mt-2"><i class="fas fa-check"></i> Condição válida!</div>');
+                            } else {
+                                var message = response.message || 'Condição inválida';
+                                validationDiv.html('<div class="alert alert-danger mt-2"><i class="fas fa-times"></i> ' + message + '</div>');
+                            }
                         } else {
-                            validationDiv.html('<div class="alert alert-danger mt-2"><i class="fas fa-times"></i> ' + response.message + '</div>');
+                            validationDiv.html('<div class="alert alert-warning mt-2"><i class="fas fa-exclamation-triangle"></i> Resposta inválida do servidor</div>');
                         }
                     })
-                    .fail(function() {
+                    .fail(function (xhr, status, error) {
+                        console.error('Erro ao validar condição:', error);
                         $('#conditionValidation').html('<div class="alert alert-warning mt-2"><i class="fas fa-exclamation-triangle"></i> Erro ao validar condição</div>');
                     });
             }
 
             // Validar automaticamente enquanto digita (debounced)
             let validationTimeout;
-            $('#conditionTextarea').on('input', function() {
+            $('#conditionTextarea').on('input', function () {
                 clearTimeout(validationTimeout);
                 validationTimeout = setTimeout(validateCondition, 1000);
             });
 
             // Inicializar campo Recipients baseado no tipo atual
             $('#alertTypeSelect').trigger('change');
-            
+
             // Validar condição inicial
             if ($('#conditionTextarea').val().trim()) {
                 validateCondition();
@@ -257,12 +268,12 @@
             padding: 2px 4px;
             border-radius: 3px;
         }
-        
+
         .card-title code {
             font-size: 0.9em;
             color: #0066cc;
         }
-        
+
         #conditionTextarea {
             font-family: 'Courier New', monospace;
             font-size: 0.9em;

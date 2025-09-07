@@ -1,3 +1,4 @@
+@using System.Linq
 @model ClassificadorDoc.Models.AutomatedAlert
 @{
     ViewData["Title"] = "Detalhes do Alerta";
@@ -141,11 +142,36 @@
                                             </dt>
                                             <dd class="col-sm-9">
                                                 @{
-                                                    var recipients = Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(Model.Recipients ?? "[]") ?? new List<string>();
+                                                    List<string> recipients = new List<string>();
+                                                    try
+                                                    {
+                                                        var recipientsData = Model.Recipients ?? "[]";
+                                                        if (recipientsData.StartsWith("["))
+                                                        {
+                                                            recipients = Newtonsoft.Json.JsonConvert.DeserializeObject<List<string>>(recipientsData) ?? new List<string>();
+                                                        }
+                                                        else
+                                                        {
+                                                            // Se não for JSON, tratar como string simples separada por vírgulas
+                                                            recipients = recipientsData.Split(',').Select(r => r.Trim()).Where(r => !string.IsNullOrEmpty(r)).ToList();
+                                                        }
+                                                    }
+                                                    catch (Exception)
+                                                    {
+                                                        // Se falhar o parse JSON, tentar como string simples
+                                                        recipients = Model.Recipients.Split(',').Select(r => r.Trim()).Where(r => !string.IsNullOrEmpty(r)).ToList();
+                                                    }
                                                 }
-                                                @foreach (var recipient in recipients)
+                                                @if (recipients.Any())
                                                 {
-                                                    <span class="badge bg-light text-dark me-1">@recipient</span>
+                                                    @foreach (var recipient in recipients)
+                                                    {
+                                                        <span class="badge bg-light text-dark me-1">@recipient</span>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">Nenhum destinatário configurado</span>
                                                 }
                                             </dd>
                                         }
@@ -251,18 +277,29 @@
     <script>
         $(document).ready(function() {
             $('#validateConditionBtn').click(function() {
-                const condition = '@Html.Raw(Html.Encode(Model.Condition))';
+                var condition = @Html.Raw(Json.Serialize(Model.Condition ?? ""));
+                
+                if (!condition) {
+                    $('#conditionValidation').html('<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> Nenhuma condição para validar</div>');
+                    return;
+                }
                 
                 $.get('@Url.Action("ValidateCondition")', { condition: condition })
                     .done(function(response) {
                         const validationDiv = $('#conditionValidation');
-                        if (response.isValid) {
-                            validationDiv.html('<div class="alert alert-success"><i class="fas fa-check"></i> Condição válida!</div>');
+                        if (response && typeof response.isValid !== 'undefined') {
+                            if (response.isValid) {
+                                validationDiv.html('<div class="alert alert-success"><i class="fas fa-check"></i> Condição válida!</div>');
+                            } else {
+                                var message = response.message || 'Erro desconhecido';
+                                validationDiv.html('<div class="alert alert-danger"><i class="fas fa-times"></i> ' + message + '</div>');
+                            }
                         } else {
-                            validationDiv.html('<div class="alert alert-danger"><i class="fas fa-times"></i> ' + response.message + '</div>');
+                            validationDiv.html('<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> Resposta inválida do servidor</div>');
                         }
                     })
-                    .fail(function() {
+                    .fail(function(xhr, status, error) {
+                        console.error('Erro ao validar condição:', error);
                         $('#conditionValidation').html('<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> Erro ao validar condição</div>');
                     });
             });
