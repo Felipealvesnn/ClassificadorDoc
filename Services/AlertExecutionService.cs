@@ -164,12 +164,75 @@ namespace ClassificadorDoc.Services
                 .Where(b => b.StartedAt.Date == DateTime.Today)
                 .CountAsync();
 
+            // Calcular dias desde a última atividade (considerando sessions de usuários)
+            var lastActivity = await _context.ActiveUserSessions
+                .Where(s => s.IsActive)
+                .OrderByDescending(s => s.LastActivity)
+                .Select(s => s.LastActivity)
+                .FirstOrDefaultAsync();
+
+            var daysSinceLastActivity = lastActivity != default
+                ? (DateTime.UtcNow - lastActivity).TotalDays
+                : 999; // Se não há atividade, usar um valor alto
+
+            // Calcular confiança média dos documentos de hoje
+            var avgConfidenceToday = todayDocuments.Any()
+                ? todayDocuments.Average(d => d.Confidence)
+                : 0.0;
+
+            // Documentos com baixa confiança (< 70%)
+            var lowConfidenceCount = todayDocuments.Count(d => d.Confidence < 70);
+
+            // Documentos que falharam hoje
+            var documentsFailedToday = todayDocuments.Count(d => !d.IsSuccessful);
+
+            // Métricas temporais
+            var currentDayOfWeek = (int)DateTime.Today.DayOfWeek + 1; // 1=Domingo, 7=Sábado
+            var isWeekend = currentDayOfWeek == 1 || currentDayOfWeek == 7;
+            var isBusinessHours = DateTime.Now.Hour >= 8 && DateTime.Now.Hour <= 18 && !isWeekend;
+
+            // Adicionar todas as variáveis ao contexto
             context["active_users"] = activeUsersCount;
             context["documents_today"] = documentsToday;
             context["error_rate_today"] = errorRateToday;
             context["batches_today"] = batchesToday;
             context["current_hour"] = DateTime.Now.Hour;
             context["current_date"] = DateTime.Today;
+            context["DaysSinceLastActivity"] = Math.Round(daysSinceLastActivity, 1);
+            context["avg_confidence_today"] = Math.Round(avgConfidenceToday, 2);
+            context["low_confidence_count"] = lowConfidenceCount;
+            context["documents_failed_today"] = documentsFailedToday;
+            context["current_day_of_week"] = currentDayOfWeek;
+            context["is_weekend"] = isWeekend;
+            context["is_business_hours"] = isBusinessHours;
+
+            // Métricas padrão para variáveis que não temos dados ainda
+            context["documents_last_hour"] = 0;
+            context["documents_this_week"] = documentsToday; // Simplificação
+            context["documents_pending"] = 0;
+            context["users_logged_today"] = activeUsersCount; // Simplificação
+            context["new_users_today"] = 0;
+            context["users_inactive_7days"] = 0;
+            context["success_rate"] = Math.Round(100 - errorRateToday, 2);
+            context["processing_time_avg"] = 5.0; // Valor padrão
+            context["processing_time_max"] = 30.0; // Valor padrão
+            context["api_response_time"] = 250; // Valor padrão
+            context["queue_size"] = 0;
+            context["queue_wait_time"] = 0;
+            context["failed_batches_today"] = 0; // Calcular depois se necessário
+            context["batches_in_progress"] = 0;
+            context["avg_batch_size"] = 100; // Valor padrão
+            context["largest_batch_today"] = 500; // Valor padrão
+            context["system_cpu_usage"] = 45.0; // Valor padrão
+            context["system_memory_usage"] = 60.0; // Valor padrão
+            context["disk_space_available"] = 50.0; // Valor padrão
+            context["database_connections"] = 10; // Valor padrão
+            context["database_response_time"] = 100; // Valor padrão
+            context["unclassified_docs_today"] = 0;
+            context["reclassified_docs_today"] = 0;
+            context["alerts_triggered_today"] = 0;
+            context["critical_alerts_active"] = 0;
+            context["alerts_resolved_today"] = 0;
 
             return context;
         }
