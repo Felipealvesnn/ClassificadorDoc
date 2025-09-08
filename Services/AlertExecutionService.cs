@@ -76,6 +76,7 @@ namespace ClassificadorDoc.Services
             try
             {
                 // Verificar se já foi disparado recentemente (evitar spam)
+                
                 if (alert.LastTriggered.HasValue &&
                     alert.LastTriggered.Value.AddMinutes(30) > DateTime.UtcNow)
                 {
