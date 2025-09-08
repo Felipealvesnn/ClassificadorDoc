@@ -142,7 +142,10 @@ class NotificationManager {
 
         // Tocar som se habilitado
         if (notification.playSound && this.soundEnabled) {
-            this.playNotificationSound(notification.priority);
+            // Usar o SoundManager unificado
+            if (window.soundManager) {
+                window.soundManager.playNotificationSound(notification.priority);
+            }
         }
 
         // Mostrar toast se habilitado
@@ -194,25 +197,6 @@ class NotificationManager {
         toastElement.addEventListener('hidden.bs.toast', () => {
             toastElement.remove();
         });
-    }
-
-    playNotificationSound(priority) {
-        const audio = new Audio();
-
-        // Diferentes sons baseados na prioridade
-        switch (priority) {
-            case 'urgent':
-                audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMeC0OX3/DSeSYEKHzN8+GQXQ4XZKM=';
-                break;
-            case 'high':
-                audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMeC0OX3/DSeSYEKHzN8+GQXQ4XZKM=';
-                break;
-            default:
-                audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMeC0OX3/DSeSYEKHzN8+GQXQ4XZKM=';
-        }
-
-        audio.volume = 0.3;
-        audio.play().catch(e => console.log('Não foi possível tocar o som de notificação'));
     }
 
     addToNotificationCenter(notification) {
@@ -323,8 +307,13 @@ class NotificationManager {
     }
 
     toggleSound() {
-        this.soundEnabled = !this.soundEnabled;
-        localStorage.setItem('notificationSoundEnabled', this.soundEnabled.toString());
+        // Usar o SoundManager unificado
+        if (window.soundManager) {
+            this.soundEnabled = window.soundManager.toggle();
+        } else {
+            this.soundEnabled = !this.soundEnabled;
+            localStorage.setItem('notificationSoundEnabled', this.soundEnabled.toString());
+        }
 
         const message = this.soundEnabled ? 'Sons de notificação ativados' : 'Sons de notificação desativados';
         this.showToast({

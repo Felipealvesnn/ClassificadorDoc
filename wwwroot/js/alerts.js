@@ -5,68 +5,6 @@
 
 // Estender o sistema existente com funcionalidades de alerta
 window.AlertNotificationSystem = {
-    // Configurações de som
-    soundEnabled: true,
-    soundVolume: 0.7,
-
-    /**
-     * Reproduzir som para alertas
-     */
-    playAlertSound: function (priority = 'NORMAL') {
-        if (!this.soundEnabled) return;
-
-        try {
-            // Criar contexto de áudio se não existir
-            if (!this.audioContext) {
-                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-
-            // Sons diferentes baseados na prioridade
-            const frequencies = {
-                'HIGH': [800, 600, 400], // Som de emergência
-                'NORMAL': [500, 400],    // Som padrão
-                'LOW': [300]             // Som suave
-            };
-
-            const freq = frequencies[priority] || frequencies['NORMAL'];
-            this.playToneSequence(freq);
-
-        } catch (error) {
-            console.log('Áudio não suportado ou bloqueado:', error);
-        }
-    },
-
-    /**
-     * Reproduzir sequência de tons
-     */
-    playToneSequence: function (frequencies) {
-        frequencies.forEach((freq, index) => {
-            setTimeout(() => {
-                this.playTone(freq, 0.2);
-            }, index * 300);
-        });
-    },
-
-    /**
-     * Reproduzir tom específico
-     */
-    playTone: function (frequency, duration) {
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-
-        oscillator.frequency.value = frequency;
-        oscillator.type = 'sine';
-
-        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(this.soundVolume, this.audioContext.currentTime + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
-
-        oscillator.start(this.audioContext.currentTime);
-        oscillator.stop(this.audioContext.currentTime + duration);
-    },
 
     /**
      * Mostrar notificação de alerta usando Toastr (já instalado)
@@ -115,7 +53,10 @@ window.AlertNotificationSystem = {
 
         // Reproduzir som se habilitado
         if (notification.playSound) {
-            this.playAlertSound(notification.priority);
+            // Usar o SoundManager unificado
+            if (window.soundManager) {
+                window.soundManager.playAlertSound(notification.priority);
+            }
         }
 
         // Vibrar dispositivo móvel se suportado
@@ -139,34 +80,23 @@ window.AlertNotificationSystem = {
     },
 
     /**
-     * Configurar preferências de som
+     * Configurar preferências de som (compatibilidade)
      */
     configureSounds: function (enabled = true, volume = 0.7) {
-        this.soundEnabled = enabled;
-        this.soundVolume = Math.max(0, Math.min(1, volume));
-
-        // Salvar preferência no localStorage
-        localStorage.setItem('alertSoundEnabled', enabled);
-        localStorage.setItem('alertSoundVolume', volume);
+        // Usar o SoundManager unificado
+        if (window.soundManager) {
+            window.soundManager.configure({
+                enabled: enabled,
+                volume: volume
+            });
+        }
     },
 
     /**
      * Inicializar sistema
      */
     init: function () {
-        // Carregar preferências salvas
-        const savedSoundEnabled = localStorage.getItem('alertSoundEnabled');
-        const savedSoundVolume = localStorage.getItem('alertSoundVolume');
-
-        if (savedSoundEnabled !== null) {
-            this.soundEnabled = savedSoundEnabled === 'true';
-        }
-
-        if (savedSoundVolume !== null) {
-            this.soundVolume = parseFloat(savedSoundVolume);
-        }
-
-        console.log('Sistema de Alertas inicializado');
+        console.log('Sistema de Alertas inicializado (usando SoundManager unificado)');
     }
 };
 
@@ -197,6 +127,8 @@ window.showAlertNotification = function (title, message, type = 'INFO', priority
 
 // Exemplo de teste (remover em produção)
 window.testAlertSystem = function () {
+    console.log('🧪 Testando Sistema de Alertas Unificado...');
+
     // Teste simples com Toastr
     showAlertNotification(
         'Sistema de Alertas Ativo! 🔔',
@@ -214,7 +146,36 @@ window.testAlertSystem = function () {
             'Taxa de erro está sendo monitorada. Limite atual: 10%',
             'WARNING',
             'NORMAL',
-            false
+            true
         );
     }, 2000);
+
+    // Teste de som isolado
+    setTimeout(() => {
+        if (window.soundManager) {
+            console.log('🔊 Testando sons...');
+            window.soundManager.testSound();
+        }
+    }, 4000);
+};
+
+// Função para testar performance de som
+window.testSoundPerformance = function () {
+    console.log('🚀 Teste de Performance de Som...');
+
+    const startTime = performance.now();
+
+    // Teste múltiplos sons rapidamente
+    for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+            if (window.soundManager) {
+                window.soundManager.playNotificationSound(i % 2 === 0 ? 'normal' : 'high');
+            }
+        }, i * 200);
+    }
+
+    setTimeout(() => {
+        const endTime = performance.now();
+        console.log(`⏱️ Tempo total: ${endTime - startTime}ms`);
+    }, 1500);
 };
