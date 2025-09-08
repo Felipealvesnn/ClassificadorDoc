@@ -568,7 +568,6 @@
             } catch (error) {
                 console.error('Erro ao carregar dados:', error);
                 // Fallback para dados de exemplo se houver erro
-                carregarDadosExemplo();
             }
         }
 
@@ -583,17 +582,7 @@
             });
         }
 
-        function carregarDadosExemplo() {
-            dadosEstatisticos = {
-                documentos: [45, 52, 38, 47, 63, 41, 58, 69, 72, 55, 48, 61, 67, 59, 44],
-                confianca: [89, 92, 87, 91, 94, 88, 93, 95, 96, 90, 86, 92, 94, 91, 87],
-                tempo: [234, 189, 267, 201, 156, 245, 178, 134, 123, 198, 289, 167, 145, 187, 256],
-                usuarios: [12, 15, 9, 14, 18, 11, 16, 19, 21, 13, 10, 17, 20, 16, 12],
-                tipos: [45, 23, 18, 14],
-                tiposLabels: ['Autuação', 'Defesa', 'Notificação', 'Outros'],
-                labels: ['01/08', '02/08', '03/08', '04/08', '05/08', '06/08', '07/08', '08/08', '09/08', '10/08', '11/08', '12/08', '13/08', '14/08', '15/08']
-            };
-        }
+
 
         async function carregarDadosProdutividade(dataInicio, dataFim) {
             try {
@@ -738,14 +727,45 @@
         function criarGraficoDistribuicao() {
             const ctx = document.getElementById('graficoDistribuicao').getContext('2d');
 
-            // Usar dados dinâmicos de tipos de documento
-            const labels = dadosEstatisticos.tiposLabels && dadosEstatisticos.tiposLabels.length > 0
-                ? dadosEstatisticos.tiposLabels
-                : ['Autuação', 'Defesa', 'Notificação', 'Outros'];
+            // Usar apenas dados dinâmicos de tipos de documento - não mostrar fallback
+            const labels = dadosEstatisticos.tiposLabels || [];
+            const data = dadosEstatisticos.tipos || [];
 
-            const data = dadosEstatisticos.tipos && dadosEstatisticos.tipos.length > 0
-                ? dadosEstatisticos.tipos
-                : [45, 23, 18, 14];
+            console.log('🔍 criarGraficoDistribuicao - Dados disponíveis:', {
+                labels: labels,
+                data: data,
+                temDados: labels.length > 0 && data.length > 0
+            });
+
+            // Se não há dados reais, mostrar gráfico vazio
+            if (labels.length === 0 || data.length === 0) {
+                console.log('⚠️ Nenhum dado de tipos de documento encontrado, criando gráfico vazio');
+
+                graficoDistribuicao = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Nenhum dado disponível'],
+                        datasets: [{
+                            data: [1],
+                            backgroundColor: ['rgba(200, 200, 200, 0.3)'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                enabled: false
+                            }
+                        }
+                    }
+                });
+                return;
+            }
 
             // Gerar cores dinâmicas baseadas no número de categorias
             const cores = [
@@ -1158,24 +1178,24 @@
                         usuario.score >= 70 ? 'warning' : 'danger';
 
                 return `
-                                            <tr>
-                                                <td>
-                                                    <strong>${usuario.nome}</strong>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-${scoreClass}">${usuario.score}</span>
-                                                </td>
-                                                <td>
-                                                    <span class="text-info">${usuario.eficiencia.toFixed(1)} docs/h</span>
-                                                </td>
-                                                <td>
-                                                    <span class="text-success">${usuario.documentos}</span>
-                                                </td>
-                                                <td>
-                                                    <span class="text-muted">${usuario.tempo}</span>
-                                                </td>
-                                            </tr>
-                                        `;
+                                                <tr>
+                                                    <td>
+                                                        <strong>${usuario.nome}</strong>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-${scoreClass}">${usuario.score}</span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="text-info">${usuario.eficiencia.toFixed(1)} docs/h</span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="text-success">${usuario.documentos}</span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="text-muted">${usuario.tempo}</span>
+                                                    </td>
+                                                </tr>
+                                            `;
             }).join('');
         }
 
@@ -1462,35 +1482,47 @@
 
         function atualizarGraficoDistribuicao() {
             if (graficoDistribuicao) {
-                // Usar dados dinâmicos de tipos de documento
-                const labels = dadosEstatisticos.tiposLabels && dadosEstatisticos.tiposLabels.length > 0
-                    ? dadosEstatisticos.tiposLabels
-                    : ['Autuação', 'Defesa', 'Notificação', 'Outros'];
+                // Usar apenas dados dinâmicos de tipos de documento - não mostrar fallback
+                const labels = dadosEstatisticos.tiposLabels || [];
+                const data = dadosEstatisticos.tipos || [];
 
-                const data = dadosEstatisticos.tipos && dadosEstatisticos.tipos.length > 0
-                    ? dadosEstatisticos.tipos
-                    : [45, 23, 18, 14];
+                console.log('🔄 Atualizando gráfico de distribuição com:', {
+                    labels,
+                    data,
+                    temDados: labels.length > 0 && data.length > 0
+                });
 
-                console.log('Atualizando gráfico de distribuição com:', { labels, data });
+                // Se não há dados reais, mostrar gráfico vazio
+                if (labels.length === 0 || data.length === 0) {
+                    console.log('⚠️ Nenhum dado disponível, mostrando gráfico vazio');
 
-                // Gerar cores dinâmicas baseadas no número de categorias
-                const cores = [
-                    'rgba(255, 99, 132, 0.8)',
-                    'rgba(54, 162, 235, 0.8)',
-                    'rgba(255, 206, 86, 0.8)',
-                    'rgba(75, 192, 192, 0.8)',
-                    'rgba(153, 102, 255, 0.8)',
-                    'rgba(255, 159, 64, 0.8)',
-                    'rgba(199, 199, 199, 0.8)',
-                    'rgba(83, 102, 255, 0.8)'
-                ];
+                    graficoDistribuicao.data.labels = ['Nenhum dado disponível'];
+                    graficoDistribuicao.data.datasets[0].data = [1];
+                    graficoDistribuicao.data.datasets[0].backgroundColor = ['rgba(200, 200, 200, 0.3)'];
+                    graficoDistribuicao.options.plugins.legend.display = false;
+                    graficoDistribuicao.options.plugins.tooltip.enabled = false;
+                } else {
+                    // Gerar cores dinâmicas baseadas no número de categorias
+                    const cores = [
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 206, 86, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                        'rgba(153, 102, 255, 0.8)',
+                        'rgba(255, 159, 64, 0.8)',
+                        'rgba(199, 199, 199, 0.8)',
+                        'rgba(83, 102, 255, 0.8)'
+                    ];
 
-                const backgroundColor = labels.map((_, index) => cores[index % cores.length]);
+                    const backgroundColor = labels.map((_, index) => cores[index % cores.length]);
 
-                // Atualizar dados do gráfico
-                graficoDistribuicao.data.labels = labels;
-                graficoDistribuicao.data.datasets[0].data = data;
-                graficoDistribuicao.data.datasets[0].backgroundColor = backgroundColor;
+                    // Atualizar dados do gráfico com dados reais
+                    graficoDistribuicao.data.labels = labels;
+                    graficoDistribuicao.data.datasets[0].data = data;
+                    graficoDistribuicao.data.datasets[0].backgroundColor = backgroundColor;
+                    graficoDistribuicao.options.plugins.legend.display = true;
+                    graficoDistribuicao.options.plugins.tooltip.enabled = true;
+                }
 
                 graficoDistribuicao.update('active');
             } else {
@@ -1709,56 +1741,56 @@
                 };
 
                 const relatorio = `
-                                        RELATÓRIO ESTATÍSTICO - CLASSIFICADOR DE DOCUMENTOS
-                                        ================================================
+                                            RELATÓRIO ESTATÍSTICO - CLASSIFICADOR DE DOCUMENTOS
+                                            ================================================
 
-                                        Período: ${dataInicio} a ${dataFim}
-                                        Data do Relatório: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}
+                                            Período: ${dataInicio} a ${dataFim}
+                                            Data do Relatório: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}
 
-                                        RESUMO EXECUTIVO
-                                        ================
-                                        • Total de documentos processados: ${dadosEstatisticos.documentos.reduce((a, b) => a + b, 0)}
-                                        • Confiança média: ${stats.confianca.media.toFixed(2)}%
-                                        • Tempo médio de processamento: ${stats.tempo.media.toFixed(1)}s
-                                        • Usuários ativos (média): ${stats.usuarios.media.toFixed(0)}
+                                            RESUMO EXECUTIVO
+                                            ================
+                                            • Total de documentos processados: ${dadosEstatisticos.documentos.reduce((a, b) => a + b, 0)}
+                                            • Confiança média: ${stats.confianca.media.toFixed(2)}%
+                                            • Tempo médio de processamento: ${stats.tempo.media.toFixed(1)}s
+                                            • Usuários ativos (média): ${stats.usuarios.media.toFixed(0)}
 
-                                        ESTATÍSTICAS DETALHADAS
-                                        ======================
+                                            ESTATÍSTICAS DETALHADAS
+                                            ======================
 
-                                        Documentos Processados:
-                                        • Média: ${stats.documentos.media.toFixed(1)}
-                                        • Mediana: ${stats.documentos.mediana.toFixed(1)}
-                                        • Desvio Padrão: ${stats.documentos.desvio.toFixed(1)}
-                                        • Mínimo: ${stats.documentos.min}
-                                        • Máximo: ${stats.documentos.max}
+                                            Documentos Processados:
+                                            • Média: ${stats.documentos.media.toFixed(1)}
+                                            • Mediana: ${stats.documentos.mediana.toFixed(1)}
+                                            • Desvio Padrão: ${stats.documentos.desvio.toFixed(1)}
+                                            • Mínimo: ${stats.documentos.min}
+                                            • Máximo: ${stats.documentos.max}
 
-                                        Confiança (%):
-                                        • Média: ${stats.confianca.media.toFixed(2)}%
-                                        • Mediana: ${stats.confianca.mediana.toFixed(2)}%
-                                        • Desvio Padrão: ${stats.confianca.desvio.toFixed(2)}%
-                                        • Mínimo: ${stats.confianca.min.toFixed(2)}%
-                                        • Máximo: ${stats.confianca.max.toFixed(2)}%
+                                            Confiança (%):
+                                            • Média: ${stats.confianca.media.toFixed(2)}%
+                                            • Mediana: ${stats.confianca.mediana.toFixed(2)}%
+                                            • Desvio Padrão: ${stats.confianca.desvio.toFixed(2)}%
+                                            • Mínimo: ${stats.confianca.min.toFixed(2)}%
+                                            • Máximo: ${stats.confianca.max.toFixed(2)}%
 
-                                        Tempo de Processamento (segundos):
-                                        • Média: ${stats.tempo.media.toFixed(1)}s
-                                        • Mediana: ${stats.tempo.mediana.toFixed(1)}s
-                                        • Desvio Padrão: ${stats.tempo.desvio.toFixed(1)}s
-                                        • Mínimo: ${stats.tempo.min.toFixed(1)}s
-                                        • Máximo: ${stats.tempo.max.toFixed(1)}s
+                                            Tempo de Processamento (segundos):
+                                            • Média: ${stats.tempo.media.toFixed(1)}s
+                                            • Mediana: ${stats.tempo.mediana.toFixed(1)}s
+                                            • Desvio Padrão: ${stats.tempo.desvio.toFixed(1)}s
+                                            • Mínimo: ${stats.tempo.min.toFixed(1)}s
+                                            • Máximo: ${stats.tempo.max.toFixed(1)}s
 
-                                        Usuários Ativos:
-                                        • Média: ${stats.usuarios.media.toFixed(1)}
-                                        • Mediana: ${stats.usuarios.mediana.toFixed(1)}
-                                        • Desvio Padrão: ${stats.usuarios.desvio.toFixed(1)}
-                                        • Mínimo: ${stats.usuarios.min}
-                                        • Máximo: ${stats.usuarios.max}
+                                            Usuários Ativos:
+                                            • Média: ${stats.usuarios.media.toFixed(1)}
+                                            • Mediana: ${stats.usuarios.mediana.toFixed(1)}
+                                            • Desvio Padrão: ${stats.usuarios.desvio.toFixed(1)}
+                                            • Mínimo: ${stats.usuarios.min}
+                                            • Máximo: ${stats.usuarios.max}
 
-                                        ANÁLISE DE TENDÊNCIAS
-                                        ====================
-                                        ${analisarTendencias()}
+                                            ANÁLISE DE TENDÊNCIAS
+                                            ====================
+                                            ${analisarTendencias()}
 
-                                        Relatório gerado automaticamente pelo Sistema Classificador de Documentos
-                                        `;
+                                            Relatório gerado automaticamente pelo Sistema Classificador de Documentos
+                                            `;
 
                 const blob = new Blob([relatorio], { type: 'text/plain;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
