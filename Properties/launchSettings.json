@@ -33,6 +33,17 @@
       "dotnetRunMessages": true,
       "applicationUrl": "https://localhost:6001;http://localhost:6000"
     },
+    "Local (Banco LocalDB)": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Local",
+        "APP_MODE": "Full"
+      },
+      "dotnetRunMessages": true,
+      "applicationUrl": "https://localhost:6001;http://localhost:6000"
+    },
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,
