@@ -401,6 +401,8 @@ namespace ClassificadorDoc.Controllers.Mvc
         {
             try
             {
+                _logger.LogInformation($"🚀 DadosGraficosAvancados chamado: {metrica} - {dataInicio:yyyy-MM-dd} a {dataFim:yyyy-MM-dd}");
+
                 dataInicio ??= DateTime.Now.AddDays(-30);
                 dataFim ??= DateTime.Now;
 
@@ -610,19 +612,16 @@ namespace ClassificadorDoc.Controllers.Mvc
         {
             _logger.LogInformation($"🔍 ObterDadosProdutividade chamado para período: {dataInicio:yyyy-MM-dd} - {dataFim:yyyy-MM-dd}");
 
-            // CORREÇÃO: Buscar dados de produtividade para ONTEM (dados mais recentes disponíveis)
-            var dataParaBusca = DateTime.Today.AddDays(-1); // Ontem
-            _logger.LogInformation($"🎯 Buscando dados para a data: {dataParaBusca:yyyy-MM-dd}");
+            // Buscar dados reais da tabela BatchProcessingHistories
+            var batchesData = await _context.BatchProcessingHistories
+                .Where(b => b.StartedAt >= dataInicio && b.StartedAt <= dataFim)
+                .ToListAsync();
 
-            var productivityData = await GetCombinedProductivityData(dataParaBusca);
+            _logger.LogInformation($"📊 Encontrados {batchesData.Count} lotes no período");
 
-            _logger.LogInformation($"📊 GetCombinedProductivityData retornou {productivityData?.Count ?? 0} registros");
-
-            if (productivityData == null || !productivityData.Any())
+            if (!batchesData.Any())
             {
-                _logger.LogWarning("⚠️ Nenhum dado de produtividade encontrado, retornando estrutura vazia");
-
-                // Retornar estrutura vazia se não houver dados
+                _logger.LogWarning("⚠️ Nenhum lote encontrado no período, retornando estrutura vazia");
                 return new
                 {
                     usuarios = new string[0],
@@ -635,30 +634,49 @@ namespace ClassificadorDoc.Controllers.Mvc
                 };
             }
 
-            // Ordenar por score de produtividade (decrescente)
-            var usuariosOrdenados = productivityData
-                .Where(p => !string.IsNullOrEmpty(p.UserName))
-                .OrderByDescending(p => p.ProductivityScore)
+            // Agrupar por usuário e calcular estatísticas
+            var estatisticasPorUsuario = batchesData
+                .Where(b => !string.IsNullOrEmpty(b.UserName))
+                .GroupBy(b => new { b.UserId, b.UserName })
+                .Select(g => new
+                {
+                    UserId = g.Key.UserId,
+                    UserName = g.Key.UserName,
+                    TotalLotes = g.Count(),
+                    TotalDocumentos = g.Sum(b => b.TotalDocuments),
+                    DocumentosSucesso = g.Sum(b => b.SuccessfulDocuments),
+                    DocumentosFalha = g.Sum(b => b.FailedDocuments),
+                    TaxaSucesso = g.Sum(b => b.TotalDocuments) > 0 ?
+                        (double)g.Sum(b => b.SuccessfulDocuments) / g.Sum(b => b.TotalDocuments) * 100 : 0,
+                    ConfianciaMedia = g.Where(b => b.AverageConfidence > 0).Any() ?
+                        g.Where(b => b.AverageConfidence > 0).Average(b => b.AverageConfidence) * 100 : 0,
+                    TempoMedioProcessamento = g.Where(b => b.ProcessingDuration.HasValue).Any() ?
+                        g.Where(b => b.ProcessingDuration.HasValue).Average(b => b.ProcessingDuration!.Value.TotalMinutes) : 0,
+                    PrimeiroLote = g.Min(b => b.StartedAt),
+                    UltimoLote = g.Max(b => b.StartedAt)
+                })
+                .OrderByDescending(u => u.TaxaSucesso)
                 .ToList();
 
-            _logger.LogInformation($"✅ Usuários válidos encontrados: {usuariosOrdenados.Count}");
+            _logger.LogInformation($"✅ Processados dados de {estatisticasPorUsuario.Count} usuários");
 
-            if (usuariosOrdenados.Any())
+            var usuarios = estatisticasPorUsuario.Select(u => u.UserName).ToArray();
+            var scores = estatisticasPorUsuario.Select(u => Math.Round(u.TaxaSucesso, 1)).ToArray();
+            var eficiencia = estatisticasPorUsuario.Select(u =>
+                u.TempoMedioProcessamento > 0 ?
+                Math.Round(u.TotalDocumentos / (u.TempoMedioProcessamento / 60.0), 1) : 0.0
+            ).ToArray();
+
+            var usuariosDetalhados = estatisticasPorUsuario.Select(u => new
             {
-                _logger.LogInformation($"📋 Primeiro usuário: {usuariosOrdenados.First().UserName} - Score: {usuariosOrdenados.First().ProductivityScore}");
-            }
-
-            var usuarios = usuariosOrdenados.Select(p => p.UserName).ToArray();
-            var scores = usuariosOrdenados.Select(p => (double)p.ProductivityScore).ToArray();
-            var eficiencia = usuariosOrdenados.Select(p => p.DocumentsPerHour).ToArray();
-
-            var usuariosDetalhados = usuariosOrdenados.Select(p => new
-            {
-                nome = p.UserName,
-                score = p.ProductivityScore,
-                eficiencia = p.DocumentsPerHour,
-                documentos = p.DocumentsProcessed,
-                tempo = p.TotalTimeOnline.ToString(@"h\h\ mm\m")
+                nome = u.UserName,
+                score = Math.Round(u.TaxaSucesso, 1),
+                eficiencia = u.TempoMedioProcessamento > 0 ?
+                    Math.Round(u.TotalDocumentos / (u.TempoMedioProcessamento / 60.0), 1) : 0.0,
+                documentos = u.TotalDocumentos,
+                tempo = $"{Math.Round(u.TempoMedioProcessamento / 60.0, 1)}h",
+                lotes = u.TotalLotes,
+                confianca = Math.Round(u.ConfianciaMedia, 1)
             }).ToArray();
 
             var resultado = new
@@ -672,7 +690,7 @@ namespace ClassificadorDoc.Controllers.Mvc
                 usuariosDetalhados = usuariosDetalhados
             };
 
-            _logger.LogInformation($"🎯 Retornando dados: {usuarios.Length} usuários, score médio: {(scores.Any() ? scores.Average() : 0):F1}");
+            _logger.LogInformation($"🎯 Retornando dados reais: {usuarios.Length} usuários, taxa de sucesso média: {resultado.scoremedio}%");
 
             return resultado;
         }
@@ -860,7 +878,6 @@ namespace ClassificadorDoc.Controllers.Mvc
         /// AÇÃO TEMPORÁRIA: Criar dados de teste para BatchProcessingHistories
         /// </summary>
         [HttpGet] // Alterado para GET temporário para facilitar o teste
-        [AllowAnonymous] // Temporário para teste
         public async Task<IActionResult> CriarDadosProdutividadeTeste()
         {
             try
