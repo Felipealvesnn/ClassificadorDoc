@@ -47,15 +47,45 @@ namespace ClassificadorDoc.Controllers.Mvc
         }
 
         // GET: /Classificacao/Historico
-        public async Task<IActionResult> Historico(int? pagina)
+        public async Task<IActionResult> Historico(int? pagina, string? status, string? tipo, DateTime? dataInicio, DateTime? dataFim, int? confiancaMinima)
         {
             var userId = _userManager.GetUserId(User);
             int paginaAtual = pagina ?? 1;
             int itensPorPagina = 10;
 
+            // Query base para LOTES
+            var query = _context.BatchProcessingHistories
+                .Where(b => b.UserId == userId);
+
+            // Aplicar filtros
+            if (!string.IsNullOrEmpty(status))
+            {
+                query = query.Where(b => b.Status == status);
+            }
+
+            if (!string.IsNullOrEmpty(tipo))
+            {
+                query = query.Where(b => b.PredominantDocumentType == tipo);
+            }
+
+            if (dataInicio.HasValue)
+            {
+                query = query.Where(b => b.StartedAt.Date >= dataInicio.Value.Date);
+            }
+
+            if (dataFim.HasValue)
+            {
+                query = query.Where(b => b.StartedAt.Date <= dataFim.Value.Date);
+            }
+
+            if (confiancaMinima.HasValue)
+            {
+                var confiancaDecimal = confiancaMinima.Value / 100.0;
+                query = query.Where(b => b.AverageConfidence >= confiancaDecimal);
+            }
+
             // Buscar LOTES em vez de documentos individuais
-            var lotes = await _context.BatchProcessingHistories
-                .Where(b => b.UserId == userId)
+            var lotes = await query
                 .OrderByDescending(b => b.StartedAt)
                 .Select(b => new HistoricoLoteView
                 {
@@ -75,6 +105,13 @@ namespace ClassificadorDoc.Controllers.Mvc
                 .ToListAsync();
 
             var lotesPaginados = lotes.ToPagedList(paginaAtual, itensPorPagina);
+
+            // Passar filtros para a view para manter estado
+            ViewBag.StatusFiltro = status;
+            ViewBag.TipoFiltro = tipo;
+            ViewBag.DataInicioFiltro = dataInicio?.ToString("yyyy-MM-dd");
+            ViewBag.DataFimFiltro = dataFim?.ToString("yyyy-MM-dd");
+            ViewBag.ConfiancaFiltro = confiancaMinima;
 
             return View(lotesPaginados);
         }

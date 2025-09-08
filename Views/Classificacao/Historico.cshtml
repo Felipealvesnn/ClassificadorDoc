@@ -30,50 +30,50 @@
 <!-- Filtros -->
 <div class="card mb-4">
     <div class="card-body">
-        <form class="row g-3">
+        <form method="get" action="@Url.Action("Historico")" class="row g-3">
             <div class="col-md-3">
-                <label for="filtroStatus" class="form-label">Status do Lote</label>
-                <select class="form-select" id="filtroStatus">
+                <label for="status" class="form-label">Status do Lote</label>
+                <select class="form-select" id="status" name="status">
                     <option value="">Todos os status</option>
-                    <option value="Completed">Concluído</option>
-                    <option value="Failed">Falhou</option>
-                    <option value="Processing">Processando</option>
+                    <option value="Completed" selected="@(ViewBag.StatusFiltro == "Completed")">Concluído</option>
+                    <option value="Failed" selected="@(ViewBag.StatusFiltro == "Failed")">Falhou</option>
+                    <option value="Processing" selected="@(ViewBag.StatusFiltro == "Processing")">Processando</option>
                 </select>
             </div>
             <div class="col-md-3">
-                <label for="filtroTipo" class="form-label">Tipo Predominante</label>
-                <select class="form-select" id="filtroTipo">
+                <label for="tipo" class="form-label">Tipo Predominante</label>
+                <select class="form-select" id="tipo" name="tipo">
                     <option value="">Todos os tipos</option>
-                    <option value="autuacao">Autuação</option>
-                    <option value="defesa">Defesa</option>
-                    <option value="notificacao_penalidade">Notificação de Penalidade</option>
-                    <option value="outros">Outros</option>
+                    <option value="autuacao" selected="@(ViewBag.TipoFiltro == "autuacao")">Autuação</option>
+                    <option value="defesa" selected="@(ViewBag.TipoFiltro == "defesa")">Defesa</option>
+                    <option value="notificacao_penalidade" selected="@(ViewBag.TipoFiltro == "notificacao_penalidade")">Notificação de Penalidade</option>
+                    <option value="outros" selected="@(ViewBag.TipoFiltro == "outros")">Outros</option>
                 </select>
             </div>
             <div class="col-md-3">
-                <label for="filtroDataInicio" class="form-label">Data Início</label>
-                <input type="date" class="form-control" id="filtroDataInicio">
+                <label for="dataInicio" class="form-label">Data Início</label>
+                <input type="date" class="form-control" id="dataInicio" name="dataInicio" value="@ViewBag.DataInicioFiltro">
             </div>
             <div class="col-md-3">
-                <label for="filtroDataFim" class="form-label">Data Fim</label>
-                <input type="date" class="form-control" id="filtroDataFim">
+                <label for="dataFim" class="form-label">Data Fim</label>
+                <input type="date" class="form-control" id="dataFim" name="dataFim" value="@ViewBag.DataFimFiltro">
             </div>
             <div class="col-md-3">
-                <label for="filtroConfianca" class="form-label">Confiança Mínima</label>
-                <select class="form-select" id="filtroConfianca">
+                <label for="confiancaMinima" class="form-label">Confiança Mínima</label>
+                <select class="form-select" id="confiancaMinima" name="confiancaMinima">
                     <option value="">Qualquer</option>
-                    <option value="90">90% ou mais</option>
-                    <option value="80">80% ou mais</option>
-                    <option value="70">70% ou mais</option>
+                    <option value="90" selected="@(ViewBag.ConfiancaFiltro?.ToString() == "90")">90% ou mais</option>
+                    <option value="80" selected="@(ViewBag.ConfiancaFiltro?.ToString() == "80")">80% ou mais</option>
+                    <option value="70" selected="@(ViewBag.ConfiancaFiltro?.ToString() == "70")">70% ou mais</option>
                 </select>
             </div>
             <div class="col-12">
-                <button type="button" class="btn btn-primary" onclick="aplicarFiltros()">
+                <button type="submit" class="btn btn-primary">
                     <i class="fas fa-filter"></i> Aplicar Filtros
                 </button>
-                <button type="button" class="btn btn-outline-secondary" onclick="limparFiltros()">
+                <a href="@Url.Action("Historico")" class="btn btn-outline-secondary">
                     <i class="fas fa-times"></i> Limpar
-                </button>
+                </a>
             </div>
         </form>
     </div>
@@ -188,7 +188,14 @@
             {
                 <div class="d-flex justify-content-center mt-5 mb-4">
                     <nav aria-label="Navegação de páginas">
-                        @Html.PagedListPager(Model, page => Url.Action("Historico", new { pagina = page }), new X.PagedList.Mvc.Core.PagedListRenderOptions
+                        @Html.PagedListPager(Model, page => Url.Action("Historico", new { 
+                            pagina = page, 
+                            status = ViewBag.StatusFiltro, 
+                            tipo = ViewBag.TipoFiltro, 
+                            dataInicio = ViewBag.DataInicioFiltro, 
+                            dataFim = ViewBag.DataFimFiltro, 
+                            confiancaMinima = ViewBag.ConfiancaFiltro 
+                        }), new X.PagedList.Mvc.Core.PagedListRenderOptions
                         {
                             UlElementClasses = new string[] { "pagination", "pagination-lg" },
                             LiElementClasses = new string[] { "page-item" },
@@ -231,18 +238,6 @@
 
 @section Scripts {
     <script>
-        function aplicarFiltros() {
-            // Implementar lógica de filtros
-            console.log('Aplicando filtros...');
-        }
-
-        function limparFiltros() {
-            document.getElementById('filtroStatus').value = '';
-            document.getElementById('filtroTipo').value = '';
-            document.getElementById('filtroDataInicio').value = '';
-            document.getElementById('filtroDataFim').value = '';
-        }
-
         function exportarCSV() {
             window.location.href = '@Url.Action("ExportarCSV", "Classificacao")';
         }
@@ -250,6 +245,21 @@
         function exportarPDF() {
             window.location.href = '@Url.Action("ExportarPDF", "Classificacao")';
         }
+
+        // Adicionar indicador visual quando há filtros ativos
+        document.addEventListener('DOMContentLoaded', function() {
+            const hasFilters = '@ViewBag.StatusFiltro' || '@ViewBag.TipoFiltro' || '@ViewBag.DataInicioFiltro' || '@ViewBag.DataFimFiltro' || '@ViewBag.ConfiancaFiltro';
+            
+            if (hasFilters) {
+                const filterCard = document.querySelector('.card.mb-4');
+                filterCard.classList.add('border-primary');
+                filterCard.querySelector('.card-body').insertAdjacentHTML('afterbegin', 
+                    '<div class="alert alert-info alert-sm mb-3">' +
+                    '<i class="fas fa-info-circle"></i> Filtros ativos - <a href="@Url.Action("Historico")" class="alert-link">Limpar todos</a>' +
+                    '</div>'
+                );
+            }
+        });
     </script>
 }
 
