@@ -1158,24 +1158,24 @@
                         usuario.score >= 70 ? 'warning' : 'danger';
 
                 return `
-                                        <tr>
-                                            <td>
-                                                <strong>${usuario.nome}</strong>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-${scoreClass}">${usuario.score}</span>
-                                            </td>
-                                            <td>
-                                                <span class="text-info">${usuario.eficiencia.toFixed(1)} docs/h</span>
-                                            </td>
-                                            <td>
-                                                <span class="text-success">${usuario.documentos}</span>
-                                            </td>
-                                            <td>
-                                                <span class="text-muted">${usuario.tempo}</span>
-                                            </td>
-                                        </tr>
-                                    `;
+                                            <tr>
+                                                <td>
+                                                    <strong>${usuario.nome}</strong>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-${scoreClass}">${usuario.score}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="text-info">${usuario.eficiencia.toFixed(1)} docs/h</span>
+                                                </td>
+                                                <td>
+                                                    <span class="text-success">${usuario.documentos}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="text-muted">${usuario.tempo}</span>
+                                                </td>
+                                            </tr>
+                                        `;
             }).join('');
         }
 
@@ -1709,56 +1709,56 @@
                 };
 
                 const relatorio = `
-                                    RELATÓRIO ESTATÍSTICO - CLASSIFICADOR DE DOCUMENTOS
-                                    ================================================
+                                        RELATÓRIO ESTATÍSTICO - CLASSIFICADOR DE DOCUMENTOS
+                                        ================================================
 
-                                    Período: ${dataInicio} a ${dataFim}
-                                    Data do Relatório: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}
+                                        Período: ${dataInicio} a ${dataFim}
+                                        Data do Relatório: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}
 
-                                    RESUMO EXECUTIVO
-                                    ================
-                                    • Total de documentos processados: ${dadosEstatisticos.documentos.reduce((a, b) => a + b, 0)}
-                                    • Confiança média: ${stats.confianca.media.toFixed(2)}%
-                                    • Tempo médio de processamento: ${stats.tempo.media.toFixed(1)}s
-                                    • Usuários ativos (média): ${stats.usuarios.media.toFixed(0)}
+                                        RESUMO EXECUTIVO
+                                        ================
+                                        • Total de documentos processados: ${dadosEstatisticos.documentos.reduce((a, b) => a + b, 0)}
+                                        • Confiança média: ${stats.confianca.media.toFixed(2)}%
+                                        • Tempo médio de processamento: ${stats.tempo.media.toFixed(1)}s
+                                        • Usuários ativos (média): ${stats.usuarios.media.toFixed(0)}
 
-                                    ESTATÍSTICAS DETALHADAS
-                                    ======================
+                                        ESTATÍSTICAS DETALHADAS
+                                        ======================
 
-                                    Documentos Processados:
-                                    • Média: ${stats.documentos.media.toFixed(1)}
-                                    • Mediana: ${stats.documentos.mediana.toFixed(1)}
-                                    • Desvio Padrão: ${stats.documentos.desvio.toFixed(1)}
-                                    • Mínimo: ${stats.documentos.min}
-                                    • Máximo: ${stats.documentos.max}
+                                        Documentos Processados:
+                                        • Média: ${stats.documentos.media.toFixed(1)}
+                                        • Mediana: ${stats.documentos.mediana.toFixed(1)}
+                                        • Desvio Padrão: ${stats.documentos.desvio.toFixed(1)}
+                                        • Mínimo: ${stats.documentos.min}
+                                        • Máximo: ${stats.documentos.max}
 
-                                    Confiança (%):
-                                    • Média: ${stats.confianca.media.toFixed(2)}%
-                                    • Mediana: ${stats.confianca.mediana.toFixed(2)}%
-                                    • Desvio Padrão: ${stats.confianca.desvio.toFixed(2)}%
-                                    • Mínimo: ${stats.confianca.min.toFixed(2)}%
-                                    • Máximo: ${stats.confianca.max.toFixed(2)}%
+                                        Confiança (%):
+                                        • Média: ${stats.confianca.media.toFixed(2)}%
+                                        • Mediana: ${stats.confianca.mediana.toFixed(2)}%
+                                        • Desvio Padrão: ${stats.confianca.desvio.toFixed(2)}%
+                                        • Mínimo: ${stats.confianca.min.toFixed(2)}%
+                                        • Máximo: ${stats.confianca.max.toFixed(2)}%
 
-                                    Tempo de Processamento (segundos):
-                                    • Média: ${stats.tempo.media.toFixed(1)}s
-                                    • Mediana: ${stats.tempo.mediana.toFixed(1)}s
-                                    • Desvio Padrão: ${stats.tempo.desvio.toFixed(1)}s
-                                    • Mínimo: ${stats.tempo.min.toFixed(1)}s
-                                    • Máximo: ${stats.tempo.max.toFixed(1)}s
+                                        Tempo de Processamento (segundos):
+                                        • Média: ${stats.tempo.media.toFixed(1)}s
+                                        • Mediana: ${stats.tempo.mediana.toFixed(1)}s
+                                        • Desvio Padrão: ${stats.tempo.desvio.toFixed(1)}s
+                                        • Mínimo: ${stats.tempo.min.toFixed(1)}s
+                                        • Máximo: ${stats.tempo.max.toFixed(1)}s
 
-                                    Usuários Ativos:
-                                    • Média: ${stats.usuarios.media.toFixed(1)}
-                                    • Mediana: ${stats.usuarios.mediana.toFixed(1)}
-                                    • Desvio Padrão: ${stats.usuarios.desvio.toFixed(1)}
-                                    • Mínimo: ${stats.usuarios.min}
-                                    • Máximo: ${stats.usuarios.max}
+                                        Usuários Ativos:
+                                        • Média: ${stats.usuarios.media.toFixed(1)}
+                                        • Mediana: ${stats.usuarios.mediana.toFixed(1)}
+                                        • Desvio Padrão: ${stats.usuarios.desvio.toFixed(1)}
+                                        • Mínimo: ${stats.usuarios.min}
+                                        • Máximo: ${stats.usuarios.max}
 
-                                    ANÁLISE DE TENDÊNCIAS
-                                    ====================
-                                    ${analisarTendencias()}
+                                        ANÁLISE DE TENDÊNCIAS
+                                        ====================
+                                        ${analisarTendencias()}
 
-                                    Relatório gerado automaticamente pelo Sistema Classificador de Documentos
-                                    `;
+                                        Relatório gerado automaticamente pelo Sistema Classificador de Documentos
+                                        `;
 
                 const blob = new Blob([relatorio], { type: 'text/plain;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
