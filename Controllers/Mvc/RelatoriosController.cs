@@ -394,6 +394,7 @@ namespace ClassificadorDoc.Controllers.Mvc
         /// API para dados dos gráficos avançados
         /// </summary>
         [HttpGet]
+        [AllowAnonymous] // Temporário para teste
         public async Task<IActionResult> DadosGraficosAvancados(
             DateTime? dataInicio = null,
             DateTime? dataFim = null,
@@ -612,16 +613,16 @@ namespace ClassificadorDoc.Controllers.Mvc
         {
             _logger.LogInformation($"🔍 ObterDadosProdutividade chamado para período: {dataInicio:yyyy-MM-dd} - {dataFim:yyyy-MM-dd}");
 
-            // Buscar dados reais da tabela BatchProcessingHistories
-            var batchesData = await _context.BatchProcessingHistories
-                .Where(b => b.StartedAt >= dataInicio && b.StartedAt <= dataFim)
+            // Buscar dados reais da tabela DocumentProcessingHistories (documentos individuais)
+            var documentosData = await _context.DocumentProcessingHistories
+                .Where(d => d.ProcessedAt >= dataInicio && d.ProcessedAt <= dataFim)
                 .ToListAsync();
 
-            _logger.LogInformation($"📊 Encontrados {batchesData.Count} lotes no período");
+            _logger.LogInformation($"📊 Encontrados {documentosData.Count} documentos processados no período");
 
-            if (!batchesData.Any())
+            if (!documentosData.Any())
             {
-                _logger.LogWarning("⚠️ Nenhum lote encontrado no período, retornando estrutura vazia");
+                _logger.LogWarning("⚠️ Nenhum documento encontrado no período, retornando estrutura vazia");
                 return new
                 {
                     usuarios = new string[0],
@@ -634,63 +635,77 @@ namespace ClassificadorDoc.Controllers.Mvc
                 };
             }
 
-            // Agrupar por usuário e calcular estatísticas
-            var estatisticasPorUsuario = batchesData
-                .Where(b => !string.IsNullOrEmpty(b.UserName))
-                .GroupBy(b => new { b.UserId, b.UserName })
+            // Buscar dados do usuário para cada UserId
+            var userIds = documentosData.Select(d => d.UserId).Distinct().ToList();
+            var usuarios = await _context.Users
+                .Where(u => userIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.FullName ?? u.UserName ?? "Usuário Desconhecido");
+
+            // Agrupar APENAS por UserId para evitar duplicação
+            var estatisticasPorUsuario = documentosData
+                .Where(d => !string.IsNullOrEmpty(d.UserId))
+                .GroupBy(d => d.UserId) // APENAS UserId
                 .Select(g => new
                 {
-                    UserId = g.Key.UserId,
-                    UserName = g.Key.UserName,
-                    TotalLotes = g.Count(),
-                    TotalDocumentos = g.Sum(b => b.TotalDocuments),
-                    DocumentosSucesso = g.Sum(b => b.SuccessfulDocuments),
-                    DocumentosFalha = g.Sum(b => b.FailedDocuments),
-                    TaxaSucesso = g.Sum(b => b.TotalDocuments) > 0 ?
-                        (double)g.Sum(b => b.SuccessfulDocuments) / g.Sum(b => b.TotalDocuments) * 100 : 0,
-                    ConfianciaMedia = g.Where(b => b.AverageConfidence > 0).Any() ?
-                        g.Where(b => b.AverageConfidence > 0).Average(b => b.AverageConfidence) * 100 : 0,
-                    TempoMedioProcessamento = g.Where(b => b.ProcessingDuration.HasValue).Any() ?
-                        g.Where(b => b.ProcessingDuration.HasValue).Average(b => b.ProcessingDuration!.Value.TotalMinutes) : 0,
-                    PrimeiroLote = g.Min(b => b.StartedAt),
-                    UltimoLote = g.Max(b => b.StartedAt)
+                    UserId = g.Key,
+                    UserName = usuarios.ContainsKey(g.Key) ? usuarios[g.Key] : "Usuário Desconhecido",
+                    TotalDocumentos = g.Count(),
+                    DocumentosSucesso = g.Count(d => d.IsSuccessful),
+                    DocumentosFalha = g.Count(d => !d.IsSuccessful),
+                    TaxaSucesso = g.Any() ? (double)g.Count(d => d.IsSuccessful) / g.Count() * 100 : 0,
+                    ConfianciaMedia = g.Where(d => d.Confidence > 0).Any() ?
+                        g.Where(d => d.Confidence > 0).Average(d => d.Confidence) * 100 : 0,
+                    PrimeiroDocumento = g.Min(d => d.ProcessedAt),
+                    UltimoDocumento = g.Max(d => d.ProcessedAt),
+                    TempoTotalHoras = Math.Max(1.0, g.Max(d => d.ProcessedAt).Subtract(g.Min(d => d.ProcessedAt)).TotalHours) // Mínimo 1 hora
                 })
                 .OrderByDescending(u => u.TaxaSucesso)
                 .ToList();
 
             _logger.LogInformation($"✅ Processados dados de {estatisticasPorUsuario.Count} usuários");
 
-            var usuarios = estatisticasPorUsuario.Select(u => u.UserName).ToArray();
+            // DEBUG: Log detalhado dos dados calculados
+            foreach (var user in estatisticasPorUsuario)
+            {
+                _logger.LogInformation($"🔍 Usuário: {user.UserName} (ID: {user.UserId})");
+                _logger.LogInformation($"   📄 Total Documentos: {user.TotalDocumentos}");
+                _logger.LogInformation($"   ⏱️ Tempo Total: {Math.Round(user.TempoTotalHoras, 2)}h");
+                _logger.LogInformation($"   ⚡ Eficiência: {(user.TempoTotalHoras > 0 ? Math.Round(user.TotalDocumentos / user.TempoTotalHoras, 1) : 0)} docs/h");
+                _logger.LogInformation($"   ✅ Taxa Sucesso: {Math.Round(user.TaxaSucesso, 1)}%");
+            }
+
+            var nomeUsuarios = estatisticasPorUsuario.Select(u => u.UserName).ToArray();
             var scores = estatisticasPorUsuario.Select(u => Math.Round(u.TaxaSucesso, 1)).ToArray();
             var eficiencia = estatisticasPorUsuario.Select(u =>
-                u.TempoMedioProcessamento > 0 ?
-                Math.Round(u.TotalDocumentos / (u.TempoMedioProcessamento / 60.0), 1) : 0.0
+                u.TempoTotalHoras > 0 ?
+                Math.Round(u.TotalDocumentos / u.TempoTotalHoras, 1) : 0.0 // docs/hora REAL
             ).ToArray();
 
             var usuariosDetalhados = estatisticasPorUsuario.Select(u => new
             {
                 nome = u.UserName,
                 score = Math.Round(u.TaxaSucesso, 1),
-                eficiencia = u.TempoMedioProcessamento > 0 ?
-                    Math.Round(u.TotalDocumentos / (u.TempoMedioProcessamento / 60.0), 1) : 0.0,
+                eficiencia = u.TempoTotalHoras > 0 ?
+                    Math.Round(u.TotalDocumentos / u.TempoTotalHoras, 1) : 0.0, // docs/hora REAL
                 documentos = u.TotalDocumentos,
-                tempo = $"{Math.Round(u.TempoMedioProcessamento / 60.0, 1)}h",
-                lotes = u.TotalLotes,
+                tempo = $"{Math.Round(u.TempoTotalHoras, 1)}h", // Tempo total em horas
+                sucessos = u.DocumentosSucesso,
+                falhas = u.DocumentosFalha,
                 confianca = Math.Round(u.ConfianciaMedia, 1)
             }).ToArray();
 
             var resultado = new
             {
-                usuarios = usuarios,
+                usuarios = nomeUsuarios,
                 scores = scores,
                 eficiencia = eficiencia,
-                totalUsuarios = usuarios.Length,
+                totalUsuarios = nomeUsuarios.Length,
                 scoremedio = scores.Any() ? Math.Round(scores.Average(), 1) : 0.0,
                 eficienciaMedia = eficiencia.Any() ? Math.Round(eficiencia.Where(e => e > 0).DefaultIfEmpty(0).Average(), 1) : 0.0,
                 usuariosDetalhados = usuariosDetalhados
             };
 
-            _logger.LogInformation($"🎯 Retornando dados reais: {usuarios.Length} usuários, taxa de sucesso média: {resultado.scoremedio}%");
+            _logger.LogInformation($"🎯 Retornando dados reais: {nomeUsuarios.Length} usuários, taxa de sucesso média: {resultado.scoremedio}%");
 
             return resultado;
         }
