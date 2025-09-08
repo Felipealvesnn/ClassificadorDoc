@@ -480,51 +480,85 @@
                 const dataFim = document.getElementById('dataFim').value;
 
                 console.log(`🔄 carregarDadosEstatisticos iniciado para período: ${dataInicio} - ${dataFim}`);
+                console.log('🔍 Valores dos campos:', { dataInicio, dataFim });
 
-                // Carregar dados de todas as métricas
-                const [docsData, confData, tempoData, usersData, tiposData, prodData] = await Promise.all([
-                    fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=documentos`).then(r => r.json()),
-                    fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=confianca`).then(r => r.json()),
-                    fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=tempo`).then(r => r.json()),
-                    fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=usuarios`).then(r => r.json()),
-                    fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=tipos`).then(r => r.json()),
-                    carregarDadosProdutividade(dataInicio, dataFim)
-                ]);
+                // Verificar se as datas estão preenchidas
+                if (!dataInicio || !dataFim) {
+                    console.warn('⚠️ Datas não preenchidas, aguardando...');
+                    setTimeout(() => carregarDadosEstatisticos(), 100);
+                    return;
+                }
 
-                console.log('📊 Dados de produtividade carregados:', prodData);
+                // 🚀 OTIMIZAÇÃO: Uma única requisição para buscar todos os dados
+                const response = await fetch(`/Relatorios/DadosGraficosCompletos?dataInicio=${dataInicio}&dataFim=${dataFim}`);
+                const allData = await response.json();
 
-                // Extrair dados da resposta da API
-                const extractData = (response) => response.success ? response.data : { labels: [], valores: [] };
+                if (allData.success && allData.data) {
+                    console.log('✅ Dados completos carregados em uma única requisição:', allData.data);
 
-                const docsDataExtracted = extractData(docsData);
-                const confDataExtracted = extractData(confData);
-                const tempoDataExtracted = extractData(tempoData);
-                const usersDataExtracted = extractData(usersData);
-                const tiposDataExtracted = extractData(tiposData);
+                    // Extrair dados da resposta unificada
+                    const data = allData.data;
 
-                // Unificar labels (usar o maior conjunto de datas)
-                const todasLabels = [...new Set([
-                    ...docsDataExtracted.labels || [],
-                    ...confDataExtracted.labels || [],
-                    ...tempoDataExtracted.labels || [],
-                    ...usersDataExtracted.labels || []
-                ])].sort();
+                    dadosEstatisticos = {
+                        labels: data.labels || [],
+                        documentos: data.documentos?.valores || [],
+                        confianca: data.confianca?.valores || [],
+                        tempo: data.tempo?.valores || [],
+                        usuarios: data.usuarios?.valores || [],
+                        // Dados de tipos
+                        tipos: data.tipos?.valores || [],
+                        tiposLabels: data.tipos?.labels || [],
+                        // Dados de produtividade
+                        produtividade: data.produtividade?.scores || [],
+                        eficiencia: data.produtividade?.eficiencia || [],
+                        usuariosProdutividade: data.produtividade?.usuarios || [],
+                        dadosProdutividade: data.produtividade || {}
+                    };
 
-                dadosEstatisticos = {
-                    labels: todasLabels,
-                    documentos: preencherDados(docsDataExtracted, todasLabels),
-                    confianca: preencherDados(confDataExtracted, todasLabels),
-                    tempo: preencherDados(tempoDataExtracted, todasLabels),
-                    usuarios: preencherDados(usersDataExtracted, todasLabels),
-                    // Dados de tipos são diferentes (não temporais)
-                    tipos: tiposDataExtracted.valores || [],
-                    tiposLabels: tiposDataExtracted.labels || [],
-                    // Dados de produtividade
-                    produtividade: prodData.scores || [],
-                    eficiencia: prodData.eficiencia || [],
-                    usuariosProdutividade: prodData.usuarios || [],
-                    dadosProdutividade: prodData
-                };
+                    console.log('📊 Dados organizados:', dadosEstatisticos);
+                } else {
+                    console.warn('⚠️ Falha ao carregar dados otimizados, usando fallback com múltiplas requisições');
+
+                    // Fallback: usar o método antigo com múltiplas requisições
+                    const [docsData, confData, tempoData, usersData, tiposData, prodData] = await Promise.all([
+                        fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=documentos`).then(r => r.json()),
+                        fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=confianca`).then(r => r.json()),
+                        fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=tempo`).then(r => r.json()),
+                        fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=usuarios`).then(r => r.json()),
+                        fetch(`/Relatorios/DadosGraficosAvancados?dataInicio=${dataInicio}&dataFim=${dataFim}&metrica=tipos`).then(r => r.json()),
+                        carregarDadosProdutividade(dataInicio, dataFim)
+                    ]);
+
+                    // Processar dados do fallback (código existente)
+                    const extractData = (response) => response.success ? response.data : { labels: [], valores: [] };
+
+                    const docsDataExtracted = extractData(docsData);
+                    const confDataExtracted = extractData(confData);
+                    const tempoDataExtracted = extractData(tempoData);
+                    const usersDataExtracted = extractData(usersData);
+                    const tiposDataExtracted = extractData(tiposData);
+
+                    const todasLabels = [...new Set([
+                        ...docsDataExtracted.labels || [],
+                        ...confDataExtracted.labels || [],
+                        ...tempoDataExtracted.labels || [],
+                        ...usersDataExtracted.labels || []
+                    ])].sort();
+
+                    dadosEstatisticos = {
+                        labels: todasLabels,
+                        documentos: preencherDados(docsDataExtracted, todasLabels),
+                        confianca: preencherDados(confDataExtracted, todasLabels),
+                        tempo: preencherDados(tempoDataExtracted, todasLabels),
+                        usuarios: preencherDados(usersDataExtracted, todasLabels),
+                        tipos: tiposDataExtracted.valores || [],
+                        tiposLabels: tiposDataExtracted.labels || [],
+                        produtividade: prodData.scores || [],
+                        eficiencia: prodData.eficiencia || [],
+                        usuariosProdutividade: prodData.usuarios || [],
+                        dadosProdutividade: prodData
+                    };
+                }
 
                 console.log('Dados carregados:', dadosEstatisticos);
                 console.log('Dados de tipos específicos:', {
@@ -1124,24 +1158,24 @@
                         usuario.score >= 70 ? 'warning' : 'danger';
 
                 return `
-                                <tr>
-                                    <td>
-                                        <strong>${usuario.nome}</strong>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-${scoreClass}">${usuario.score}</span>
-                                    </td>
-                                    <td>
-                                        <span class="text-info">${usuario.eficiencia.toFixed(1)} docs/h</span>
-                                    </td>
-                                    <td>
-                                        <span class="text-success">${usuario.documentos}</span>
-                                    </td>
-                                    <td>
-                                        <span class="text-muted">${usuario.tempo}</span>
-                                    </td>
-                                </tr>
-                            `;
+                                        <tr>
+                                            <td>
+                                                <strong>${usuario.nome}</strong>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-${scoreClass}">${usuario.score}</span>
+                                            </td>
+                                            <td>
+                                                <span class="text-info">${usuario.eficiencia.toFixed(1)} docs/h</span>
+                                            </td>
+                                            <td>
+                                                <span class="text-success">${usuario.documentos}</span>
+                                            </td>
+                                            <td>
+                                                <span class="text-muted">${usuario.tempo}</span>
+                                            </td>
+                                        </tr>
+                                    `;
             }).join('');
         }
 
@@ -1675,56 +1709,56 @@
                 };
 
                 const relatorio = `
-                            RELATÓRIO ESTATÍSTICO - CLASSIFICADOR DE DOCUMENTOS
-                            ================================================
+                                    RELATÓRIO ESTATÍSTICO - CLASSIFICADOR DE DOCUMENTOS
+                                    ================================================
 
-                            Período: ${dataInicio} a ${dataFim}
-                            Data do Relatório: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}
+                                    Período: ${dataInicio} a ${dataFim}
+                                    Data do Relatório: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR')}
 
-                            RESUMO EXECUTIVO
-                            ================
-                            • Total de documentos processados: ${dadosEstatisticos.documentos.reduce((a, b) => a + b, 0)}
-                            • Confiança média: ${stats.confianca.media.toFixed(2)}%
-                            • Tempo médio de processamento: ${stats.tempo.media.toFixed(1)}s
-                            • Usuários ativos (média): ${stats.usuarios.media.toFixed(0)}
+                                    RESUMO EXECUTIVO
+                                    ================
+                                    • Total de documentos processados: ${dadosEstatisticos.documentos.reduce((a, b) => a + b, 0)}
+                                    • Confiança média: ${stats.confianca.media.toFixed(2)}%
+                                    • Tempo médio de processamento: ${stats.tempo.media.toFixed(1)}s
+                                    • Usuários ativos (média): ${stats.usuarios.media.toFixed(0)}
 
-                            ESTATÍSTICAS DETALHADAS
-                            ======================
+                                    ESTATÍSTICAS DETALHADAS
+                                    ======================
 
-                            Documentos Processados:
-                            • Média: ${stats.documentos.media.toFixed(1)}
-                            • Mediana: ${stats.documentos.mediana.toFixed(1)}
-                            • Desvio Padrão: ${stats.documentos.desvio.toFixed(1)}
-                            • Mínimo: ${stats.documentos.min}
-                            • Máximo: ${stats.documentos.max}
+                                    Documentos Processados:
+                                    • Média: ${stats.documentos.media.toFixed(1)}
+                                    • Mediana: ${stats.documentos.mediana.toFixed(1)}
+                                    • Desvio Padrão: ${stats.documentos.desvio.toFixed(1)}
+                                    • Mínimo: ${stats.documentos.min}
+                                    • Máximo: ${stats.documentos.max}
 
-                            Confiança (%):
-                            • Média: ${stats.confianca.media.toFixed(2)}%
-                            • Mediana: ${stats.confianca.mediana.toFixed(2)}%
-                            • Desvio Padrão: ${stats.confianca.desvio.toFixed(2)}%
-                            • Mínimo: ${stats.confianca.min.toFixed(2)}%
-                            • Máximo: ${stats.confianca.max.toFixed(2)}%
+                                    Confiança (%):
+                                    • Média: ${stats.confianca.media.toFixed(2)}%
+                                    • Mediana: ${stats.confianca.mediana.toFixed(2)}%
+                                    • Desvio Padrão: ${stats.confianca.desvio.toFixed(2)}%
+                                    • Mínimo: ${stats.confianca.min.toFixed(2)}%
+                                    • Máximo: ${stats.confianca.max.toFixed(2)}%
 
-                            Tempo de Processamento (segundos):
-                            • Média: ${stats.tempo.media.toFixed(1)}s
-                            • Mediana: ${stats.tempo.mediana.toFixed(1)}s
-                            • Desvio Padrão: ${stats.tempo.desvio.toFixed(1)}s
-                            • Mínimo: ${stats.tempo.min.toFixed(1)}s
-                            • Máximo: ${stats.tempo.max.toFixed(1)}s
+                                    Tempo de Processamento (segundos):
+                                    • Média: ${stats.tempo.media.toFixed(1)}s
+                                    • Mediana: ${stats.tempo.mediana.toFixed(1)}s
+                                    • Desvio Padrão: ${stats.tempo.desvio.toFixed(1)}s
+                                    • Mínimo: ${stats.tempo.min.toFixed(1)}s
+                                    • Máximo: ${stats.tempo.max.toFixed(1)}s
 
-                            Usuários Ativos:
-                            • Média: ${stats.usuarios.media.toFixed(1)}
-                            • Mediana: ${stats.usuarios.mediana.toFixed(1)}
-                            • Desvio Padrão: ${stats.usuarios.desvio.toFixed(1)}
-                            • Mínimo: ${stats.usuarios.min}
-                            • Máximo: ${stats.usuarios.max}
+                                    Usuários Ativos:
+                                    • Média: ${stats.usuarios.media.toFixed(1)}
+                                    • Mediana: ${stats.usuarios.mediana.toFixed(1)}
+                                    • Desvio Padrão: ${stats.usuarios.desvio.toFixed(1)}
+                                    • Mínimo: ${stats.usuarios.min}
+                                    • Máximo: ${stats.usuarios.max}
 
-                            ANÁLISE DE TENDÊNCIAS
-                            ====================
-                            ${analisarTendencias()}
+                                    ANÁLISE DE TENDÊNCIAS
+                                    ====================
+                                    ${analisarTendencias()}
 
-                            Relatório gerado automaticamente pelo Sistema Classificador de Documentos
-                            `;
+                                    Relatório gerado automaticamente pelo Sistema Classificador de Documentos
+                                    `;
 
                 const blob = new Blob([relatorio], { type: 'text/plain;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
