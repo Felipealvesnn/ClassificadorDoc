@@ -494,6 +494,8 @@
 
         async function verDetalhesDoc(id) {
             try {
+                console.log('🔍 Iniciando carregamento de detalhes para ID:', id);
+                
                 // Mostrar modal e spinner
                 const modal = new bootstrap.Modal(document.getElementById('modalDetalhesDocumento'));
                 modal.show();
@@ -501,17 +503,24 @@
                 // Fazer requisição para buscar detalhes
                 const response = await fetch(`@Url.Action("DetalhesDocumento", "Classificacao")?id=${id}`);
                 
+                console.log('📡 Response status:', response.status);
+                
                 if (!response.ok) {
                     throw new Error('Erro ao carregar detalhes');
                 }
                 
                 documentoDetalhes = await response.json();
+                console.log('📄 Dados recebidos:', documentoDetalhes);
                 
                 // Renderizar conteúdo do modal
-                document.getElementById('modalDetalhesConteudo').innerHTML = gerarHtmlDetalhes(documentoDetalhes);
+                const htmlGerado = gerarHtmlDetalhes(documentoDetalhes);
+                console.log('🎨 HTML gerado (primeiros 200 chars):', htmlGerado.substring(0, 200));
+                
+                document.getElementById('modalDetalhesConteudo').innerHTML = htmlGerado;
+                console.log('✅ Modal atualizado com sucesso');
                 
             } catch (error) {
-                console.error('Erro ao carregar detalhes:', error);
+                console.error('❌ Erro ao carregar detalhes:', error);
                 document.getElementById('modalDetalhesConteudo').innerHTML = `
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-triangle me-2"></i>
@@ -522,13 +531,22 @@
         }
 
         function gerarHtmlDetalhes(doc) {
-            const tipoDisplayName = getTipoDisplayName(doc.TipoClassificado);
-            const statusClass = doc.Sucesso ? 'success' : 'danger';
-            const statusText = doc.Sucesso ? 'Concluído' : 'Falhou';
+            console.log('🎨 Gerando HTML para documento:', doc);
+            
+            const tipoDisplayName = getTipoDisplayName(doc.TipoClassificado || doc.tipoClassificado);
+            const statusClass = (doc.Sucesso !== undefined ? doc.Sucesso : doc.sucesso) ? 'success' : 'danger';
+            const statusText = (doc.Sucesso !== undefined ? doc.Sucesso : doc.sucesso) ? 'Concluído' : 'Falhou';
+            
+            console.log('📋 Tipo:', doc.TipoClassificado || doc.tipoClassificado);
+            console.log('⚡ Status:', statusClass, statusText);
             
             let dadosEspecificos = '';
             
-            if (doc.TipoClassificado && doc.TipoClassificado.includes('autuacao')) {
+            const tipoDoc = (doc.TipoClassificado || doc.tipoClassificado || '').toLowerCase();
+            console.log('🔍 Tipo para verificação:', tipoDoc);
+            
+            if (tipoDoc.includes('autuacao')) {
+                console.log('🚨 Gerando seção de Autuação');
                 dadosEspecificos = `
                     <div class="col-md-6">
                         <div class="card border-danger h-100">
@@ -536,18 +554,19 @@
                                 <h6 class="mb-0"><i class="fas fa-gavel me-2"></i>Dados da Autuação</h6>
                             </div>
                             <div class="card-body">
-                                ${doc.NumeroAIT ? `<p><strong>🎫 Número AIT:</strong> <span class="badge bg-dark">${doc.NumeroAIT}</span></p>` : ''}
-                                ${doc.PlacaVeiculo ? `<p><strong>🚗 Placa:</strong> <span class="badge bg-primary">${doc.PlacaVeiculo}</span></p>` : ''}
-                                ${doc.DataInfracao ? `<p><strong>📅 Data da Infração:</strong> ${new Date(doc.DataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
-                                ${doc.LocalInfracao ? `<p><strong>📍 Local:</strong> ${doc.LocalInfracao}</p>` : ''}
-                                ${doc.CodigoInfracao ? `<p><strong>📋 Código CTB:</strong> <span class="badge bg-warning text-dark">${doc.CodigoInfracao}</span></p>` : ''}
-                                ${doc.ValorMulta ? `<p><strong>💰 Valor:</strong> <span class="text-danger fw-bold">R$ ${doc.ValorMulta.toFixed(2)}</span></p>` : ''}
-                                ${doc.OrgaoAutuador ? `<p><strong>🏛️ Órgão:</strong> ${doc.OrgaoAutuador}</p>` : ''}
+                                ${(doc.NumeroAIT || doc.numeroAIT) ? `<p><strong>🎫 Número AIT:</strong> <span class="badge bg-dark">${doc.NumeroAIT || doc.numeroAIT}</span></p>` : ''}
+                                ${(doc.PlacaVeiculo || doc.placaVeiculo) ? `<p><strong>🚗 Placa:</strong> <span class="badge bg-primary">${doc.PlacaVeiculo || doc.placaVeiculo}</span></p>` : ''}
+                                ${(doc.DataInfracao || doc.dataInfracao) ? `<p><strong>📅 Data da Infração:</strong> ${new Date(doc.DataInfracao || doc.dataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
+                                ${(doc.LocalInfracao || doc.localInfracao) ? `<p><strong>📍 Local:</strong> ${doc.LocalInfracao || doc.localInfracao}</p>` : ''}
+                                ${(doc.CodigoInfracao || doc.codigoInfracao) ? `<p><strong>📋 Código CTB:</strong> <span class="badge bg-warning text-dark">${doc.CodigoInfracao || doc.codigoInfracao}</span></p>` : ''}
+                                ${(doc.ValorMulta || doc.valorMulta) ? `<p><strong>💰 Valor:</strong> <span class="text-danger fw-bold">R$ ${(doc.ValorMulta || doc.valorMulta).toFixed(2)}</span></p>` : ''}
+                                ${(doc.OrgaoAutuador || doc.orgaoAutuador) ? `<p><strong>🏛️ Órgão:</strong> ${doc.OrgaoAutuador || doc.orgaoAutuador}</p>` : ''}
                             </div>
                         </div>
                     </div>
                 `;
-            } else if (doc.TipoClassificado && doc.TipoClassificado.includes('defesa')) {
+            } else if (tipoDoc.includes('defesa')) {
+                console.log('🛡️ Gerando seção de Defesa');
                 dadosEspecificos = `
                     <div class="col-md-6">
                         <div class="card border-primary h-100">
@@ -555,16 +574,16 @@
                                 <h6 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Dados da Defesa</h6>
                             </div>
                             <div class="card-body">
-                                ${doc.NumeroAIT ? `<p><strong>🎫 Número AIT:</strong> <span class="badge bg-dark">${doc.NumeroAIT}</span></p>` : ''}
-                                ${doc.PlacaVeiculo ? `<p><strong>🚗 Placa:</strong> <span class="badge bg-primary">${doc.PlacaVeiculo}</span></p>` : ''}
-                                ${doc.DataInfracao ? `<p><strong>📅 Data da Infração:</strong> ${new Date(doc.DataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
-                                ${doc.LocalInfracao ? `<p><strong>📍 Local:</strong> ${doc.LocalInfracao}</p>` : ''}
-                                ${doc.ValorMulta ? `<p><strong>💰 Valor:</strong> <span class="text-danger fw-bold">R$ ${doc.ValorMulta.toFixed(2)}</span></p>` : ''}
-                                ${doc.TextoDefesa ? `
+                                ${(doc.NumeroAIT || doc.numeroAIT) ? `<p><strong>🎫 Número AIT:</strong> <span class="badge bg-dark">${doc.NumeroAIT || doc.numeroAIT}</span></p>` : ''}
+                                ${(doc.PlacaVeiculo || doc.placaVeiculo) ? `<p><strong>🚗 Placa:</strong> <span class="badge bg-primary">${doc.PlacaVeiculo || doc.placaVeiculo}</span></p>` : ''}
+                                ${(doc.DataInfracao || doc.dataInfracao) ? `<p><strong>📅 Data da Infração:</strong> ${new Date(doc.DataInfracao || doc.dataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
+                                ${(doc.LocalInfracao || doc.localInfracao) ? `<p><strong>📍 Local:</strong> ${doc.LocalInfracao || doc.localInfracao}</p>` : ''}
+                                ${(doc.ValorMulta || doc.valorMulta) ? `<p><strong>💰 Valor:</strong> <span class="text-danger fw-bold">R$ ${(doc.ValorMulta || doc.valorMulta).toFixed(2)}</span></p>` : ''}
+                                ${(doc.TextoDefesa || doc.textoDefesa) ? `
                                     <div class="mt-3">
                                         <p><strong>📝 Texto da Defesa:</strong></p>
                                         <div class="border p-3 bg-light rounded" style="max-height: 150px; overflow-y: auto;">
-                                            <small class="text-muted">${doc.TextoDefesa}</small>
+                                            <small class="text-muted">${doc.TextoDefesa || doc.textoDefesa}</small>
                                         </div>
                                     </div>
                                 ` : ''}
@@ -572,7 +591,8 @@
                         </div>
                     </div>
                 `;
-            } else if (doc.TipoClassificado && doc.TipoClassificado.includes('indicacao')) {
+            } else if (tipoDoc.includes('indicacao')) {
+                console.log('👤 Gerando seção de Indicação');
                 dadosEspecificos = `
                     <div class="col-md-6">
                         <div class="card border-warning h-100">
@@ -580,17 +600,18 @@
                                 <h6 class="mb-0"><i class="fas fa-user-tag me-2"></i>Dados da Indicação de Condutor</h6>
                             </div>
                             <div class="card-body">
-                                ${doc.NumeroAIT ? `<p><strong>🎫 Número AIT:</strong> <span class="badge bg-dark">${doc.NumeroAIT}</span></p>` : ''}
-                                ${doc.PlacaVeiculo ? `<p><strong>🚗 Placa:</strong> <span class="badge bg-primary">${doc.PlacaVeiculo}</span></p>` : ''}
-                                ${doc.NomeCondutor ? `<p><strong>👤 Nome do Condutor:</strong> <span class="fw-bold text-success">${doc.NomeCondutor}</span></p>` : ''}
-                                ${doc.NumeroCNH ? `<p><strong>🆔 CNH:</strong> <span class="badge bg-info">${doc.NumeroCNH}</span></p>` : ''}
-                                ${doc.DataInfracao ? `<p><strong>📅 Data da Infração:</strong> ${new Date(doc.DataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
-                                ${doc.LocalInfracao ? `<p><strong>📍 Local:</strong> ${doc.LocalInfracao}</p>` : ''}
+                                ${(doc.NumeroAIT || doc.numeroAIT) ? `<p><strong>🎫 Número AIT:</strong> <span class="badge bg-dark">${doc.NumeroAIT || doc.numeroAIT}</span></p>` : ''}
+                                ${(doc.PlacaVeiculo || doc.placaVeiculo) ? `<p><strong>🚗 Placa:</strong> <span class="badge bg-primary">${doc.PlacaVeiculo || doc.placaVeiculo}</span></p>` : ''}
+                                ${(doc.NomeCondutor || doc.nomeCondutor) ? `<p><strong>👤 Nome do Condutor:</strong> <span class="fw-bold text-success">${doc.NomeCondutor || doc.nomeCondutor}</span></p>` : ''}
+                                ${(doc.NumeroCNH || doc.numeroCNH) ? `<p><strong>🆔 CNH:</strong> <span class="badge bg-info">${doc.NumeroCNH || doc.numeroCNH}</span></p>` : ''}
+                                ${(doc.DataInfracao || doc.dataInfracao) ? `<p><strong>📅 Data da Infração:</strong> ${new Date(doc.DataInfracao || doc.dataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
+                                ${(doc.LocalInfracao || doc.localInfracao) ? `<p><strong>📍 Local:</strong> ${doc.LocalInfracao || doc.localInfracao}</p>` : ''}
                             </div>
                         </div>
                     </div>
                 `;
-            } else if (doc.TipoClassificado && doc.TipoClassificado.includes('notificacao')) {
+            } else if (tipoDoc.includes('notificacao')) {
+                console.log('📧 Gerando seção de Notificação');
                 dadosEspecificos = `
                     <div class="col-md-6">
                         <div class="card border-info h-100">
@@ -598,20 +619,24 @@
                                 <h6 class="mb-0"><i class="fas fa-bell me-2"></i>Dados da Notificação</h6>
                             </div>
                             <div class="card-body">
-                                ${doc.NumeroAIT ? `<p><strong>🎫 Número AIT:</strong> <span class="badge bg-dark">${doc.NumeroAIT}</span></p>` : ''}
-                                ${doc.PlacaVeiculo ? `<p><strong>🚗 Placa:</strong> <span class="badge bg-primary">${doc.PlacaVeiculo}</span></p>` : ''}
-                                ${doc.DataInfracao ? `<p><strong>📅 Data da Infração:</strong> ${new Date(doc.DataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
-                                ${doc.LocalInfracao ? `<p><strong>📍 Local:</strong> ${doc.LocalInfracao}</p>` : ''}
-                                ${doc.CodigoInfracao ? `<p><strong>📋 Código CTB:</strong> <span class="badge bg-warning text-dark">${doc.CodigoInfracao}</span></p>` : ''}
-                                ${doc.ValorMulta ? `<p><strong>💰 Valor da Multa:</strong> <span class="text-danger fw-bold fs-5">R$ ${doc.ValorMulta.toFixed(2)}</span></p>` : ''}
-                                ${doc.OrgaoAutuador ? `<p><strong>🏛️ Órgão:</strong> ${doc.OrgaoAutuador}</p>` : ''}
+                                ${(doc.NumeroAIT || doc.numeroAIT) ? `<p><strong>🎫 Número AIT:</strong> <span class="badge bg-dark">${doc.NumeroAIT || doc.numeroAIT}</span></p>` : ''}
+                                ${(doc.PlacaVeiculo || doc.placaVeiculo) ? `<p><strong>🚗 Placa:</strong> <span class="badge bg-primary">${doc.PlacaVeiculo || doc.placaVeiculo}</span></p>` : ''}
+                                ${(doc.DataInfracao || doc.dataInfracao) ? `<p><strong>📅 Data da Infração:</strong> ${new Date(doc.DataInfracao || doc.dataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
+                                ${(doc.LocalInfracao || doc.localInfracao) ? `<p><strong>📍 Local:</strong> ${doc.LocalInfracao || doc.localInfracao}</p>` : ''}
+                                ${(doc.CodigoInfracao || doc.codigoInfracao) ? `<p><strong>📋 Código CTB:</strong> <span class="badge bg-warning text-dark">${doc.CodigoInfracao || doc.codigoInfracao}</span></p>` : ''}
+                                ${(doc.ValorMulta || doc.valorMulta) ? `<p><strong>💰 Valor da Multa:</strong> <span class="text-danger fw-bold fs-5">R$ ${(doc.ValorMulta || doc.valorMulta).toFixed(2)}</span></p>` : ''}
+                                ${(doc.OrgaoAutuador || doc.orgaoAutuador) ? `<p><strong>🏛️ Órgão:</strong> ${doc.OrgaoAutuador || doc.orgaoAutuador}</p>` : ''}
                             </div>
                         </div>
                     </div>
                 `;
             } else {
+                console.log('📑 Gerando seção geral');
                 // Para outros tipos ou quando há dados gerais
-                const temDadosEspecificos = doc.NumeroAIT || doc.PlacaVeiculo || doc.NomeCondutor || doc.ValorMulta;
+                const temDadosEspecificos = (doc.NumeroAIT || doc.numeroAIT) || 
+                                          (doc.PlacaVeiculo || doc.placaVeiculo) || 
+                                          (doc.NomeCondutor || doc.nomeCondutor) || 
+                                          (doc.ValorMulta || doc.valorMulta);
                 if (temDadosEspecificos) {
                     dadosEspecificos = `
                         <div class="col-md-6">
@@ -620,21 +645,31 @@
                                     <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Dados Extraídos</h6>
                                 </div>
                                 <div class="card-body">
-                                    ${doc.NumeroAIT ? `<p><strong>🎫 Número AIT:</strong> <span class="badge bg-dark">${doc.NumeroAIT}</span></p>` : ''}
-                                    ${doc.PlacaVeiculo ? `<p><strong>🚗 Placa:</strong> <span class="badge bg-primary">${doc.PlacaVeiculo}</span></p>` : ''}
-                                    ${doc.NomeCondutor ? `<p><strong>👤 Nome do Condutor:</strong> ${doc.NomeCondutor}</p>` : ''}
-                                    ${doc.NumeroCNH ? `<p><strong>🆔 CNH:</strong> <span class="badge bg-info">${doc.NumeroCNH}</span></p>` : ''}
-                                    ${doc.DataInfracao ? `<p><strong>📅 Data da Infração:</strong> ${new Date(doc.DataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
-                                    ${doc.LocalInfracao ? `<p><strong>📍 Local:</strong> ${doc.LocalInfracao}</p>` : ''}
-                                    ${doc.CodigoInfracao ? `<p><strong>📋 Código CTB:</strong> <span class="badge bg-warning text-dark">${doc.CodigoInfracao}</span></p>` : ''}
-                                    ${doc.ValorMulta ? `<p><strong>💰 Valor:</strong> <span class="text-danger fw-bold">R$ ${doc.ValorMulta.toFixed(2)}</span></p>` : ''}
-                                    ${doc.OrgaoAutuador ? `<p><strong>🏛️ Órgão:</strong> ${doc.OrgaoAutuador}</p>` : ''}
+                                    ${(doc.NumeroAIT || doc.numeroAIT) ? `<p><strong>🎫 Número AIT:</strong> <span class="badge bg-dark">${doc.NumeroAIT || doc.numeroAIT}</span></p>` : ''}
+                                    ${(doc.PlacaVeiculo || doc.placaVeiculo) ? `<p><strong>🚗 Placa:</strong> <span class="badge bg-primary">${doc.PlacaVeiculo || doc.placaVeiculo}</span></p>` : ''}
+                                    ${(doc.NomeCondutor || doc.nomeCondutor) ? `<p><strong>👤 Nome do Condutor:</strong> ${doc.NomeCondutor || doc.nomeCondutor}</p>` : ''}
+                                    ${(doc.NumeroCNH || doc.numeroCNH) ? `<p><strong>🆔 CNH:</strong> <span class="badge bg-info">${doc.NumeroCNH || doc.numeroCNH}</span></p>` : ''}
+                                    ${(doc.DataInfracao || doc.dataInfracao) ? `<p><strong>📅 Data da Infração:</strong> ${new Date(doc.DataInfracao || doc.dataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
+                                    ${(doc.LocalInfracao || doc.localInfracao) ? `<p><strong>📍 Local:</strong> ${doc.LocalInfracao || doc.localInfracao}</p>` : ''}
+                                    ${(doc.CodigoInfracao || doc.codigoInfracao) ? `<p><strong>📋 Código CTB:</strong> <span class="badge bg-warning text-dark">${doc.CodigoInfracao || doc.codigoInfracao}</span></p>` : ''}
+                                    ${(doc.ValorMulta || doc.valorMulta) ? `<p><strong>💰 Valor:</strong> <span class="text-danger fw-bold">R$ ${(doc.ValorMulta || doc.valorMulta).toFixed(2)}</span></p>` : ''}
+                                    ${(doc.OrgaoAutuador || doc.orgaoAutuador) ? `<p><strong>🏛️ Órgão:</strong> ${doc.OrgaoAutuador || doc.orgaoAutuador}</p>` : ''}
                                 </div>
                             </div>
                         </div>
                     `;
                 }
             }
+            
+            console.log('🎯 Dados específicos gerados:', dadosEspecificos ? 'SIM' : 'NÃO');
+            
+            const confiancaPercentual = doc.ConfiancaPercentual || doc.confiancaPercentual || 0;
+            const nomeArquivo = doc.NomeArquivo || doc.nomeArquivo || 'N/A';
+            const tamanhoFormatado = doc.TamanhoFormatado || doc.tamanhoFormatado || 'N/A';
+            const dataProcessamentoFormatada = doc.DataProcessamentoFormatada || doc.dataProcessamentoFormatada || 'N/A';
+            const mensagemErro = doc.MensagemErro || doc.mensagemErro;
+            const palavrasChave = doc.PalavrasChave || doc.palavrasChave;
+            const textoCompleto = doc.TextoCompleto || doc.textoCompleto;
             
             return `
                 <div class="row mb-4">
@@ -644,29 +679,29 @@
                                 <h6 class="mb-0"><i class="fas fa-info-circle me-2 text-primary"></i>Informações Gerais</h6>
                             </div>
                             <div class="card-body">
-                                <p><strong>📄 Arquivo:</strong> <code class="bg-light p-1 rounded">${doc.NomeArquivo}</code></p>
+                                <p><strong>📄 Arquivo:</strong> <code class="bg-light p-1 rounded">${nomeArquivo}</code></p>
                                 <p><strong>📋 Tipo:</strong> 
-                                    <span class="badge ${getTipoBadgeClass(doc.TipoClassificado)} fs-6">${tipoDisplayName}</span>
+                                    <span class="badge ${getTipoBadgeClass(doc.TipoClassificado || doc.tipoClassificado)} fs-6">${tipoDisplayName}</span>
                                 </p>
                                 <p><strong>⚡ Status:</strong> 
                                     <span class="badge bg-${statusClass} fs-6">${statusText}</span>
                                 </p>
                                 <p><strong>🎯 Confiança:</strong> 
-                                    <span class="badge ${doc.ConfiancaPercentual >= 80 ? 'bg-success' : doc.ConfiancaPercentual >= 60 ? 'bg-warning text-dark' : 'bg-danger'} fs-6">
-                                        ${doc.ConfiancaPercentual}%
+                                    <span class="badge ${confiancaPercentual >= 80 ? 'bg-success' : confiancaPercentual >= 60 ? 'bg-warning text-dark' : 'bg-danger'} fs-6">
+                                        ${confiancaPercentual}%
                                     </span>
                                 </p>
-                                <p><strong>📏 Tamanho:</strong> <span class="text-muted">${doc.TamanhoFormatado}</span></p>
-                                <p><strong>🕒 Processado:</strong> <span class="text-muted">${doc.DataProcessamentoFormatada}</span></p>
-                                ${doc.MensagemErro ? `
+                                <p><strong>📏 Tamanho:</strong> <span class="text-muted">${tamanhoFormatado}</span></p>
+                                <p><strong>🕒 Processado:</strong> <span class="text-muted">${dataProcessamentoFormatada}</span></p>
+                                ${mensagemErro ? `
                                     <div class="alert alert-danger p-2 mt-2">
-                                        <small><strong>❌ Erro:</strong> ${doc.MensagemErro}</small>
+                                        <small><strong>❌ Erro:</strong> ${mensagemErro}</small>
                                     </div>
                                 ` : ''}
-                                ${doc.PalavrasChave ? `
+                                ${palavrasChave ? `
                                     <div class="mt-2">
                                         <strong>🔍 Palavras-chave:</strong><br>
-                                        <small class="text-info">${doc.PalavrasChave}</small>
+                                        <small class="text-info">${palavrasChave}</small>
                                     </div>
                                 ` : ''}
                             </div>
@@ -675,12 +710,12 @@
                     ${dadosEspecificos}
                 </div>
                 
-                ${doc.TextoCompleto ? `
+                ${textoCompleto ? `
                     <div class="card mb-3">
                         <div class="card-header bg-light d-flex justify-content-between align-items-center">
                             <h6 class="mb-0">
                                 <i class="fas fa-file-text me-2 text-success"></i>Texto Completo Extraído
-                                <span class="badge bg-secondary ms-2">${doc.TextoCompleto.length} caracteres</span>
+                                <span class="badge bg-secondary ms-2">${textoCompleto.length} caracteres</span>
                             </h6>
                             <button class="btn btn-sm btn-outline-secondary" onclick="copiarTextoCompleto()" title="Copiar texto completo">
                                 <i class="fas fa-copy"></i>
@@ -688,7 +723,7 @@
                         </div>
                         <div class="card-body p-0">
                             <div class="border-0 p-3 bg-light" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85em; line-height: 1.4;">
-${doc.TextoCompleto}
+${textoCompleto}
                             </div>
                         </div>
                     </div>
