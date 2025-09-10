@@ -28,6 +28,10 @@
                 </a></li>
             </ul>
         </div>
+        <!-- Botão de Emergência para Fechar Modais -->
+        <button type="button" class="btn btn-outline-danger btn-sm" onclick="forceCloseModals()" title="Fechar todos os modais">
+            <i class="fas fa-times-circle"></i> Fechar Modais
+        </button>
     </div>
 </div>
 
@@ -380,9 +384,7 @@
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" name="IsActive" id="editUserActive">
                                 <label class="form-check-label" for="editUserActive">
-                                    <span class="badge bg-success me-2">
-                                        <i class="fas fa-check-circle"></i>
-                                    </span>
+                                    <i class="fas fa-check-circle me-2 text-success"></i>
                                     Conta Ativa
                                 </label>
                             </div>
@@ -392,6 +394,7 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="EmailConfirmed" id="editEmailConfirmed">
                                 <label class="form-check-label" for="editEmailConfirmed">
+                                    <i class="fas fa-envelope-check me-2 text-info"></i>
                                     E-mail confirmado
                                 </label>
                             </div>
@@ -492,7 +495,7 @@
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
-            // Inicializar modais
+            // Usar configuração padrão do Bootstrap para os modais
             editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
             resetPasswordModal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
             addUserModal = new bootstrap.Modal(document.getElementById('addUserModal'));
@@ -534,8 +537,6 @@
 
         // Modal de Edição
         function editUser(userId) {
-            showLoadingSpinner('Carregando dados do usuário...');
-            
             fetch(`/Account/GetUser/${userId}`)
                 .then(response => {
                     if (!response.ok) throw new Error('Erro ao buscar usuário');
@@ -551,13 +552,12 @@
                     document.getElementById('editUserActive').checked = user.isActive;
                     document.getElementById('editEmailConfirmed').checked = user.emailConfirmed;
                     
-                    hideLoadingSpinner();
+                    // Mostrar modal
                     editUserModal.show();
                 })
                 .catch(error => {
-                    hideLoadingSpinner();
-                    console.error('Erro ao carregar dados do usuário:', error);
-                    showAlert('Erro ao carregar dados do usuário. Tente novamente.', 'danger');
+                    console.error('Erro:', error);
+                    alert('Erro ao carregar dados do usuário');
                 });
         }
 
@@ -728,6 +728,26 @@
         }
 
         // Utilitários
+        function closeAllModals() {
+            // Fechar todos os modais
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            });
+            
+            // Remover qualquer backdrop residual
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => backdrop.remove());
+            
+            // Restaurar scroll do body
+            document.body.classList.remove('modal-open');
+            document.body.style.paddingRight = '';
+            document.body.style.overflow = '';
+        }
+
         function showLoadingSpinner(message = 'Carregando...') {
             // Criar ou mostrar spinner de loading
             let spinner = document.getElementById('loadingSpinner');
@@ -785,6 +805,39 @@
             showAlert('Ações em lote serão implementadas em breve.', 'info');
         }
 
+        // Função de emergência para fechar modais
+        function forceCloseModals() {
+            // Fechar todos os modais Bootstrap
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+                modal.removeAttribute('aria-modal');
+                modal.removeAttribute('role');
+            });
+            
+            // Remover todos os backdrops
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => {
+                backdrop.remove();
+            });
+            
+            // Restaurar body
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            
+            showAlert('Modais fechados com sucesso!', 'success');
+        }
+
+        // Adicionar função global para debug
+        window.emergencyCloseModals = forceCloseModals;
+
         // Select All functionality
         document.addEventListener('DOMContentLoaded', function() {
             const selectAllCheckbox = document.getElementById('selectAll');
@@ -800,6 +853,26 @@
 
 @section Styles {
 <style>
+/* Fix urgente para backdrop modal */
+.modal-backdrop {
+    z-index: 1040 !important;
+}
+
+.modal {
+    z-index: 1050 !important;
+}
+
+/* Prevent any overlay issues */
+body.modal-open {
+    overflow: hidden;
+}
+
+/* Emergency fix for modal issues */
+.modal-open .modal {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
 .user-avatar-sm {
     width: 40px;
     height: 40px;
@@ -823,6 +896,76 @@
 
 .modal-header.bg-warning {
     border-bottom: none;
+}
+
+/* Correções para modal overflow e posicionamento */
+.modal {
+    z-index: 1050;
+}
+
+.modal-dialog {
+    max-width: 90vw;
+    margin: 1.75rem auto;
+}
+
+.modal-content {
+    overflow: hidden;
+    border: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid #dee2e6;
+    padding: 1rem 1.5rem;
+}
+
+/* Fix para checkboxes e form elements dentro do modal */
+.modal .form-check {
+    margin-bottom: 0.5rem;
+    padding-left: 1.5em;
+    position: relative;
+}
+
+.modal .form-check-input {
+    margin-left: -1.5em;
+    margin-top: 0.25em;
+}
+
+.modal .form-check-label {
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.modal .form-switch .form-check-input {
+    width: 2em;
+    margin-left: -2.5em;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%280,0,0,.25%29'/%3e%3c/svg%3e");
+    background-position: left center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    border-radius: 2em;
+}
+
+.modal .form-switch .form-check-label {
+    padding-left: 0.5em;
+}
+
+/* Garantir que elementos não saiam do modal */
+.modal .row {
+    margin-right: -0.75rem;
+    margin-left: -0.75rem;
+}
+
+.modal .col-md-6 {
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
 }
 
 /* Animações suaves */
@@ -954,6 +1097,40 @@
 .form-switch .form-check-input:checked {
     background-color: #198754;
     border-color: #198754;
+}
+
+/* Modal specific fixes */
+.modal-body .container-fluid {
+    padding: 0;
+}
+
+.modal-body .row {
+    --bs-gutter-x: 1.5rem;
+}
+
+/* Prevent content from breaking out of modals */
+.modal-content * {
+    box-sizing: border-box;
+}
+
+.modal .input-group {
+    display: flex;
+    width: 100%;
+}
+
+.modal .input-group .btn {
+    flex-shrink: 0;
+}
+
+/* Fix for form validation states in modals */
+.modal .was-validated .form-check-input:valid ~ .form-check-label,
+.modal .form-check-input.is-valid ~ .form-check-label {
+    color: #198754;
+}
+
+.modal .was-validated .form-check-input:invalid ~ .form-check-label,
+.modal .form-check-input.is-invalid ~ .form-check-label {
+    color: #dc3545;
 }
 
 /* Responsive improvements */
