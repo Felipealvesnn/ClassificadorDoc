@@ -629,16 +629,15 @@ namespace ClassificadorDoc.Controllers.Mvc
                 var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 var baseFolder = Path.Combine(documentsPath, "ClassificadorDoc", baseDirectory);
 
-                // Criar estrutura de pastas: Documents/ClassificadorDoc/DocumentosProcessados/Lote_XXXXXX/TipoDocumento/documentos/
+                                // Criar estrutura de pastas: Documents/ClassificadorDoc/DocumentosProcessados/Lote_XXXXXX/TipoDocumento/
                 var batchFolder = Path.Combine(baseFolder, $"Lote_{batchId:000000}");
                 var tipoFolder = Path.Combine(batchFolder, NormalizarNomeTipo(tipoDocumento));
-                var documentosFolder = Path.Combine(tipoFolder, "documentos");
 
                 // Garantir que as pastas existem
-                Directory.CreateDirectory(documentosFolder);
+                Directory.CreateDirectory(tipoFolder);
 
                 // Caminho final do arquivo
-                var caminhoArquivo = Path.Combine(documentosFolder, nomeArquivo);
+                var caminhoArquivo = Path.Combine(tipoFolder, nomeArquivo);
 
                 // Evitar conflitos de nome
                 var contador = 1;
@@ -648,7 +647,7 @@ namespace ClassificadorDoc.Controllers.Mvc
                 while (System.IO.File.Exists(caminhoArquivo))
                 {
                     var novoNome = $"{nomeBase}_{contador:000}{extensao}";
-                    caminhoArquivo = Path.Combine(documentosFolder, novoNome);
+                    caminhoArquivo = Path.Combine(tipoFolder, novoNome);
                     contador++;
                 }
 
