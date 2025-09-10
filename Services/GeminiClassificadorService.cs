@@ -24,8 +24,6 @@ namespace ClassificadorDoc.Services
             return resultado;
         }
 
-
-
         private async Task<DocumentoClassificacao> ClassificarDocumentoVisualAsync(string nomeArquivo, byte[] arquivoBytes, string mimeType)
         {
             const int maxTentativas = 3;
@@ -41,32 +39,60 @@ namespace ClassificadorDoc.Services
                         throw new ArgumentException("Arquivo vazio ou inválido");
                     }
 
-                    // Criando o prompt adaptado para o tipo de arquivo
-                    var prompt = CriarPromptClassificacaoVisual(mimeType);
-
                     // Log adicional para PDFs que podem ser escaneados
                     if (mimeType.Contains("pdf"))
                     {
                         _logger.LogInformation("Processando PDF para {NomeArquivo} - pode ser texto nativo ou escaneado", nomeArquivo);
                     }
 
-                    // Chama a API do Gemini via HTTP com dados visuais
-                    var textoResposta = await ChamarGeminiApiAsync(prompt, arquivoBytes, mimeType);
+                    // NOVA ESTRATÉGIA: Duas chamadas separadas para evitar limite de tokens
 
-                    if (string.IsNullOrEmpty(textoResposta))
+                    // PRIMEIRA CHAMADA: Classificação + dados específicos (sem texto completo)
+                    var promptClassificacao = CriarPromptClassificacaoSemTexto(mimeType);
+                    var respostaClassificacao = await ChamarGeminiApiAsync(promptClassificacao, arquivoBytes, mimeType);
+
+                    if (string.IsNullOrEmpty(respostaClassificacao))
                     {
                         var tipoArquivo = mimeType.Contains("pdf") ? "PDF" : "imagem";
-                        throw new InvalidOperationException($"Resposta vazia do Gemini para {tipoArquivo}");
+                        throw new InvalidOperationException($"Resposta vazia do Gemini para classificação do {tipoArquivo}");
                     }
 
-                    // Extrair JSON da resposta que pode vir em bloco markdown
-                    var jsonLimpo = ExtrairJsonDaResposta(textoResposta);
-                    var classificacao = JsonSerializer.Deserialize<ClassificacaoResposta>(jsonLimpo);
+                    _logger.LogDebug("🔍 Resposta de classificação do Gemini: {Resposta}", respostaClassificacao);
+                    var jsonClassificacao = ExtrairJsonDaResposta(respostaClassificacao);
+                    _logger.LogDebug("🧹 JSON de classificação extraído: {JsonLimpo}", jsonClassificacao);
+
+                    ClassificacaoResposta? classificacao;
+                    try
+                    {
+                        classificacao = JsonSerializer.Deserialize<ClassificacaoResposta>(jsonClassificacao);
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogError(ex, "❌ Erro ao deserializar JSON de classificação. JSON: {Json}", jsonClassificacao);
+                        throw new InvalidOperationException($"JSON de classificação inválido recebido do Gemini: {ex.Message}. JSON: {jsonClassificacao}");
+                    }
 
                     if (classificacao == null)
                     {
                         var tipoArquivo = mimeType.Contains("pdf") ? "PDF" : "imagem";
-                        throw new InvalidOperationException($"Falha ao deserializar resposta do Gemini para {tipoArquivo}");
+                        throw new InvalidOperationException($"Falha ao deserializar resposta de classificação do Gemini para {tipoArquivo}");
+                    }
+
+                    // SEGUNDA CHAMADA: Extração completa do texto
+                    _logger.LogInformation("📄 Iniciando extração completa do texto para {NomeArquivo}", nomeArquivo);
+                    var promptTexto = CriarPromptExtracao(mimeType);
+                    var respostaTexto = await ChamarGeminiApiAsync(promptTexto, arquivoBytes, mimeType);
+
+                    string textoCompleto = string.Empty;
+                    if (!string.IsNullOrEmpty(respostaTexto))
+                    {
+                        textoCompleto = LimparTextoExtraido(respostaTexto);
+                        _logger.LogDebug("📝 Texto extraído com {Tamanho} caracteres", textoCompleto.Length);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("⚠️ Não foi possível extrair texto completo do documento");
+                        textoCompleto = $"[Erro na extração de texto do {(mimeType.Contains("pdf") ? "PDF" : "imagem")}]";
                     }
 
                     var tipoAnalise = mimeType.Contains("pdf") ? "PDF (texto nativo ou escaneado)" : "imagem digitalizada";
@@ -84,7 +110,7 @@ namespace ClassificadorDoc.Services
                         ConfiancaClassificacao = classificacao.confianca,
                         ResumoConteudo = classificacao.resumo,
                         PalavrasChaveEncontradas = classificacao.GetPalavrasChaveComoString(),
-                        TextoExtraido = classificacao.texto_completo ?? $"[{tipoAnalise} analisado via Gemini API - texto não extraído]",
+                        TextoExtraido = textoCompleto, // Agora vem da segunda chamada
                         ProcessadoComSucesso = true,
 
                         // NOVOS CAMPOS ESPECÍFICOS EXTRAÍDOS
@@ -182,7 +208,7 @@ namespace ClassificadorDoc.Services
                             temperature = 0.1,
                             topK = 32,
                             topP = 0.1,
-                            maxOutputTokens = 2048
+                            maxOutputTokens = 4096 // Aumentado para suportar texto completo
                         }
                     };
                 }
@@ -206,7 +232,7 @@ namespace ClassificadorDoc.Services
                             temperature = 0.1,
                             topK = 32,
                             topP = 0.1,
-                            maxOutputTokens = 2048
+                            maxOutputTokens = 4096
                         }
                     };
                 }
@@ -251,6 +277,13 @@ namespace ClassificadorDoc.Services
             if (string.IsNullOrEmpty(resposta))
                 return resposta;
 
+            // Log para debug
+            _logger.LogDebug("🔍 Extraindo JSON da resposta: {PrimeirosCaracteres}...",
+                resposta.Length > 100 ? resposta.Substring(0, 100) : resposta);
+
+            // Remove caracteres problemáticos no início
+            resposta = resposta.Trim().TrimStart('`').TrimEnd('`').Trim();
+
             // Remove blocos de código markdown se existirem
             if (resposta.Contains("```json"))
             {
@@ -259,7 +292,20 @@ namespace ClassificadorDoc.Services
 
                 if (fimJson > inicioJson)
                 {
-                    return resposta.Substring(inicioJson, fimJson - inicioJson).Trim();
+                    var jsonExtraido = resposta.Substring(inicioJson, fimJson - inicioJson).Trim();
+                    _logger.LogDebug("✅ JSON extraído de bloco markdown: {Json}", jsonExtraido);
+                    return jsonExtraido;
+                }
+            }
+
+            // Remove blocos de código simples com ```
+            if (resposta.StartsWith("```") && resposta.EndsWith("```"))
+            {
+                var semBlocos = resposta.Substring(3, resposta.Length - 6).Trim();
+                if (semBlocos.StartsWith("{") && semBlocos.EndsWith("}"))
+                {
+                    _logger.LogDebug("✅ JSON extraído de bloco simples: {Json}", semBlocos);
+                    return semBlocos;
                 }
             }
 
@@ -271,15 +317,18 @@ namespace ClassificadorDoc.Services
 
                 if (fimJson > inicioJson)
                 {
-                    return resposta.Substring(inicioJson, fimJson - inicioJson).Trim();
+                    var jsonExtraido = resposta.Substring(inicioJson, fimJson - inicioJson).Trim();
+                    _logger.LogDebug("✅ JSON extraído diretamente: {Json}", jsonExtraido);
+                    return jsonExtraido;
                 }
             }
 
             // Retorna a resposta original se não conseguir extrair
+            _logger.LogWarning("⚠️ Não foi possível extrair JSON, retornando resposta original");
             return resposta.Trim();
         }
 
-        private string CriarPromptClassificacaoVisual(string mimeType)
+        private string CriarPromptClassificacaoSemTexto(string mimeType)
         {
             var tipoArquivo = mimeType.Contains("pdf") ? "PDF" : "imagem";
             var instrucaoEspecifica = mimeType.Contains("pdf")
@@ -287,144 +336,35 @@ namespace ClassificadorDoc.Services
                 : "Use a capacidade visual do Gemini para examinar esta imagem escaneada de documento:";
 
             return $@"
-Analise este documento de trânsito brasileiro completamente. {instrucaoEspecifica}
+Analise este documento de trânsito brasileiro para CLASSIFICAÇÃO e EXTRAÇÃO DE DADOS ESPECÍFICOS. {instrucaoEspecifica}
 
-IMPORTANTE: Além de classificar o documento, você DEVE extrair TODO O TEXTO visível no documento, seja ele:
-- Texto nativo do PDF (selecionável)  
-- Texto em imagens escaneadas (usando OCR/análise visual)
-- Texto manuscrito legível
-- Qualquer texto visível no documento
+IMPORTANTE: NÃO inclua o texto completo nesta resposta - apenas classifique e extraia dados específicos.
 
 ATENÇÃO: Este {tipoArquivo} pode conter MÚLTIPLOS documentos. Identifique o DOCUMENTO PRINCIPAL/PRIMÁRIO baseado em:
 - Qual documento ocupa mais espaço/páginas
 - Qual é o propósito principal do arquivo
 - Se há um documento que claramente é o foco (ex: defesa com anexos)
 
-IMPORTANTE: Este {tipoArquivo} pode conter:
-- Texto nativo (PDF digital com texto selecionável)
-- Imagens escaneadas (PDF de digitalização com OCR necessário)
-- Fotos de documentos com qualidade variável
-- Documentos inclinados, com sombras ou reflexos
-
 TIPOS DE DOCUMENTO DE TRÂNSITO (ANALISE NA ORDEM PARA MELHOR PRECISÃO):
 
 1. AUTUACAO: Auto de Infração de Trânsito (AIT) - documento ORIGINAL da infração
-   INDICADORES OBRIGATÓRIOS:
-   - Título AUTO DE INFRAÇÃO ou AIT
-   - Dados do agente autuador (matrícula, nome)
-   - Local, data e hora EXATOS da infração
-   - Descrição da irregularidade observada pelo agente
-   - Código da infração CTB
-   - Assinatura/identificação do agente fiscalizador
-
 2. NOTIFICACAO_AUTUACAO: Comunicado oficial sobre a infração (não é cobrança)
-   INDICADORES OBRIGATÓRIOS:
-   - Título NOTIFICAÇÃO DE AUTUAÇÃO
-   - Texto formal informando sobre a lavratura do AIT
-   - Instruções para defesa (prazos, documentos necessários)
-   - Formulário FICI (identificação de condutor)
-   - AUSÊNCIA de valores para pagamento ou códigos de barras
-   - Texto: tem finalidade de cientificá-lo da autuação, não tem efeito para pagamento
-
 3. NOTIFICACAO_PENALIDADE: Cobrança oficial da multa (após processo)
-   INDICADORES OBRIGATÓRIOS:
-   - Título NOTIFICAÇÃO DE PENALIDADE ou NIP
-   - Valores definidos para pagamento da multa
-   - Códigos de barras ou dados bancários
-   - Prazos para pagamento com desconto
-   - Confirmação final da multa após análise
-
 4. DEFESA: Documento onde proprietário/condutor CONTESTA a infração
-   INDICADORES OBRIGATÓRIOS:
-   - Texto com DEFESA, REQUERIMENTO DE DEFESA, RECURSO
-   - Argumentação jurídica contestando a infração
-   - Cabeçalho dirigido à autoridade (Ilustríssimo Senhor...)
-   - Texto argumentativo explicando por que a multa deve ser cancelada
-   - Assinatura do requerente (proprietário/condutor)
-   - Pedidos explícitos de cancelamento/arquivamento
-
 5. INDICACAO_CONDUTOR: Formulário para indicar quem era o condutor no momento da infração
-   INDICADORES OBRIGATÓRIOS:
-   - Título INDICAÇÃO DE CONDUTOR ou FICI
-   - Campos para dados do condutor (nome, CPF, CNH)
-   - Declaração de que a pessoa indicada era o condutor
-   - Assinatura do proprietário do veículo
-
 6. OUTROS: Demais documentos relacionados
 
-PALAVRAS-CHAVE ESPECÍFICAS POR TIPO:
-
-AUTUACAO (AIT original):
-- AUTO DE INFRAÇÃO, AIT
-- Matrícula do agente, dados do fiscalizador
-- lavrado por, autuado
-
-NOTIFICACAO_AUTUACAO:
-- NOTIFICAÇÃO DE AUTUAÇÃO
-- cientificá-lo da autuação
-- não tem efeito para pagamento
-- aguarde a notificação de penalidade
-- FICI (formulário identificação condutor)
-
-NOTIFICACAO_PENALIDADE:
-- NOTIFICAÇÃO DE PENALIDADE, NIP
-- Valores monetários definidos
-- pagamento, quitação
-- Códigos de barras
-
-DEFESA:
-- DEFESA, REQUERIMENTO DE DEFESA, RECURSO
-- requer, alega, contesta, impugna
-- Ilustríssimo, Vossa Excelência
-- Argumentação jurídica contestando
-
-INDICACAO_CONDUTOR:
-- INDICAÇÃO DE CONDUTOR, FICI
-- Dados do condutor responsável
-- CNH, CPF do condutor
-- Declaro que a pessoa indicada era o condutor
-
-ESTRATÉGIA DE ANÁLISE SEQUENCIAL:
-1. Procure primeiro pelo TÍTULO principal do documento
-2. Identifique a FINALIDADE: informar, cobrar, contestar ou indicar condutor?
-3. Verifique indicadores específicos de cada tipo
-4. Se há múltiplos documentos, identifique qual é o PRINCIPAL
-5. ATENÇÃO ESPECIAL:
-   - NOTIFICAÇÃO DE AUTUAÇÃO ≠ DEFESA (mesmo que mencione como fazer defesa)
-   - NOTIFICAÇÃO DE AUTUAÇÃO ≠ COBRANÇA (apenas informa sobre a infração)
-   - DEFESA sempre tem argumentação contestando, não apenas formulários
-   - INDICAÇÃO DE CONDUTOR é específico para identificar quem dirigia
-6. Confirme com as palavras-chave específicas
-
-REGRA CRÍTICA DE DECISÃO:
-- Se o documento INFORMA sobre uma infração = NOTIFICACAO_AUTUACAO
-- Se o documento REGISTRA uma infração = AUTUACAO
-- Se o documento COBRA uma multa = NOTIFICACAO_PENALIDADE
-- Se o documento CONTESTA uma infração = DEFESA
-- Se o documento INDICA quem era o condutor = INDICACAO_CONDUTOR
-
 EXTRAÇÃO DE DADOS ESPECÍFICOS:
-Com base no tipo de documento identificado, extraia os seguintes dados:
-
-Para TODOS os tipos:
-- numero_ait: Número do AIT/Auto de Infração (procure por padrões como AIT123456, Auto nº 123456, etc.)
+- numero_ait: Número do AIT/Auto de Infração
 - placa_veiculo: Placa do veículo (formato AAA-1234 ou AAA1A23)
-
-Para INDICACAO_CONDUTOR:
-- nome_condutor: Nome completo do condutor indicado
-- numero_cnh: Número da CNH do condutor (procure por padrões numéricos de 11 dígitos)
-
-Para DEFESA:
-- texto_defesa: Texto completo da argumentação da defesa (todo o conteúdo argumentativo)
-
-Para NOTIFICACAO_PENALIDADE:
-- valor_multa: Valor da multa em reais (procure por valores monetários)
-- orgao_autuador: Órgão que aplicou a multa
-
-Para AUTUACAO:
+- nome_condutor: Nome completo do condutor (para indicação de condutor)
+- numero_cnh: Número da CNH (para indicação de condutor)
+- texto_defesa: Texto da argumentação da defesa (para defesas)
 - data_infracao: Data da infração (DD/MM/AAAA)
 - local_infracao: Local onde ocorreu a infração
 - codigo_infracao: Código CTB da infração
+- valor_multa: Valor da multa em reais
+- orgao_autuador: Órgão que aplicou a multa
 
 Retorne APENAS este JSON (sem blocos de código markdown):
 {{
@@ -432,13 +372,11 @@ Retorne APENAS este JSON (sem blocos de código markdown):
     ""confianca"": [0.0-1.0],
     ""resumo"": ""Análise do documento principal identificado, mencionando se há documentos anexos"",
     ""palavras_chave_encontradas"": ""Elementos encontrados separados por vírgula"",
-    ""documentos_identificados"": ""Lista dos tipos de documento encontrados no arquivo"",
-    ""texto_completo"": ""Todo o texto extraído do documento pela IA (mesmo se for PDF escaneado)"",
     ""numero_ait"": ""Número do AIT encontrado ou null"",
     ""placa_veiculo"": ""Placa do veículo encontrada ou null"",
-    ""nome_condutor"": ""Nome do condutor (para indicação de condutor) ou null"",
-    ""numero_cnh"": ""Número da CNH (para indicação de condutor) ou null"",
-    ""texto_defesa"": ""Texto completo da defesa (para defesas) ou null"",
+    ""nome_condutor"": ""Nome do condutor ou null"",
+    ""numero_cnh"": ""Número da CNH ou null"",
+    ""texto_defesa"": ""Texto da defesa ou null"",
     ""data_infracao"": ""Data da infração em formato DD/MM/AAAA ou null"",
     ""local_infracao"": ""Local da infração ou null"",
     ""codigo_infracao"": ""Código CTB da infração ou null"",
@@ -447,6 +385,87 @@ Retorne APENAS este JSON (sem blocos de código markdown):
 }}
 ";
         }
+
+        private string CriarPromptExtracao(string mimeType)
+        {
+            var tipoArquivo = mimeType.Contains("pdf") ? "PDF" : "imagem";
+            var instrucaoEspecifica = mimeType.Contains("pdf")
+                ? "Use a capacidade visual do Gemini para examinar este documento PDF (que pode ser texto nativo ou escaneado):"
+                : "Use a capacidade visual do Gemini para examinar esta imagem escaneada de documento:";
+
+            return $@"
+EXTRAÇÃO COMPLETA DE TEXTO - {instrucaoEspecifica}
+
+OBJETIVO: Extrair TODO O TEXTO visível neste documento, incluindo:
+- Texto nativo do PDF (selecionável)  
+- Texto em imagens escaneadas (usando OCR/análise visual)
+- Texto manuscrito legível
+- Qualquer texto visível no documento
+
+INSTRUÇÕES:
+1. Extraia TODO o texto do documento, página por página se necessário
+2. Mantenha a formatação e estrutura quando possível
+3. Se há múltiplos documentos, extraia o texto de TODOS
+4. Inclua cabeçalhos, rodapés, assinaturas, carimbos legíveis
+5. Se algum texto estiver cortado ou ilegível, indique com [ILEGÍVEL]
+
+IMPORTANTE: 
+- NÃO faça análise ou classificação
+- NÃO resuma o conteúdo  
+- APENAS extraia o texto completo
+- Se o documento é muito longo, priorize completude sobre formatação
+
+Retorne apenas o texto extraído, sem formatação JSON ou markdown.
+";
+        }
+
+        private string LimparTextoExtraido(string textoResposta)
+        {
+            if (string.IsNullOrEmpty(textoResposta))
+                return string.Empty;
+
+            // Remove possíveis blocos de código markdown
+            var texto = textoResposta.Trim();
+
+            if (texto.StartsWith("```") && texto.EndsWith("```"))
+            {
+                // Remove blocos de código
+                var linhas = texto.Split('\n');
+                if (linhas.Length > 2)
+                {
+                    // Remove primeira e última linha se forem marcadores de código
+                    var primeiraLinha = linhas[0].Trim();
+                    var ultimaLinha = linhas[^1].Trim();
+
+                    if (primeiraLinha.StartsWith("```") && ultimaLinha == "```")
+                    {
+                        texto = string.Join('\n', linhas[1..^1]);
+                    }
+                }
+            }
+
+            // Remove instruções que o Gemini pode ter adicionado
+            var linhasInstrucoes = new[]
+            {
+                "aqui está o texto extraído",
+                "texto extraído do documento:",
+                "conteúdo do documento:",
+                "texto completo:",
+                "segue o texto:"
+            };
+
+            foreach (var instrucao in linhasInstrucoes)
+            {
+                if (texto.StartsWith(instrucao, StringComparison.OrdinalIgnoreCase))
+                {
+                    texto = texto.Substring(instrucao.Length).Trim();
+                    break;
+                }
+            }
+
+            return texto.Trim();
+        }
+
         private class ClassificacaoResposta
         {
             public string tipo_documento { get; set; } = string.Empty;
@@ -463,7 +482,6 @@ Retorne APENAS este JSON (sem blocos de código markdown):
             }
 
             // NOVOS CAMPOS ESPECÍFICOS
-            public string? texto_completo { get; set; }
             public string? numero_ait { get; set; }
             public string? placa_veiculo { get; set; }
             public string? nome_condutor { get; set; }

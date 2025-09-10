@@ -295,7 +295,7 @@ namespace ClassificadorDoc.Controllers.Mvc
                 var userName = User.Identity?.Name ?? "Usuário";
                 var documentos = new List<DocumentoClassificacao>();
                 var totalDocumentosProcessados = 0;
-                var startTime = DateTime.UtcNow;
+                var startTime = DateTime.Now;
 
                 // Criar registro do lote ANTES de processar
                 var batchHistory = new BatchProcessingHistory
