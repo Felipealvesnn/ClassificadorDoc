@@ -225,33 +225,46 @@ namespace ClassificadorDoc.Controllers.Mvc
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateUser(CreateUserViewModel model)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                var user = new ApplicationUser
+                // Log dos erros de validação para debug
+                var errors = ModelState
+                    .Where(x => x.Value?.Errors.Count > 0)
+                    .Select(x => new { Field = x.Key, Errors = x.Value?.Errors.Select(e => e.ErrorMessage) ?? new List<string>() });
+
+                foreach (var error in errors)
                 {
-                    UserName = model.Email,
-                    Email = model.Email,
-                    FullName = model.FullName,
-                    Department = model.Department ?? "Não informado",
-                    IsActive = true
-                };
-
-                var result = await _userManager.CreateAsync(user, model.Password);
-
-                if (result.Succeeded)
-                {
-                    await _userManager.AddToRoleAsync(user, model.Role);
-
-                    _logger.LogInformation("Novo usuário criado pelo admin: {Email}", user.Email);
-                    TempData["Message"] = "Usuário criado com sucesso!";
+                    _logger.LogWarning("Erro de validação no campo {Field}: {Errors}", error.Field, string.Join(", ", error.Errors));
                 }
-                else
+
+                TempData["Error"] = "Dados inválidos. Verifique os campos e tente novamente.";
+                return RedirectToAction("UserManagement");
+            }
+
+            var user = new ApplicationUser
+            {
+                UserName = model.Email,
+                Email = model.Email,
+                FullName = model.FullName,
+                Department = model.Department ?? "Não informado",
+                IsActive = true
+            };
+
+            var result = await _userManager.CreateAsync(user, model.Password);
+
+            if (result.Succeeded)
+            {
+                await _userManager.AddToRoleAsync(user, model.Role);
+
+                _logger.LogInformation("Novo usuário criado pelo admin: {Email}", user.Email);
+                TempData["Message"] = "Usuário criado com sucesso!";
+            }
+            else
+            {
+                foreach (var error in result.Errors)
                 {
-                    foreach (var error in result.Errors)
-                    {
-                        TempData["Error"] = GetPortugueseErrorMessage(error.Code);
-                        break;
-                    }
+                    TempData["Error"] = GetPortugueseErrorMessage(error.Code);
+                    break;
                 }
             }
 
@@ -322,6 +335,135 @@ namespace ClassificadorDoc.Controllers.Mvc
                 "InvalidEmail" => "Email inválido.",
                 _ => "Erro desconhecido."
             };
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetUser(string id)
+        {
+            try
+            {
+                var user = await _userManager.FindByIdAsync(id);
+                if (user == null)
+                {
+                    return NotFound();
+                }
+
+                var roles = await _userManager.GetRolesAsync(user);
+
+                var userModel = new EditUserViewModel
+                {
+                    Id = user.Id,
+                    Email = user.Email ?? string.Empty,
+                    UserName = user.UserName ?? string.Empty,
+                    Role = roles.FirstOrDefault() ?? "User",
+                    EmailConfirmed = user.EmailConfirmed,
+                    LockoutEnabled = user.LockoutEnabled
+                };
+
+                return Json(userModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao buscar usuário {UserId}", id);
+                return BadRequest("Erro interno do servidor");
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditUser(EditUserViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return BadRequest(string.Join(", ", errors));
+            }
+
+            try
+            {
+                var user = await _userManager.FindByIdAsync(model.Id);
+                if (user == null)
+                {
+                    return NotFound("Usuário não encontrado");
+                }
+
+                // Atualizar dados do usuário
+                user.Email = model.Email;
+                user.UserName = model.Email;
+                user.EmailConfirmed = model.EmailConfirmed;
+                user.LockoutEnabled = model.LockoutEnabled;
+
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                {
+                    var errors = result.Errors.Select(e => GetPortugueseErrorMessage(e.Code));
+                    return BadRequest(string.Join(", ", errors));
+                }
+
+                // Atualizar role se necessário
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                if (currentRoles.FirstOrDefault() != model.Role)
+                {
+                    if (currentRoles.Any())
+                    {
+                        await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                    }
+
+                    if (!string.IsNullOrEmpty(model.Role))
+                    {
+                        await _userManager.AddToRoleAsync(user, model.Role);
+                    }
+                }
+
+                _logger.LogInformation("Usuário {UserId} editado com sucesso por {AdminId}", user.Id, User.Identity?.Name ?? "Unknown");
+                return Ok("Usuário atualizado com sucesso");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao editar usuário {UserId}", model.Id);
+                return BadRequest("Erro interno do servidor");
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetUserPassword(string userId, string newPassword)
+        {
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(newPassword))
+            {
+                return BadRequest("Dados inválidos");
+            }
+
+            try
+            {
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    return NotFound("Usuário não encontrado");
+                }
+
+                // Gerar token de reset de senha
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+                // Resetar a senha
+                var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+                if (!result.Succeeded)
+                {
+                    var errors = result.Errors.Select(e => GetPortugueseErrorMessage(e.Code));
+                    return BadRequest(string.Join(", ", errors));
+                }
+
+                _logger.LogInformation("Senha do usuário {UserId} resetada por {AdminId}", user.Id, User.Identity?.Name ?? "Unknown");
+                return Ok("Senha resetada com sucesso");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao resetar senha do usuário {UserId}", userId);
+                return BadRequest("Erro interno do servidor");
+            }
         }
     }
 }

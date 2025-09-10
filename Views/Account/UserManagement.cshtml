@@ -240,35 +240,134 @@
 </div>
 
 <!-- Modal Novo Usuário -->
-<div class="modal fade" id="addUserModal" tabindex="-1">
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="addUserModalLabel">
                     <i class="fas fa-user-plus me-2"></i>Novo Usuário
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form asp-action="CreateUser" method="post">
+            <form asp-action="CreateUser" method="post" id="createUserForm">
+                @Html.AntiForgeryToken()
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="newUserFullName" class="form-label">Nome Completo</label>
-                            <input type="text" class="form-control" name="FullName" required>
+                            <label class="form-label fw-bold">Nome Completo <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="FullName" id="newUserFullName" required placeholder="Digite o nome completo">
+                            <div class="invalid-feedback">
+                                Nome completo é obrigatório
+                            </div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="newUserEmail" class="form-label">E-mail</label>
-                            <input type="email" class="form-control" name="Email" required>
+                            <label class="form-label fw-bold">E-mail <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" name="Email" id="newUserEmail" required placeholder="exemplo@dominio.com">
+                            <div class="invalid-feedback">
+                                E-mail válido é obrigatório
+                            </div>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="newUserDepartment" class="form-label">Departamento</label>
-                            <input type="text" class="form-control" name="Department">
+                            <label class="form-label fw-bold">Departamento</label>
+                            <input type="text" class="form-control" name="Department" id="newUserDepartment" placeholder="Ex: TI, RH, Financeiro">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="newUserRole" class="form-label">Papel</label>
-                            <select class="form-select" name="Role" required>
+                            <label class="form-label fw-bold">Papel <span class="text-danger">*</span></label>
+                            <select class="form-select" name="Role" id="newUserRole" required>
+                                <option value="">Selecione um papel</option>
+                                <option value="User">Usuário</option>
+                                <option value="Admin">Administrador</option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Papel é obrigatório
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Senha Temporária <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" name="Password" id="newUserPassword" required placeholder="Mínimo 6 caracteres">
+                                <button class="btn btn-outline-primary" type="button" onclick="generatePassword()" title="Gerar senha aleatória">
+                                    <i class="fas fa-dice"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('newUserPassword')" title="Mostrar/Ocultar senha">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Usuário deve alterar no primeiro login
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Configurações</label>
+                            <div class="form-check mb-2">
+                                <input type="hidden" name="SendEmailInvitation" value="false">
+                                <input class="form-check-input" type="checkbox" name="SendEmailInvitation" value="true" id="newUserSendEmail" checked>
+                                <label class="form-check-label" for="newUserSendEmail">
+                                    <i class="fas fa-envelope me-2 text-info"></i>
+                                    Enviar convite por e-mail
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input type="hidden" name="RequirePasswordChange" value="false">
+                                <input class="form-check-input" type="checkbox" name="RequirePasswordChange" value="true" id="newUserRequireChange" checked>
+                                <label class="form-check-label" for="newUserRequireChange">
+                                    <i class="fas fa-shield-alt me-2 text-primary"></i>
+                                    Exigir alteração de senha
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-user-plus me-2"></i>Criar Usuário
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Usuário -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="editUserModalLabel">
+                    <i class="fas fa-user-edit me-2"></i>Editar Usuário
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="EditUser" method="post" id="editUserForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" id="editUserId">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Nome Completo <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="FullName" id="editUserFullName" required placeholder="Digite o nome completo">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">E-mail <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" name="Email" id="editUserEmail" required placeholder="exemplo@dominio.com">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Departamento</label>
+                            <input type="text" class="form-control" name="Department" id="editUserDepartment" placeholder="Ex: TI, RH, Financeiro">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Papel do Usuário</label>
+                            <select class="form-select" name="Role" id="editUserRole" required>
                                 <option value="">Selecione um papel</option>
                                 <option value="User">Usuário</option>
                                 <option value="Admin">Administrador</option>
@@ -277,32 +376,108 @@
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="newUserPassword" class="form-label">Senha Temporária</label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" name="Password" required>
-                                <button class="btn btn-outline-secondary" type="button" onclick="generatePassword()">
-                                    <i class="fas fa-random"></i>
-                                </button>
+                            <label class="form-label fw-bold">Status da Conta</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="IsActive" id="editUserActive">
+                                <label class="form-check-label" for="editUserActive">
+                                    <span class="badge bg-success me-2">
+                                        <i class="fas fa-check-circle"></i>
+                                    </span>
+                                    Conta Ativa
+                                </label>
                             </div>
-                            <div class="form-text">Usuário deverá alterar na primeira login</div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Opções</label>
+                            <label class="form-label fw-bold">Configurações</label>
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="SendEmailInvitation" checked>
-                                <label class="form-check-label">Enviar convite por e-mail</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="RequirePasswordChange" checked>
-                                <label class="form-check-label">Exigir alteração de senha</label>
+                                <input class="form-check-input" type="checkbox" name="EmailConfirmed" id="editEmailConfirmed">
+                                <label class="form-check-label" for="editEmailConfirmed">
+                                    E-mail confirmado
+                                </label>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Criar Usuário
+                        <i class="fas fa-save me-2"></i>Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Reset Senha -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="resetPasswordModalLabel">
+                    <i class="fas fa-key me-2"></i>Reset de Senha
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="ResetUserPassword" method="post" id="resetPasswordForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="UserId" id="resetUserId">
+                <div class="modal-body">
+                    <div class="alert alert-warning d-flex align-items-center">
+                        <i class="fas fa-exclamation-triangle me-3 fa-2x"></i>
+                        <div>
+                            <strong>Atenção!</strong><br>
+                            Esta ação irá resetar a senha do usuário e ele precisará alterar no próximo login.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nova Senha Temporária <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" name="NewPassword" id="resetNewPassword" required placeholder="Digite a nova senha">
+                            <button class="btn btn-outline-primary" type="button" onclick="generateResetPassword()" title="Gerar senha aleatória">
+                                <i class="fas fa-dice"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('resetNewPassword')" title="Mostrar/Ocultar senha">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Clique no dado para gerar uma senha no formato: <strong>Usuario@123</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input type="hidden" name="RequirePasswordChange" value="false">
+                                <input class="form-check-input" type="checkbox" name="RequirePasswordChange" id="resetRequireChange" value="true" checked>
+                                <label class="form-check-label" for="resetRequireChange">
+                                    <i class="fas fa-shield-alt me-2 text-primary"></i>
+                                    Exigir alteração no próximo login
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="SendEmailNotification" id="resetSendEmail" checked>
+                                <label class="form-check-label" for="resetSendEmail">
+                                    <i class="fas fa-envelope me-2 text-info"></i>
+                                    Enviar por e-mail
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-key me-2"></i>Resetar Senha
                     </button>
                 </div>
             </form>
@@ -312,11 +487,26 @@
 
 @section Scripts {
     <script>
-        // Busca em tempo real
-        document.getElementById('searchInput').addEventListener('input', filterUsers);
-        document.getElementById('roleFilter').addEventListener('change', filterUsers);
-        document.getElementById('statusFilter').addEventListener('change', filterUsers);
+        // Variáveis globais
+        let editUserModal, resetPasswordModal, addUserModal;
 
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar modais
+            editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            resetPasswordModal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+            addUserModal = new bootstrap.Modal(document.getElementById('addUserModal'));
+
+            // Event listeners
+            document.getElementById('searchInput').addEventListener('input', filterUsers);
+            document.getElementById('roleFilter').addEventListener('change', filterUsers);
+            document.getElementById('statusFilter').addEventListener('change', filterUsers);
+            
+            // Validação de formulários
+            setupFormValidation();
+        });
+
+        // Busca e filtros
         function filterUsers() {
             const search = document.getElementById('searchInput').value.toLowerCase();
             const roleFilter = document.getElementById('roleFilter').value;
@@ -342,44 +532,273 @@
             filterUsers();
         }
 
+        // Modal de Edição
         function editUser(userId) {
-            alert(`Editar usuário ${userId} - Em desenvolvimento`);
+            showLoadingSpinner('Carregando dados do usuário...');
+            
+            fetch(`/Account/GetUser/${userId}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Erro ao buscar usuário');
+                    return response.json();
+                })
+                .then(user => {
+                    // Preencher formulário
+                    document.getElementById('editUserId').value = user.id;
+                    document.getElementById('editUserFullName').value = user.fullName || '';
+                    document.getElementById('editUserEmail').value = user.email || '';
+                    document.getElementById('editUserDepartment').value = user.department || '';
+                    document.getElementById('editUserRole').value = user.role || '';
+                    document.getElementById('editUserActive').checked = user.isActive;
+                    document.getElementById('editEmailConfirmed').checked = user.emailConfirmed;
+                    
+                    hideLoadingSpinner();
+                    editUserModal.show();
+                })
+                .catch(error => {
+                    hideLoadingSpinner();
+                    console.error('Erro ao carregar dados do usuário:', error);
+                    showAlert('Erro ao carregar dados do usuário. Tente novamente.', 'danger');
+                });
         }
 
+        // Modal de Reset de Senha
         function resetPassword(userId) {
-            if (confirm('Tem certeza que deseja resetar a senha deste usuário?')) {
-                alert(`Reset senha usuário ${userId} - Em desenvolvimento`);
-            }
+            document.getElementById('resetUserId').value = userId;
+            document.getElementById('resetNewPassword').value = '';
+            document.getElementById('resetRequireChange').checked = true;
+            document.getElementById('resetSendEmail').checked = true;
+            
+            resetPasswordModal.show();
         }
 
-        function toggleUserStatus(userId, activate) {
-            const action = activate ? 'ativar' : 'desativar';
-            if (confirm(`Tem certeza que deseja ${action} este usuário?`)) {
-                alert(`${action} usuário ${userId} - Em desenvolvimento`);
-            }
+        // Geração de senhas
+        function generateResetPassword() {
+            const randomNum = Math.floor(Math.random() * 900 + 100);
+            const password = 'Usuario' + String.fromCharCode(64) + randomNum;
+            document.getElementById('resetNewPassword').value = password;
+            
+            // Feedback visual
+            const input = document.getElementById('resetNewPassword');
+            input.classList.add('is-valid');
+            setTimeout(() => input.classList.remove('is-valid'), 2000);
         }
 
         function generatePassword() {
-            const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
-            document.querySelector('input[name="Password"]').value = password;
+            // Simplificar para evitar problemas com Razor
+            const password = 'Temp' + String.fromCharCode(64) + Math.floor(Math.random() * 9000 + 1000) + '!';
+            
+            const input = document.getElementById('newUserPassword');
+            input.value = password;
+            input.type = 'text'; // Mostrar temporariamente
+            
+            // Feedback visual
+            input.classList.add('is-valid');
+            setTimeout(() => {
+                input.type = 'password';
+                input.classList.remove('is-valid');
+            }, 3000);
         }
 
+        // Toggle de visibilidade de senha
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const button = input.nextElementSibling.nextElementSibling || input.nextElementSibling;
+            const icon = button.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+                button.title = 'Ocultar senha';
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+                button.title = 'Mostrar senha';
+            }
+        }
+
+        // Toggle de status do usuário
+        function toggleUserStatus(userId, activate) {
+            const action = activate ? 'ativar' : 'desativar';
+            const actionCap = activate ? 'Ativar' : 'Desativar';
+            
+            if (confirm(`Tem certeza que deseja ${action} este usuário?`)) {
+                showLoadingSpinner(`${actionCap}ando usuário...`);
+                
+                fetch('/Account/ToggleUserStatus', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    },
+                    body: `userId=${userId}`
+                })
+                .then(response => {
+                    hideLoadingSpinner();
+                    if (response.ok) {
+                        showAlert(`Usuário ${action} com sucesso!`, 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        throw new Error('Erro no servidor');
+                    }
+                })
+                .catch(error => {
+                    hideLoadingSpinner();
+                    console.error('Erro:', error);
+                    showAlert(`Erro ao ${action} usuário. Tente novamente.`, 'danger');
+                });
+            }
+        }
+
+        // Validação de formulários
+        function setupFormValidation() {
+            // Formulário de criação
+            const createForm = document.getElementById('createUserForm');
+            createForm.addEventListener('submit', function(e) {
+                if (!validateCreateForm()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                createForm.classList.add('was-validated');
+            });
+
+            // Formulário de edição
+            const editForm = document.getElementById('editUserForm');
+            editForm.addEventListener('submit', function(e) {
+                if (!validateEditForm()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                editForm.classList.add('was-validated');
+            });
+
+            // Formulário de reset de senha
+            const resetForm = document.getElementById('resetPasswordForm');
+            resetForm.addEventListener('submit', function(e) {
+                if (!validateResetForm()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                resetForm.classList.add('was-validated');
+            });
+        }
+
+        function validateCreateForm() {
+            const fullName = document.getElementById('newUserFullName').value.trim();
+            const email = document.getElementById('newUserEmail').value.trim();
+            const role = document.getElementById('newUserRole').value;
+            const password = document.getElementById('newUserPassword').value;
+
+            if (!fullName || !email || !role || !password) {
+                showAlert('Preencha todos os campos obrigatórios.', 'warning');
+                return false;
+            }
+
+            if (password.length < 6) {
+                showAlert('A senha deve ter pelo menos 6 caracteres.', 'warning');
+                return false;
+            }
+
+            return true;
+        }
+
+        function validateEditForm() {
+            const fullName = document.getElementById('editUserFullName').value.trim();
+            const email = document.getElementById('editUserEmail').value.trim();
+            const role = document.getElementById('editUserRole').value;
+
+            if (!fullName || !email || !role) {
+                showAlert('Preencha todos os campos obrigatórios.', 'warning');
+                return false;
+            }
+
+            return true;
+        }
+
+        function validateResetForm() {
+            const password = document.getElementById('resetNewPassword').value;
+
+            if (!password || password.length < 6) {
+                showAlert('A nova senha deve ter pelo menos 6 caracteres.', 'warning');
+                return false;
+            }
+
+            return true;
+        }
+
+        // Utilitários
+        function showLoadingSpinner(message = 'Carregando...') {
+            // Criar ou mostrar spinner de loading
+            let spinner = document.getElementById('loadingSpinner');
+            if (!spinner) {
+                spinner = document.createElement('div');
+                spinner.id = 'loadingSpinner';
+                spinner.innerHTML = `
+                    <div class="d-flex justify-content-center align-items-center position-fixed top-0 start-0 w-100 h-100" style="background: rgba(0,0,0,0.5); z-index: 9999;">
+                        <div class="bg-white p-4 rounded shadow">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border text-primary me-3" role="status"></div>
+                                <span>${message}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(spinner);
+            }
+            spinner.style.display = 'block';
+        }
+
+        function hideLoadingSpinner() {
+            const spinner = document.getElementById('loadingSpinner');
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+        }
+
+        function showAlert(message, type = 'info') {
+            // Criar alert temporário
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 10000; max-width: 400px;';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // Auto remover após 5 segundos
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // Funcionalidades extras
         function exportUsers(format) {
-            alert(`Exportar usuários em ${format} - Em desenvolvimento`);
+            showAlert(`Exportação em ${format.toUpperCase()} será implementada em breve.`, 'info');
         }
 
         function showBulkActions() {
-            alert('Ações em lote - Em desenvolvimento');
+            showAlert('Ações em lote serão implementadas em breve.', 'info');
         }
 
         // Select All functionality
-        document.getElementById('selectAll').addEventListener('change', function() {
-            const checkboxes = document.querySelectorAll('.user-checkbox');
-            checkboxes.forEach(cb => cb.checked = this.checked);
+        document.addEventListener('DOMContentLoaded', function() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function() {
+                    const checkboxes = document.querySelectorAll('.user-checkbox');
+                    checkboxes.forEach(cb => cb.checked = this.checked);
+                });
+            }
         });
     </script>
 }
 
+@section Styles {
 <style>
 .user-avatar-sm {
     width: 40px;
@@ -392,4 +811,166 @@
     color: white;
     font-size: 1rem;
 }
+
+/* Melhorias nos modais */
+.modal-header.bg-primary {
+    border-bottom: none;
+}
+
+.modal-header.bg-success {
+    border-bottom: none;
+}
+
+.modal-header.bg-warning {
+    border-bottom: none;
+}
+
+/* Animações suaves */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+    transform: translate(0, -50px);
+}
+
+.modal.show .modal-dialog {
+    transform: none;
+}
+
+/* Feedback visual para inputs */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.form-control.is-valid {
+    border-color: #198754;
+    background-image: none;
+}
+
+.form-control.is-invalid {
+    border-color: #dc3545;
+    background-image: none;
+}
+
+/* Hover effects para botões */
+.btn:hover {
+    transform: translateY(-1px);
+    transition: transform 0.2s ease;
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+/* Loading spinner overlay */
+.spinner-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+/* Melhor aparência para badges */
+.badge {
+    font-size: 0.75em;
+    font-weight: 500;
+}
+
+/* Hover effect para linhas da tabela */
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+    transition: background-color 0.15s ease-in-out;
+}
+
+/* Cards com sombra suave */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Status indicators */
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.status-active {
+    background-color: #28a745;
+}
+
+.status-inactive {
+    background-color: #6c757d;
+}
+
+/* Form improvements */
+.form-label.fw-bold {
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.form-text {
+    font-size: 0.875em;
+    color: #6c757d;
+}
+
+/* Alert improvements */
+.alert {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+.alert-dismissible .btn-close {
+    padding: 0.75rem 1rem;
+}
+
+/* Input group improvements */
+.input-group .btn {
+    border-color: #ced4da;
+}
+
+.input-group .btn:hover {
+    border-color: #adb5bd;
+    background-color: #f8f9fa;
+}
+
+/* Custom checkbox styles */
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.form-switch .form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+/* Responsive improvements */
+@@media (max-width: 768px) {
+    .modal-lg {
+        max-width: 90%;
+        margin: 1rem auto;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+}
 </style>
+}

@@ -38,11 +38,16 @@ namespace ClassificadorDoc.Models
         [EmailAddress(ErrorMessage = "E-mail inválido")]
         public string Email { get; set; } = string.Empty;
 
+        public string UserName { get; set; } = string.Empty;
+
         [StringLength(50, ErrorMessage = "Departamento deve ter no máximo 50 caracteres")]
         public string? Department { get; set; }
 
+        public string Role { get; set; } = string.Empty;
         public List<string> Roles { get; set; } = new List<string>();
         public bool IsActive { get; set; } = true;
+        public bool EmailConfirmed { get; set; } = true;
+        public bool LockoutEnabled { get; set; } = false;
     }
 
     public class ChangePasswordViewModel
