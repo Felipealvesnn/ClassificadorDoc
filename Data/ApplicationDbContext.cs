@@ -16,6 +16,9 @@ namespace ClassificadorDoc.Data
         public DbSet<ClassificationSession> ClassificationSessions { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
 
+        // DbSet para documentos de trânsito processados
+        public DbSet<DocumentoTransito> DocumentosTransito { get; set; }
+
         // DbSets para controle de lotes (atende requisito edital)
         public DbSet<BatchProcessingHistory> BatchProcessingHistories { get; set; }
 
@@ -64,6 +67,24 @@ namespace ClassificadorDoc.Data
                     .WithMany(b => b.Documents)
                     .HasForeignKey(e => e.BatchProcessingHistoryId)
                     .OnDelete(DeleteBehavior.NoAction);
+
+                // CONFIGURAÇÕES PARA NOVOS CAMPOS ESPECÍFICOS
+                entity.Property(e => e.TextoCompleto).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.NumeroAIT).HasMaxLength(50);
+                entity.Property(e => e.PlacaVeiculo).HasMaxLength(10);
+                entity.Property(e => e.NomeCondutor).HasMaxLength(100);
+                entity.Property(e => e.NumeroCNH).HasMaxLength(20);
+                entity.Property(e => e.TextoDefesa).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.LocalInfracao).HasMaxLength(200);
+                entity.Property(e => e.CodigoInfracao).HasMaxLength(20);
+                entity.Property(e => e.OrgaoAutuador).HasMaxLength(100);
+                entity.Property(e => e.ValorMulta).HasColumnType("decimal(10,2)");
+
+                // Índices para busca eficiente
+                entity.HasIndex(e => e.DocumentType);
+                entity.HasIndex(e => e.NumeroAIT);
+                entity.HasIndex(e => e.PlacaVeiculo);
+                entity.HasIndex(e => new { e.UserId, e.ProcessedAt });
             });
 
             builder.Entity<ClassificationSession>(entity =>
@@ -224,6 +245,43 @@ namespace ClassificadorDoc.Data
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+
+            // Configurações para documentos de trânsito
+            builder.Entity<DocumentoTransito>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.ProcessadoPor);
+                entity.HasIndex(e => e.ProcessadoEm);
+                entity.HasIndex(e => e.TipoDocumento);
+                entity.HasIndex(e => e.NumeroAIT);
+                entity.HasIndex(e => e.PlacaVeiculo);
+                entity.HasIndex(e => new { e.ProcessadoPor, e.ProcessadoEm });
+
+                entity.Property(e => e.NomeArquivo).HasMaxLength(255).IsRequired();
+                entity.Property(e => e.TipoDocumento).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.ResumoConteudo).HasMaxLength(1000);
+                entity.Property(e => e.PalavrasChaveEncontradas).HasMaxLength(500);
+                entity.Property(e => e.TextoCompleto).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.ErroProcessamento).HasMaxLength(1000);
+                entity.Property(e => e.ProcessadoPor).HasMaxLength(450).IsRequired();
+
+                // Campos específicos de trânsito
+                entity.Property(e => e.NumeroAIT).HasMaxLength(50);
+                entity.Property(e => e.PlacaVeiculo).HasMaxLength(10);
+                entity.Property(e => e.NomeCondutor).HasMaxLength(100);
+                entity.Property(e => e.NumeroCNH).HasMaxLength(20);
+                entity.Property(e => e.TextoDefesa).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.LocalInfracao).HasMaxLength(200);
+                entity.Property(e => e.CodigoInfracao).HasMaxLength(20);
+                entity.Property(e => e.OrgaoAutuador).HasMaxLength(100);
+                entity.Property(e => e.ValorMulta).HasColumnType("decimal(10,2)");
+
+                // Relacionamento com usuário
+                entity.HasOne<ApplicationUser>()
+                    .WithMany()
+                    .HasForeignKey(e => e.ProcessadoPor)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 
@@ -244,6 +302,19 @@ namespace ClassificadorDoc.Data
         // Relacionamento com lote (novo campo)
         public int? BatchProcessingHistoryId { get; set; }
         public BatchProcessingHistory? BatchProcessingHistory { get; set; }
+
+        // NOVOS CAMPOS ESPECÍFICOS PARA DOCUMENTOS DE TRÂNSITO
+        public string? TextoCompleto { get; set; } // Texto extraído do PDF
+        public string? NumeroAIT { get; set; } // Número do Auto de Infração
+        public string? PlacaVeiculo { get; set; } // Placa do veículo
+        public string? NomeCondutor { get; set; } // Nome do condutor (para indicação de condutor)
+        public string? NumeroCNH { get; set; } // Número da CNH do condutor
+        public string? TextoDefesa { get; set; } // Texto completo da defesa (para defesas)
+        public DateTime? DataInfracao { get; set; } // Data da infração
+        public string? LocalInfracao { get; set; } // Local da infração
+        public string? CodigoInfracao { get; set; } // Código CTB da infração
+        public decimal? ValorMulta { get; set; } // Valor da multa
+        public string? OrgaoAutuador { get; set; } // Órgão que aplicou a multa
     }
 
     public class ClassificationSession

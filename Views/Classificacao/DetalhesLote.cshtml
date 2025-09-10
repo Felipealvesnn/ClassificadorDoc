@@ -164,17 +164,18 @@
     </div>
     <div class="card-body">
         <div class="row">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="filtroTipoDoc" class="form-label">Tipo de Documento</label>
                 <select class="form-select" id="filtroTipoDoc">
                     <option value="">Todos os tipos</option>
-                    <option value="autuacao">Autuação</option>
+                    <option value="notificacao_autuacao">Autuação</option>
                     <option value="defesa">Defesa</option>
+                    <option value="indicacao_condutor">Indicação de Condutor</option>
                     <option value="notificacao_penalidade">Notificação de Penalidade</option>
                     <option value="outros">Outros</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="filtroStatusDoc" class="form-label">Status</label>
                 <select class="form-select" id="filtroStatusDoc">
                     <option value="">Todos os status</option>
@@ -183,15 +184,24 @@
                     <option value="Processing">Processando</option>
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label for="filtroAIT" class="form-label">Número AIT</label>
+                <input type="text" class="form-control" id="filtroAIT" placeholder="Ex: 123456789">
+            </div>
+            <div class="col-md-2">
+                <label for="filtroPlaca" class="form-label">Placa</label>
+                <input type="text" class="form-control" id="filtroPlaca" placeholder="Ex: ABC-1234">
+            </div>
+            <div class="col-md-2">
                 <label for="filtroConfiancaDoc" class="form-label">Confiança Mínima</label>
                 <input type="range" class="form-range" id="filtroConfiancaDoc" min="0" max="100" value="0">
                 <div class="d-flex justify-content-between">
                     <small>0%</small>
+                    <small id="valorConfianca">0%</small>
                     <small>100%</small>
                 </div>
             </div>
-            <div class="col-md-3 d-flex align-items-end">
+            <div class="col-md-2 d-flex align-items-end">
                 <div>
                     <button type="button" class="btn btn-primary me-2" onclick="aplicarFiltrosDoc()">
                         <i class="fas fa-search"></i> Filtrar
@@ -239,6 +249,7 @@
                         <tr>
                             <th>Arquivo</th>
                             <th>Tipo Classificado</th>
+                            <th>Dados Específicos</th>
                             <th>Confiança</th>
                             <th>Status</th>
                             <th>Data Processamento</th>
@@ -271,6 +282,56 @@
                                     }
                                 </td>
                                 <td>
+                                    @if (!string.IsNullOrEmpty(doc.DadosEspecificosResumo))
+                                    {
+                                        <div class="small">
+                                            @{
+                                                var tipoBadgeClass = "";
+                                                var tipoLabel = "";
+                                                
+                                                if (doc.TipoClassificado?.Contains("indicacao") == true)
+                                                {
+                                                    tipoBadgeClass = "badge bg-warning text-dark";
+                                                    tipoLabel = "Indicação";
+                                                }
+                                                else if (doc.TipoClassificado?.Contains("defesa") == true)
+                                                {
+                                                    tipoBadgeClass = "badge bg-primary";
+                                                    tipoLabel = "Defesa";
+                                                }
+                                                else if (doc.TipoClassificado?.Contains("autuacao") == true)
+                                                {
+                                                    tipoBadgeClass = "badge bg-danger";
+                                                    tipoLabel = "Autuação";
+                                                }
+                                                else
+                                                {
+                                                    tipoBadgeClass = "badge bg-secondary";
+                                                    tipoLabel = "Outros";
+                                                }
+                                            }
+                                            
+                                            @if (!string.IsNullOrEmpty(tipoLabel))
+                                            {
+                                                <div class="mb-2">
+                                                    <span class="@tipoBadgeClass" style="font-size: 0.7em;">@tipoLabel</span>
+                                                </div>
+                                            }
+                                            
+                                            @foreach (var dado in doc.DadosEspecificosResumo.Split(" | "))
+                                            {
+                                                <div class="text-muted mb-1">
+                                                    <i class="fas fa-tag fa-xs me-1"></i>@dado
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">Dados não extraídos</span>
+                                    }
+                                </td>
+                                <td>
                                     @if (doc.Confianca > 0)
                                     {
                                         <div class="d-flex align-items-center">
@@ -300,7 +361,7 @@
                                 <td>
                                     <div class="btn-group" role="group">
                                         <button type="button" class="btn btn-outline-info btn-sm" 
-                                                onclick="verDetalhesDoc(@doc.Id)" title="Ver Detalhes">
+                                                onclick="verDetalhesDoc(@doc.Id)" title="Ver Detalhes Completos">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                         @if (!string.IsNullOrEmpty(doc.CaminhoResultado))
@@ -336,26 +397,282 @@
     </div>
 </div>
 
+<!-- Modal de Detalhes do Documento -->
+<div class="modal fade" id="modalDetalhesDocumento" tabindex="-1" aria-labelledby="modalDetalhesDocumentoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalDetalhesDocumentoLabel">
+                    <i class="fas fa-file-alt me-2"></i>Detalhes do Documento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalDetalhesConteudo">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Carregando detalhes do documento...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Fechar
+                </button>
+                <button type="button" class="btn btn-primary" id="btnCopiarDados" onclick="copiarDadosDocumento()">
+                    <i class="fas fa-copy"></i> Copiar Dados
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
+        let documentoDetalhes = null;
+
         function aplicarFiltrosDoc() {
             const tipo = document.getElementById('filtroTipoDoc').value;
             const status = document.getElementById('filtroStatusDoc').value;
             const confianca = document.getElementById('filtroConfiancaDoc').value;
+            const ait = document.getElementById('filtroAIT').value;
+            const placa = document.getElementById('filtroPlaca').value;
             
-            console.log('Filtros aplicados:', { tipo, status, confianca });
-            // Implementar lógica de filtragem
+            console.log('Filtros aplicados:', { tipo, status, confianca, ait, placa });
+            
+            // Filtrar linhas da tabela
+            const tabela = document.getElementById('dataTable');
+            const linhas = tabela.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            
+            Array.from(linhas).forEach(linha => {
+                let mostrar = true;
+                
+                // Filtro por tipo
+                if (tipo && !linha.cells[1].textContent.toLowerCase().includes(tipo.toLowerCase())) {
+                    mostrar = false;
+                }
+                
+                // Filtro por status
+                if (status && !linha.cells[4].textContent.includes(status === 'Completed' ? 'Concluído' : 
+                    status === 'Failed' ? 'Falhou' : 'Processando')) {
+                    mostrar = false;
+                }
+                
+                // Filtro por AIT
+                if (ait && !linha.cells[2].textContent.toLowerCase().includes(ait.toLowerCase())) {
+                    mostrar = false;
+                }
+                
+                // Filtro por placa
+                if (placa && !linha.cells[2].textContent.toLowerCase().includes(placa.toLowerCase())) {
+                    mostrar = false;
+                }
+                
+                // Filtro por confiança (implementação básica)
+                const confiancaMinima = parseFloat(confianca) / 100;
+                // ... implementar lógica de confiança se necessário
+                
+                linha.style.display = mostrar ? '' : 'none';
+            });
         }
 
         function limparFiltrosDoc() {
             document.getElementById('filtroTipoDoc').value = '';
             document.getElementById('filtroStatusDoc').value = '';
             document.getElementById('filtroConfiancaDoc').value = '0';
+            document.getElementById('filtroAIT').value = '';
+            document.getElementById('filtroPlaca').value = '';
+            document.getElementById('valorConfianca').textContent = '0%';
+            
+            // Mostrar todas as linhas
+            const tabela = document.getElementById('dataTable');
+            const linhas = tabela.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            Array.from(linhas).forEach(linha => {
+                linha.style.display = '';
+            });
         }
 
-        function verDetalhesDoc(id) {
-            // Abrir modal com detalhes do documento
-            alert(`Ver detalhes do documento ${id} (Em desenvolvimento)`);
+        async function verDetalhesDoc(id) {
+            try {
+                // Mostrar modal e spinner
+                const modal = new bootstrap.Modal(document.getElementById('modalDetalhesDocumento'));
+                modal.show();
+                
+                // Fazer requisição para buscar detalhes
+                const response = await fetch(`@Url.Action("DetalhesDocumento", "Classificacao")?id=${id}`);
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar detalhes');
+                }
+                
+                documentoDetalhes = await response.json();
+                
+                // Renderizar conteúdo do modal
+                document.getElementById('modalDetalhesConteudo').innerHTML = gerarHtmlDetalhes(documentoDetalhes);
+                
+            } catch (error) {
+                console.error('Erro ao carregar detalhes:', error);
+                document.getElementById('modalDetalhesConteudo').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erro ao carregar detalhes do documento: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function gerarHtmlDetalhes(doc) {
+            const tipoDisplayName = getTipoDisplayName(doc.TipoClassificado);
+            const statusClass = doc.Sucesso ? 'success' : 'danger';
+            const statusText = doc.Sucesso ? 'Concluído' : 'Falhou';
+            
+            let dadosEspecificos = '';
+            
+            if (doc.TipoClassificado && doc.TipoClassificado.includes('autuacao')) {
+                dadosEspecificos = `
+                    <div class="col-md-6">
+                        <div class="card border-danger h-100">
+                            <div class="card-header bg-danger text-white">
+                                <h6 class="mb-0"><i class="fas fa-gavel me-2"></i>Dados da Autuação</h6>
+                            </div>
+                            <div class="card-body">
+                                ${doc.NumeroAIT ? `<p><strong>Número AIT:</strong> ${doc.NumeroAIT}</p>` : ''}
+                                ${doc.PlacaVeiculo ? `<p><strong>Placa:</strong> ${doc.PlacaVeiculo}</p>` : ''}
+                                ${doc.DataInfracao ? `<p><strong>Data da Infração:</strong> ${new Date(doc.DataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
+                                ${doc.LocalInfracao ? `<p><strong>Local:</strong> ${doc.LocalInfracao}</p>` : ''}
+                                ${doc.CodigoInfracao ? `<p><strong>Código:</strong> ${doc.CodigoInfracao}</p>` : ''}
+                                ${doc.ValorMulta ? `<p><strong>Valor:</strong> R$ ${doc.ValorMulta.toFixed(2)}</p>` : ''}
+                                ${doc.OrgaoAutuador ? `<p><strong>Órgão:</strong> ${doc.OrgaoAutuador}</p>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (doc.TipoClassificado && doc.TipoClassificado.includes('defesa')) {
+                dadosEspecificos = `
+                    <div class="col-md-6">
+                        <div class="card border-primary h-100">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Dados da Defesa</h6>
+                            </div>
+                            <div class="card-body">
+                                ${doc.NumeroAIT ? `<p><strong>Número AIT:</strong> ${doc.NumeroAIT}</p>` : ''}
+                                ${doc.PlacaVeiculo ? `<p><strong>Placa:</strong> ${doc.PlacaVeiculo}</p>` : ''}
+                                ${doc.TextoDefesa ? `
+                                    <p><strong>Texto da Defesa:</strong></p>
+                                    <div class="border p-2 bg-light small" style="max-height: 150px; overflow-y: auto;">
+                                        ${doc.TextoDefesa}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (doc.TipoClassificado && doc.TipoClassificado.includes('indicacao')) {
+                dadosEspecificos = `
+                    <div class="col-md-6">
+                        <div class="card border-warning h-100">
+                            <div class="card-header bg-warning text-dark">
+                                <h6 class="mb-0"><i class="fas fa-user-tag me-2"></i>Dados da Indicação</h6>
+                            </div>
+                            <div class="card-body">
+                                ${doc.NumeroAIT ? `<p><strong>Número AIT:</strong> ${doc.NumeroAIT}</p>` : ''}
+                                ${doc.PlacaVeiculo ? `<p><strong>Placa:</strong> ${doc.PlacaVeiculo}</p>` : ''}
+                                ${doc.NomeCondutor ? `<p><strong>Nome do Condutor:</strong> ${doc.NomeCondutor}</p>` : ''}
+                                ${doc.NumeroCNH ? `<p><strong>CNH:</strong> ${doc.NumeroCNH}</p>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Informações Gerais</h6>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Arquivo:</strong> ${doc.NomeArquivo}</p>
+                                <p><strong>Tipo:</strong> 
+                                    <span class="badge ${getTipoBadgeClass(doc.TipoClassificado)}">${tipoDisplayName}</span>
+                                </p>
+                                <p><strong>Status:</strong> 
+                                    <span class="badge bg-${statusClass}">${statusText}</span>
+                                </p>
+                                <p><strong>Confiança:</strong> ${doc.ConfiancaPercentual}%</p>
+                                <p><strong>Tamanho:</strong> ${doc.TamanhoFormatado}</p>
+                                <p><strong>Processado em:</strong> ${doc.DataProcessamentoFormatada}</p>
+                                ${doc.MensagemErro ? `<p><strong>Erro:</strong> <span class="text-danger">${doc.MensagemErro}</span></p>` : ''}
+                                ${doc.PalavrasChave ? `<p><strong>Palavras-chave:</strong> ${doc.PalavrasChave}</p>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    ${dadosEspecificos}
+                </div>
+                
+                ${doc.TextoCompleto ? `
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-file-text me-2"></i>Texto Completo Extraído</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="border p-3 bg-light" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 0.9em;">
+${doc.TextoCompleto}
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        function getTipoDisplayName(tipo) {
+            switch(tipo) {
+                case 'notificacao_autuacao': return 'Autuação';
+                case 'defesa': return 'Defesa';
+                case 'indicacao_condutor': return 'Indicação de Condutor';
+                case 'notificacao_penalidade': return 'Notificação de Penalidade';
+                default: return 'Outros';
+            }
+        }
+
+        function getTipoBadgeClass(tipo) {
+            switch(tipo) {
+                case 'notificacao_autuacao': return 'bg-danger';
+                case 'defesa': return 'bg-primary';
+                case 'indicacao_condutor': return 'bg-warning text-dark';
+                case 'notificacao_penalidade': return 'bg-info';
+                default: return 'bg-secondary';
+            }
+        }
+
+        function copiarDadosDocumento() {
+            if (!documentoDetalhes) return;
+            
+            let dadosParaCopiar = `Documento: ${documentoDetalhes.NomeArquivo}\n`;
+            dadosParaCopiar += `Tipo: ${getTipoDisplayName(documentoDetalhes.TipoClassificado)}\n`;
+            dadosParaCopiar += `Confiança: ${documentoDetalhes.ConfiancaPercentual}%\n`;
+            
+            if (documentoDetalhes.NumeroAIT) dadosParaCopiar += `AIT: ${documentoDetalhes.NumeroAIT}\n`;
+            if (documentoDetalhes.PlacaVeiculo) dadosParaCopiar += `Placa: ${documentoDetalhes.PlacaVeiculo}\n`;
+            if (documentoDetalhes.NomeCondutor) dadosParaCopiar += `Condutor: ${documentoDetalhes.NomeCondutor}\n`;
+            if (documentoDetalhes.NumeroCNH) dadosParaCopiar += `CNH: ${documentoDetalhes.NumeroCNH}\n`;
+            if (documentoDetalhes.ValorMulta) dadosParaCopiar += `Valor: R$ ${documentoDetalhes.ValorMulta.toFixed(2)}\n`;
+            
+            navigator.clipboard.writeText(dadosParaCopiar).then(() => {
+                // Mostrar feedback visual
+                const btn = document.getElementById('btnCopiarDados');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-success');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-primary');
+                }, 2000);
+            });
         }
 
         function baixarResultadoDoc(id) {
@@ -380,8 +697,7 @@
         // Atualizar valor do range de confiança
         document.getElementById('filtroConfiancaDoc').addEventListener('input', function(e) {
             const valor = e.target.value;
-            const label = e.target.nextElementSibling.children[1];
-            label.textContent = valor + '%';
+            document.getElementById('valorConfianca').textContent = valor + '%';
         });
     </script>
 }
@@ -426,8 +742,9 @@
         {
             "notificacao_autuacao" => "bg-danger",
             "defesa" => "bg-primary",
-            "notificacao_penalidade" => "bg-warning text-dark",
-            "outros" => "bg-info",
+            "indicacao_condutor" => "bg-warning text-dark",
+            "notificacao_penalidade" => "bg-info",
+            "outros" => "bg-secondary",
             _ => "bg-secondary"
         };
     }
@@ -438,6 +755,7 @@
         {
             "notificacao_autuacao" => "Autuação",
             "defesa" => "Defesa",
+            "indicacao_condutor" => "Indicação de Condutor",
             "notificacao_penalidade" => "Notificação de Penalidade",
             "outros" => "Outros",
             _ => "Não Identificado"

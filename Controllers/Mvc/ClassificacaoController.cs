@@ -146,7 +146,20 @@ namespace ClassificadorDoc.Controllers.Mvc
                     MensagemErro = d.ErrorMessage,
                     PalavrasChave = d.Keywords,
                     CaminhoResultado = null, // Para ser implementado futuramente
-                    TamanhoBytes = d.FileSizeBytes
+                    TamanhoBytes = d.FileSizeBytes,
+
+                    // Campos específicos extraídos
+                    TextoCompleto = d.TextoCompleto,
+                    NumeroAIT = d.NumeroAIT,
+                    PlacaVeiculo = d.PlacaVeiculo,
+                    NomeCondutor = d.NomeCondutor,
+                    NumeroCNH = d.NumeroCNH,
+                    TextoDefesa = d.TextoDefesa,
+                    DataInfracao = d.DataInfracao,
+                    LocalInfracao = d.LocalInfracao,
+                    CodigoInfracao = d.CodigoInfracao,
+                    ValorMulta = d.ValorMulta,
+                    OrgaoAutuador = d.OrgaoAutuador
                 })
                 .ToListAsync();
 
@@ -170,6 +183,73 @@ namespace ClassificadorDoc.Controllers.Mvc
             };
 
             return View(viewModel);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> DetalhesDocumento(int id)
+        {
+            try
+            {
+                var documento = await _context.DocumentProcessingHistories
+                    .Where(d => d.Id == id)
+                    .Select(d => new
+                    {
+                        Id = d.Id,
+                        NomeArquivo = d.FileName,
+                        TipoClassificado = d.DocumentType,
+                        Confianca = d.Confidence,
+                        DataProcessamento = d.ProcessedAt,
+                        Sucesso = d.IsSuccessful,
+                        MensagemErro = d.ErrorMessage,
+                        PalavrasChave = d.Keywords,
+                        TamanhoBytes = d.FileSizeBytes,
+
+                        // Dados específicos
+                        TextoCompleto = d.TextoCompleto,
+                        NumeroAIT = d.NumeroAIT,
+                        PlacaVeiculo = d.PlacaVeiculo,
+                        NomeCondutor = d.NomeCondutor,
+                        NumeroCNH = d.NumeroCNH,
+                        TextoDefesa = d.TextoDefesa,
+                        DataInfracao = d.DataInfracao,
+                        LocalInfracao = d.LocalInfracao,
+                        CodigoInfracao = d.CodigoInfracao,
+                        ValorMulta = d.ValorMulta,
+                        OrgaoAutuador = d.OrgaoAutuador,
+
+                        // Campos calculados
+                        Status = d.IsSuccessful ? "Completed" : "Failed",
+                        ConfiancaPercentual = Math.Round(d.Confidence * 100, 1),
+                        TamanhoFormatado = FormatarTamanhoArquivo(d.FileSizeBytes),
+                        DataProcessamentoFormatada = d.ProcessedAt.ToString("dd/MM/yyyy HH:mm:ss")
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (documento == null)
+                {
+                    return NotFound();
+                }
+
+                return Json(documento);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao buscar detalhes do documento {DocumentoId}", id);
+                return StatusCode(500, new { error = "Erro interno do servidor" });
+            }
+        }
+
+        private static string FormatarTamanhoArquivo(long bytes)
+        {
+            string[] sizes = { "B", "KB", "MB", "GB" };
+            double len = bytes;
+            int order = 0;
+            while (len >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                len = len / 1024;
+            }
+            return $"{len:0.##} {sizes[order]}";
         }
 
         // POST: /Classificacao/Upload
@@ -416,7 +496,20 @@ namespace ClassificadorDoc.Controllers.Mvc
                 ErrorMessage = classificacao.ErroProcessamento,
                 Keywords = classificacao.PalavrasChaveEncontradas,
                 FileSizeBytes = 0, // Seria necessário passar como parâmetro
-                BatchProcessingHistoryId = batchId // Novo campo para vincular ao lote
+                BatchProcessingHistoryId = batchId, // Novo campo para vincular ao lote
+
+                // NOVOS CAMPOS ESPECÍFICOS PARA DOCUMENTOS DE TRÂNSITO
+                TextoCompleto = classificacao.TextoExtraido,
+                NumeroAIT = classificacao.NumeroAIT,
+                PlacaVeiculo = classificacao.PlacaVeiculo,
+                NomeCondutor = classificacao.NomeCondutor,
+                NumeroCNH = classificacao.NumeroCNH,
+                TextoDefesa = classificacao.TextoDefesa,
+                DataInfracao = classificacao.DataInfracao,
+                LocalInfracao = classificacao.LocalInfracao,
+                CodigoInfracao = classificacao.CodigoInfracao,
+                ValorMulta = classificacao.ValorMulta,
+                OrgaoAutuador = classificacao.OrgaoAutuador
             };
 
             _context.DocumentProcessingHistories.Add(historico);
@@ -581,9 +674,84 @@ namespace ClassificadorDoc.Controllers.Mvc
         public string? CaminhoResultado { get; set; }
         public long TamanhoBytes { get; set; }
 
+        // Campos específicos extraídos
+        public string? TextoCompleto { get; set; }
+        public string? NumeroAIT { get; set; }
+        public string? PlacaVeiculo { get; set; }
+        public string? NomeCondutor { get; set; }
+        public string? NumeroCNH { get; set; }
+        public string? TextoDefesa { get; set; }
+        public DateTime? DataInfracao { get; set; }
+        public string? LocalInfracao { get; set; }
+        public string? CodigoInfracao { get; set; }
+        public decimal? ValorMulta { get; set; }
+        public string? OrgaoAutuador { get; set; }
+
         // Propriedades calculadas
         public string Status => Sucesso ? "Completed" : "Failed";
         public string TamanhoFormatado => FormatarTamanhoArquivo(TamanhoBytes);
+
+        // Resumo dos dados específicos baseado no tipo
+        public string DadosEspecificosResumo
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(TipoClassificado))
+                    return string.Empty;
+
+                var dados = new List<string>();
+
+                // Para INDICAÇÃO DE CONDUTOR: AIT, Placa, Nome Condutor, CNH
+                if (TipoClassificado.Contains("indicacao"))
+                {
+                    if (!string.IsNullOrEmpty(NumeroAIT))
+                        dados.Add($"AIT: {NumeroAIT}");
+                    if (!string.IsNullOrEmpty(PlacaVeiculo))
+                        dados.Add($"Placa: {PlacaVeiculo}");
+                    if (!string.IsNullOrEmpty(NomeCondutor))
+                        dados.Add($"Condutor: {NomeCondutor}");
+                    if (!string.IsNullOrEmpty(NumeroCNH))
+                        dados.Add($"CNH: {NumeroCNH}");
+                }
+                // Para DEFESA: AIT, Placa, Texto da Defesa
+                else if (TipoClassificado.Contains("defesa"))
+                {
+                    if (!string.IsNullOrEmpty(NumeroAIT))
+                        dados.Add($"AIT: {NumeroAIT}");
+                    if (!string.IsNullOrEmpty(PlacaVeiculo))
+                        dados.Add($"Placa: {PlacaVeiculo}");
+                    if (!string.IsNullOrEmpty(TextoDefesa))
+                    {
+                        var textoLimitado = TextoDefesa.Length > 50
+                            ? TextoDefesa.Substring(0, 50) + "..."
+                            : TextoDefesa;
+                        dados.Add($"Defesa: {textoLimitado}");
+                    }
+                }
+                // Para AUTUAÇÃO: AIT, Placa, Valor, Data
+                else if (TipoClassificado.Contains("autuacao"))
+                {
+                    if (!string.IsNullOrEmpty(NumeroAIT))
+                        dados.Add($"AIT: {NumeroAIT}");
+                    if (!string.IsNullOrEmpty(PlacaVeiculo))
+                        dados.Add($"Placa: {PlacaVeiculo}");
+                    if (ValorMulta.HasValue && ValorMulta > 0)
+                        dados.Add($"Valor: R$ {ValorMulta:F2}");
+                    if (DataInfracao.HasValue)
+                        dados.Add($"Data: {DataInfracao.Value:dd/MM/yyyy}");
+                }
+                // Para outros tipos: Dados básicos disponíveis
+                else
+                {
+                    if (!string.IsNullOrEmpty(NumeroAIT))
+                        dados.Add($"AIT: {NumeroAIT}");
+                    if (!string.IsNullOrEmpty(PlacaVeiculo))
+                        dados.Add($"Placa: {PlacaVeiculo}");
+                }
+
+                return string.Join(" | ", dados);
+            }
+        }
 
         private static string FormatarTamanhoArquivo(long bytes)
         {

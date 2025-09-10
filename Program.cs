@@ -99,6 +99,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Register PdfExtractorService
+builder.Services.AddScoped<IPdfExtractorService, PdfExtractorService>();
 builder.Services.AddScoped<PdfExtractorService>();
 
 // Register ReportService

@@ -19,7 +19,9 @@ namespace ClassificadorDoc.Services
 
         public async Task<DocumentoClassificacao> ClassificarDocumentoPdfAsync(string nomeArquivo, byte[] pdfBytes)
         {
-            return await ClassificarDocumentoVisualAsync(nomeArquivo, pdfBytes, "application/pdf");
+            // Usar apenas análise visual da IA para extrair tudo (texto + classificação)
+            var resultado = await ClassificarDocumentoVisualAsync(nomeArquivo, pdfBytes, "application/pdf");
+            return resultado;
         }
 
 
@@ -82,8 +84,20 @@ namespace ClassificadorDoc.Services
                         ConfiancaClassificacao = classificacao.confianca,
                         ResumoConteudo = classificacao.resumo,
                         PalavrasChaveEncontradas = classificacao.GetPalavrasChaveComoString(),
-                        TextoExtraido = $"[{tipoAnalise} analisado via Gemini API - análise visual]",
-                        ProcessadoComSucesso = true
+                        TextoExtraido = classificacao.texto_completo ?? $"[{tipoAnalise} analisado via Gemini API - texto não extraído]",
+                        ProcessadoComSucesso = true,
+
+                        // NOVOS CAMPOS ESPECÍFICOS EXTRAÍDOS
+                        NumeroAIT = classificacao.numero_ait,
+                        PlacaVeiculo = classificacao.placa_veiculo,
+                        NomeCondutor = classificacao.nome_condutor,
+                        NumeroCNH = classificacao.numero_cnh,
+                        TextoDefesa = classificacao.texto_defesa,
+                        DataInfracao = TentarConverterData(classificacao.data_infracao),
+                        LocalInfracao = classificacao.local_infracao,
+                        CodigoInfracao = classificacao.codigo_infracao,
+                        ValorMulta = TentarConverterValor(classificacao.valor_multa),
+                        OrgaoAutuador = classificacao.orgao_autuador
                     };
                 }
                 catch (Exception ex) when (tentativa < maxTentativas &&
@@ -275,6 +289,12 @@ namespace ClassificadorDoc.Services
             return $@"
 Analise este documento de trânsito brasileiro completamente. {instrucaoEspecifica}
 
+IMPORTANTE: Além de classificar o documento, você DEVE extrair TODO O TEXTO visível no documento, seja ele:
+- Texto nativo do PDF (selecionável)  
+- Texto em imagens escaneadas (usando OCR/análise visual)
+- Texto manuscrito legível
+- Qualquer texto visível no documento
+
 ATENÇÃO: Este {tipoArquivo} pode conter MÚLTIPLOS documentos. Identifique o DOCUMENTO PRINCIPAL/PRIMÁRIO baseado em:
 - Qual documento ocupa mais espaço/páginas
 - Qual é o propósito principal do arquivo
@@ -323,7 +343,14 @@ TIPOS DE DOCUMENTO DE TRÂNSITO (ANALISE NA ORDEM PARA MELHOR PRECISÃO):
    - Assinatura do requerente (proprietário/condutor)
    - Pedidos explícitos de cancelamento/arquivamento
 
-5. OUTROS: Demais documentos relacionados
+5. INDICACAO_CONDUTOR: Formulário para indicar quem era o condutor no momento da infração
+   INDICADORES OBRIGATÓRIOS:
+   - Título INDICAÇÃO DE CONDUTOR ou FICI
+   - Campos para dados do condutor (nome, CPF, CNH)
+   - Declaração de que a pessoa indicada era o condutor
+   - Assinatura do proprietário do veículo
+
+6. OUTROS: Demais documentos relacionados
 
 PALAVRAS-CHAVE ESPECÍFICAS POR TIPO:
 
@@ -351,15 +378,22 @@ DEFESA:
 - Ilustríssimo, Vossa Excelência
 - Argumentação jurídica contestando
 
+INDICACAO_CONDUTOR:
+- INDICAÇÃO DE CONDUTOR, FICI
+- Dados do condutor responsável
+- CNH, CPF do condutor
+- Declaro que a pessoa indicada era o condutor
+
 ESTRATÉGIA DE ANÁLISE SEQUENCIAL:
 1. Procure primeiro pelo TÍTULO principal do documento
-2. Identifique a FINALIDADE: informar, cobrar ou contestar?
+2. Identifique a FINALIDADE: informar, cobrar, contestar ou indicar condutor?
 3. Verifique indicadores específicos de cada tipo
 4. Se há múltiplos documentos, identifique qual é o PRINCIPAL
 5. ATENÇÃO ESPECIAL:
    - NOTIFICAÇÃO DE AUTUAÇÃO ≠ DEFESA (mesmo que mencione como fazer defesa)
    - NOTIFICAÇÃO DE AUTUAÇÃO ≠ COBRANÇA (apenas informa sobre a infração)
    - DEFESA sempre tem argumentação contestando, não apenas formulários
+   - INDICAÇÃO DE CONDUTOR é específico para identificar quem dirigia
 6. Confirme com as palavras-chave específicas
 
 REGRA CRÍTICA DE DECISÃO:
@@ -367,14 +401,49 @@ REGRA CRÍTICA DE DECISÃO:
 - Se o documento REGISTRA uma infração = AUTUACAO
 - Se o documento COBRA uma multa = NOTIFICACAO_PENALIDADE
 - Se o documento CONTESTA uma infração = DEFESA
+- Se o documento INDICA quem era o condutor = INDICACAO_CONDUTOR
+
+EXTRAÇÃO DE DADOS ESPECÍFICOS:
+Com base no tipo de documento identificado, extraia os seguintes dados:
+
+Para TODOS os tipos:
+- numero_ait: Número do AIT/Auto de Infração (procure por padrões como AIT123456, Auto nº 123456, etc.)
+- placa_veiculo: Placa do veículo (formato AAA-1234 ou AAA1A23)
+
+Para INDICACAO_CONDUTOR:
+- nome_condutor: Nome completo do condutor indicado
+- numero_cnh: Número da CNH do condutor (procure por padrões numéricos de 11 dígitos)
+
+Para DEFESA:
+- texto_defesa: Texto completo da argumentação da defesa (todo o conteúdo argumentativo)
+
+Para NOTIFICACAO_PENALIDADE:
+- valor_multa: Valor da multa em reais (procure por valores monetários)
+- orgao_autuador: Órgão que aplicou a multa
+
+Para AUTUACAO:
+- data_infracao: Data da infração (DD/MM/AAAA)
+- local_infracao: Local onde ocorreu a infração
+- codigo_infracao: Código CTB da infração
 
 Retorne APENAS este JSON (sem blocos de código markdown):
 {{
-    ""tipo_documento"": ""[autuacao|notificacao_autuacao|notificacao_penalidade|defesa|outros]"",
+    ""tipo_documento"": ""[autuacao|notificacao_autuacao|notificacao_penalidade|defesa|indicacao_condutor|outros]"",
     ""confianca"": [0.0-1.0],
     ""resumo"": ""Análise do documento principal identificado, mencionando se há documentos anexos"",
     ""palavras_chave_encontradas"": ""Elementos encontrados separados por vírgula"",
-    ""documentos_identificados"": ""Lista dos tipos de documento encontrados no arquivo""
+    ""documentos_identificados"": ""Lista dos tipos de documento encontrados no arquivo"",
+    ""texto_completo"": ""Todo o texto extraído do documento pela IA (mesmo se for PDF escaneado)"",
+    ""numero_ait"": ""Número do AIT encontrado ou null"",
+    ""placa_veiculo"": ""Placa do veículo encontrada ou null"",
+    ""nome_condutor"": ""Nome do condutor (para indicação de condutor) ou null"",
+    ""numero_cnh"": ""Número da CNH (para indicação de condutor) ou null"",
+    ""texto_defesa"": ""Texto completo da defesa (para defesas) ou null"",
+    ""data_infracao"": ""Data da infração em formato DD/MM/AAAA ou null"",
+    ""local_infracao"": ""Local da infração ou null"",
+    ""codigo_infracao"": ""Código CTB da infração ou null"",
+    ""valor_multa"": ""Valor da multa em reais (apenas números) ou null"",
+    ""orgao_autuador"": ""Órgão que aplicou a multa ou null""
 }}
 ";
         }
@@ -392,6 +461,19 @@ Retorne APENAS este JSON (sem blocos de código markdown):
                 get => _palavras_chave_encontradas;
                 set => _palavras_chave_encontradas = value;
             }
+
+            // NOVOS CAMPOS ESPECÍFICOS
+            public string? texto_completo { get; set; }
+            public string? numero_ait { get; set; }
+            public string? placa_veiculo { get; set; }
+            public string? nome_condutor { get; set; }
+            public string? numero_cnh { get; set; }
+            public string? texto_defesa { get; set; }
+            public string? data_infracao { get; set; }
+            public string? local_infracao { get; set; }
+            public string? codigo_infracao { get; set; }
+            public string? valor_multa { get; set; }
+            public string? orgao_autuador { get; set; }
 
             // Método helper para obter como string
             public string GetPalavrasChaveComoString()
@@ -418,6 +500,40 @@ Retorne APENAS este JSON (sem blocos de código markdown):
 
                 return _palavras_chave_encontradas.ToString() ?? string.Empty;
             }
+        }
+
+        // Métodos helper para conversão de dados
+        private DateTime? TentarConverterData(string? dataStr)
+        {
+            if (string.IsNullOrWhiteSpace(dataStr))
+                return null;
+
+            // Tentar converter formato DD/MM/AAAA
+            if (DateTime.TryParseExact(dataStr, "dd/MM/yyyy", null, System.Globalization.DateTimeStyles.None, out var data))
+                return data;
+
+            // Tentar outros formatos comuns
+            if (DateTime.TryParse(dataStr, out var dataGenerica))
+                return dataGenerica;
+
+            return null;
+        }
+
+        private decimal? TentarConverterValor(string? valorStr)
+        {
+            if (string.IsNullOrWhiteSpace(valorStr))
+                return null;
+
+            // Remover caracteres não numéricos exceto vírgula e ponto
+            var valorLimpo = System.Text.RegularExpressions.Regex.Replace(valorStr, @"[^\d,.]", "");
+
+            // Substituir vírgula por ponto para conversão
+            valorLimpo = valorLimpo.Replace(",", ".");
+
+            if (decimal.TryParse(valorLimpo, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var valor))
+                return valor;
+
+            return null;
         }
     }
 }
