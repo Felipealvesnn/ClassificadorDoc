@@ -4,6 +4,7 @@ using ClassificadorDoc.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClassificadorDoc.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250910194600_AdicionarCamposIndicacaoCondutor")]
+    partial class AdicionarCamposIndicacaoCondutor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -228,18 +231,6 @@ namespace ClassificadorDoc.Migrations
                     b.Property<int>("FileSizeBytes")
                         .HasColumnType("int");
 
-                    b.Property<string>("IndicacaoCNH")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("IndicacaoCPF")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("IndicacaoNome")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("IndicacaoRG")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<bool>("IsSuccessful")
                         .HasColumnType("bit");
 
@@ -272,18 +263,6 @@ namespace ClassificadorDoc.Migrations
 
                     b.Property<DateTime>("ProcessedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("RequerenteCPF")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RequerenteEndereco")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RequerenteNome")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RequerenteRG")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TextoCompleto")
                         .HasColumnType("nvarchar(max)");

@@ -29,6 +29,19 @@ namespace ClassificadorDoc.Models
         public decimal? ValorMulta { get; set; } // Valor da multa (para notificações de penalidade)
         public string? OrgaoAutuador { get; set; } // Órgão que aplicou a multa
 
+        // NOVOS CAMPOS para INDICAÇÃO DE CONDUTOR
+        // Dados do REQUERENTE (proprietário do veículo)
+        public string? RequerenteNome { get; set; } // Nome completo do requerente
+        public string? RequerenteCPF { get; set; } // CPF do requerente
+        public string? RequerenteRG { get; set; } // RG do requerente
+        public string? RequerenteEndereco { get; set; } // Endereço do requerente
+
+        // Dados da INDICAÇÃO (condutor real no momento da infração)
+        public string? IndicacaoNome { get; set; } // Nome do condutor indicado
+        public string? IndicacaoCPF { get; set; } // CPF do condutor indicado
+        public string? IndicacaoRG { get; set; } // RG do condutor indicado
+        public string? IndicacaoCNH { get; set; } // CNH do condutor indicado
+
         // Relacionamento com o usuário que processou
         public ApplicationUser? ProcessadoPorUsuario { get; set; }
     }
@@ -60,27 +73,57 @@ namespace ClassificadorDoc.Models
         public decimal? ValorMulta { get; set; }
         public string? OrgaoAutuador { get; set; }
 
+        // NOVOS CAMPOS para INDICAÇÃO DE CONDUTOR
+        // Dados do REQUERENTE (proprietário do veículo)
+        public string? RequerenteNome { get; set; } // Nome completo do requerente
+        public string? RequerenteCPF { get; set; } // CPF do requerente
+        public string? RequerenteRG { get; set; } // RG do requerente
+        public string? RequerenteEndereco { get; set; } // Endereço do requerente
+
+        // Dados da INDICAÇÃO (condutor real no momento da infração)
+        public string? IndicacaoNome { get; set; } // Nome do condutor indicado
+        public string? IndicacaoCPF { get; set; } // CPF do condutor indicado
+        public string? IndicacaoRG { get; set; } // RG do condutor indicado
+        public string? IndicacaoCNH { get; set; } // CNH do condutor indicado
+
         // Campos helper para validação
         public bool PrecisaNumeroAIT => TipoDocumento != "outros";
         public bool PrecisaPlacaVeiculo => TipoDocumento != "outros";
         public bool PrecisaNomeCondutor => TipoDocumento == "indicacao_condutor";
         public bool PrecisaNumeroCNH => TipoDocumento == "indicacao_condutor";
         public bool PrecisaTextoDefesa => TipoDocumento == "defesa";
+
+        // Helpers específicos para indicação de condutor
+        public bool PrecisaDadosRequerente => TipoDocumento == "indicacao_condutor";
+        public bool PrecisaDadosIndicacao => TipoDocumento == "indicacao_condutor";
     }
 
     // Modelo para resposta da classificação com campos específicos
     public class DocumentoClassificacaoExtendida : DocumentoClassificacao
     {
         // Campos específicos extraídos pelo Gemini
-        public string? NumeroAIT { get; set; }
-        public string? PlacaVeiculo { get; set; }
-        public string? NomeCondutor { get; set; }
-        public string? NumeroCNH { get; set; }
-        public string? TextoDefesa { get; set; }
-        public DateTime? DataInfracao { get; set; }
-        public string? LocalInfracao { get; set; }
-        public string? CodigoInfracao { get; set; }
-        public decimal? ValorMulta { get; set; }
-        public string? OrgaoAutuador { get; set; }
+        public new string? NumeroAIT { get; set; }
+        public new string? PlacaVeiculo { get; set; }
+        public new string? NomeCondutor { get; set; }
+        public new string? NumeroCNH { get; set; }
+        public new string? TextoDefesa { get; set; }
+        public new DateTime? DataInfracao { get; set; }
+        public new string? LocalInfracao { get; set; }
+        public new string? CodigoInfracao { get; set; }
+        public new decimal? ValorMulta { get; set; }
+        public new string? OrgaoAutuador { get; set; }
+
+        // NOVOS CAMPOS para INDICAÇÃO DE CONDUTOR
+        // Dados do REQUERENTE (proprietário do veículo)
+        public string? RequerenteNome { get; set; } // Nome completo do requerente
+        public string? RequerenteCPF { get; set; } // CPF do requerente
+        public string? RequerenteRG { get; set; } // RG do requerente
+        public string? RequerenteEndereco { get; set; } // Endereço do requerente
+
+        // Dados da INDICAÇÃO (condutor real no momento da infração)
+        public string? IndicacaoNome { get; set; } // Nome do condutor indicado
+        public string? IndicacaoCPF { get; set; } // CPF do condutor indicado
+        public string? IndicacaoRG { get; set; } // RG do condutor indicado
+        public string? IndicacaoCNH { get; set; } // CNH do condutor indicado
     }
 }

@@ -217,6 +217,16 @@ namespace ClassificadorDoc.Controllers.Mvc
                         ValorMulta = d.ValorMulta,
                         OrgaoAutuador = d.OrgaoAutuador,
 
+                        // NOVOS CAMPOS PARA INDICAÇÃO DE CONDUTOR
+                        RequerenteNome = d.RequerenteNome,
+                        RequerenteCPF = d.RequerenteCPF,
+                        RequerenteRG = d.RequerenteRG,
+                        RequerenteEndereco = d.RequerenteEndereco,
+                        IndicacaoNome = d.IndicacaoNome,
+                        IndicacaoCPF = d.IndicacaoCPF,
+                        IndicacaoRG = d.IndicacaoRG,
+                        IndicacaoCNH = d.IndicacaoCNH,
+
                         // Campos calculados
                         Status = d.IsSuccessful ? "Completed" : "Failed",
                         ConfiancaPercentual = Math.Round(d.Confidence * 100, 1),
@@ -509,7 +519,17 @@ namespace ClassificadorDoc.Controllers.Mvc
                 LocalInfracao = classificacao.LocalInfracao,
                 CodigoInfracao = classificacao.CodigoInfracao,
                 ValorMulta = classificacao.ValorMulta,
-                OrgaoAutuador = classificacao.OrgaoAutuador
+                OrgaoAutuador = classificacao.OrgaoAutuador,
+
+                // NOVOS CAMPOS PARA INDICAÇÃO DE CONDUTOR
+                RequerenteNome = classificacao.RequerenteNome,
+                RequerenteCPF = classificacao.RequerenteCPF,
+                RequerenteRG = classificacao.RequerenteRG,
+                RequerenteEndereco = classificacao.RequerenteEndereco,
+                IndicacaoNome = classificacao.IndicacaoNome,
+                IndicacaoCPF = classificacao.IndicacaoCPF,
+                IndicacaoRG = classificacao.IndicacaoRG,
+                IndicacaoCNH = classificacao.IndicacaoCNH
             };
 
             _context.DocumentProcessingHistories.Add(historico);

@@ -315,6 +315,19 @@ namespace ClassificadorDoc.Data
         public string? CodigoInfracao { get; set; } // Código CTB da infração
         public decimal? ValorMulta { get; set; } // Valor da multa
         public string? OrgaoAutuador { get; set; } // Órgão que aplicou a multa
+
+        // NOVOS CAMPOS PARA INDICAÇÃO DE CONDUTOR
+        // Dados do REQUERENTE (proprietário do veículo)
+        public string? RequerenteNome { get; set; } // Nome completo do requerente
+        public string? RequerenteCPF { get; set; } // CPF do requerente
+        public string? RequerenteRG { get; set; } // RG do requerente
+        public string? RequerenteEndereco { get; set; } // Endereço do requerente
+
+        // Dados da INDICAÇÃO (condutor real no momento da infração)
+        public string? IndicacaoNome { get; set; } // Nome do condutor indicado
+        public string? IndicacaoCPF { get; set; } // CPF do condutor indicado
+        public string? IndicacaoRG { get; set; } // RG do condutor indicado
+        public string? IndicacaoCNH { get; set; } // CNH do condutor indicado
     }
 
     public class ClassificationSession

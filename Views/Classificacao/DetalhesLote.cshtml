@@ -594,18 +594,59 @@
             } else if (tipoDoc.includes('indicacao')) {
                 console.log('👤 Gerando seção de Indicação');
                 dadosEspecificos = `
-                    <div class="col-md-6">
-                        <div class="card border-warning h-100">
-                            <div class="card-header bg-warning text-dark">
-                                <h6 class="mb-0"><i class="fas fa-user-tag me-2"></i>Dados da Indicação de Condutor</h6>
+                    <div class="col-md-12">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card border-warning h-100">
+                                    <div class="card-header bg-warning text-dark">
+                                        <h6 class="mb-0"><i class="fas fa-user me-2"></i>Dados do Requerente (Proprietário)</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        ${(doc.RequerenteNome || doc.requerenteNome) ? `<p><strong>👤 Nome:</strong> <span class="fw-bold text-primary">${doc.RequerenteNome || doc.requerenteNome}</span></p>` : ''}
+                                        ${(doc.RequerenteCPF || doc.requerenteCPF) ? `<p><strong>🆔 CPF:</strong> <span class="badge bg-primary">${doc.RequerenteCPF || doc.requerenteCPF}</span></p>` : ''}
+                                        ${(doc.RequerenteRG || doc.requerenteRG) ? `<p><strong>📄 RG:</strong> <span class="badge bg-secondary">${doc.RequerenteRG || doc.requerenteRG}</span></p>` : ''}
+                                        ${(doc.RequerenteEndereco || doc.requerenteEndereco) ? `<p><strong>🏠 Endereço:</strong> <small class="text-muted">${doc.RequerenteEndereco || doc.requerenteEndereco}</small></p>` : ''}
+                                    </div>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                ${(doc.NumeroAIT || doc.numeroAIT) ? `<p><strong>🎫 Número AIT:</strong> <span class="badge bg-dark">${doc.NumeroAIT || doc.numeroAIT}</span></p>` : ''}
-                                ${(doc.PlacaVeiculo || doc.placaVeiculo) ? `<p><strong>🚗 Placa:</strong> <span class="badge bg-primary">${doc.PlacaVeiculo || doc.placaVeiculo}</span></p>` : ''}
-                                ${(doc.NomeCondutor || doc.nomeCondutor) ? `<p><strong>👤 Nome do Condutor:</strong> <span class="fw-bold text-success">${doc.NomeCondutor || doc.nomeCondutor}</span></p>` : ''}
-                                ${(doc.NumeroCNH || doc.numeroCNH) ? `<p><strong>🆔 CNH:</strong> <span class="badge bg-info">${doc.NumeroCNH || doc.numeroCNH}</span></p>` : ''}
-                                ${(doc.DataInfracao || doc.dataInfracao) ? `<p><strong>📅 Data da Infração:</strong> ${new Date(doc.DataInfracao || doc.dataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
-                                ${(doc.LocalInfracao || doc.localInfracao) ? `<p><strong>📍 Local:</strong> ${doc.LocalInfracao || doc.localInfracao}</p>` : ''}
+                            <div class="col-md-6">
+                                <div class="card border-success h-100">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0"><i class="fas fa-user-tag me-2"></i>Dados da Indicação (Condutor)</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        ${(doc.IndicacaoNome || doc.indicacaoNome) ? `<p><strong>👤 Nome:</strong> <span class="fw-bold text-success">${doc.IndicacaoNome || doc.indicacaoNome}</span></p>` : ''}
+                                        ${(doc.IndicacaoCPF || doc.indicacaoCPF) ? `<p><strong>🆔 CPF:</strong> <span class="badge bg-success">${doc.IndicacaoCPF || doc.indicacaoCPF}</span></p>` : ''}
+                                        ${(doc.IndicacaoRG || doc.indicacaoRG) ? `<p><strong>📄 RG:</strong> <span class="badge bg-info">${doc.IndicacaoRG || doc.indicacaoRG}</span></p>` : ''}
+                                        ${(doc.IndicacaoCNH || doc.indicacaoCNH) ? `<p><strong>🚗 CNH:</strong> <span class="badge bg-warning text-dark">${doc.IndicacaoCNH || doc.indicacaoCNH}</span></p>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-12">
+                                <div class="card border-dark">
+                                    <div class="card-header bg-dark text-white">
+                                        <h6 class="mb-0"><i class="fas fa-gavel me-2"></i>Dados da Infração</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                ${(doc.NumeroAIT || doc.numeroAIT) ? `<p><strong>🎫 Número AIT:</strong> <span class="badge bg-dark">${doc.NumeroAIT || doc.numeroAIT}</span></p>` : ''}
+                                                ${(doc.PlacaVeiculo || doc.placaVeiculo) ? `<p><strong>🚗 Placa:</strong> <span class="badge bg-primary">${doc.PlacaVeiculo || doc.placaVeiculo}</span></p>` : ''}
+                                            </div>
+                                            <div class="col-md-4">
+                                                ${(doc.DataInfracao || doc.dataInfracao) ? `<p><strong>📅 Data:</strong> ${new Date(doc.DataInfracao || doc.dataInfracao).toLocaleDateString('pt-BR')}</p>` : ''}
+                                                ${(doc.CodigoInfracao || doc.codigoInfracao) ? `<p><strong>📋 Código:</strong> <span class="badge bg-warning text-dark">${doc.CodigoInfracao || doc.codigoInfracao}</span></p>` : ''}
+                                            </div>
+                                            <div class="col-md-4">
+                                                ${(doc.ValorMulta || doc.valorMulta) ? `<p><strong>💰 Valor:</strong> <span class="text-danger fw-bold">R$ ${(doc.ValorMulta || doc.valorMulta).toFixed(2)}</span></p>` : ''}
+                                                ${(doc.OrgaoAutuador || doc.orgaoAutuador) ? `<p><strong>🏛️ Órgão:</strong> <small>${doc.OrgaoAutuador || doc.orgaoAutuador}</small></p>` : ''}
+                                            </div>
+                                        </div>
+                                        ${(doc.LocalInfracao || doc.localInfracao) ? `<p class="mt-2"><strong>📍 Local:</strong> <em>${doc.LocalInfracao || doc.localInfracao}</em></p>` : ''}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -775,15 +816,38 @@ ${textoCompleto}
             dadosParaCopiar += `📊 DADOS ESPECÍFICOS:\n`;
             dadosParaCopiar += `${'-'.repeat(30)}\n`;
             
+            // Dados da infração
             if (documentoDetalhes.NumeroAIT) dadosParaCopiar += `🎫 AIT: ${documentoDetalhes.NumeroAIT}\n`;
             if (documentoDetalhes.PlacaVeiculo) dadosParaCopiar += `🚗 Placa: ${documentoDetalhes.PlacaVeiculo}\n`;
-            if (documentoDetalhes.NomeCondutor) dadosParaCopiar += `👤 Condutor: ${documentoDetalhes.NomeCondutor}\n`;
-            if (documentoDetalhes.NumeroCNH) dadosParaCopiar += `🆔 CNH: ${documentoDetalhes.NumeroCNH}\n`;
             if (documentoDetalhes.DataInfracao) dadosParaCopiar += `📅 Data Infração: ${new Date(documentoDetalhes.DataInfracao).toLocaleDateString('pt-BR')}\n`;
             if (documentoDetalhes.LocalInfracao) dadosParaCopiar += `📍 Local: ${documentoDetalhes.LocalInfracao}\n`;
-            if (documentoDetalhes.CodigoInfracao) dadosParaCopiar += `📋 Código CTB: ${documentoDetalhes.CodigoInfracao}\n`;
+            if (documentoDetalhes.CodigoInfracao) dadosParaCopiar += `� Código CTB: ${documentoDetalhes.CodigoInfracao}\n`;
             if (documentoDetalhes.ValorMulta) dadosParaCopiar += `💰 Valor: R$ ${documentoDetalhes.ValorMulta.toFixed(2)}\n`;
             if (documentoDetalhes.OrgaoAutuador) dadosParaCopiar += `🏛️ Órgão: ${documentoDetalhes.OrgaoAutuador}\n`;
+            
+            // Dados do requerente (para indicação de condutor)
+            if (documentoDetalhes.RequerenteNome || documentoDetalhes.RequerenteCPF || documentoDetalhes.RequerenteRG) {
+                dadosParaCopiar += `\n👤 DADOS DO REQUERENTE (PROPRIETÁRIO):\n`;
+                dadosParaCopiar += `${'-'.repeat(40)}\n`;
+                if (documentoDetalhes.RequerenteNome) dadosParaCopiar += `📝 Nome: ${documentoDetalhes.RequerenteNome}\n`;
+                if (documentoDetalhes.RequerenteCPF) dadosParaCopiar += `🆔 CPF: ${documentoDetalhes.RequerenteCPF}\n`;
+                if (documentoDetalhes.RequerenteRG) dadosParaCopiar += `� RG: ${documentoDetalhes.RequerenteRG}\n`;
+                if (documentoDetalhes.RequerenteEndereco) dadosParaCopiar += `🏠 Endereço: ${documentoDetalhes.RequerenteEndereco}\n`;
+            }
+            
+            // Dados da indicação (para indicação de condutor)
+            if (documentoDetalhes.IndicacaoNome || documentoDetalhes.IndicacaoCPF || documentoDetalhes.IndicacaoRG || documentoDetalhes.IndicacaoCNH) {
+                dadosParaCopiar += `\n🚗 DADOS DA INDICAÇÃO (CONDUTOR):\n`;
+                dadosParaCopiar += `${'-'.repeat(40)}\n`;
+                if (documentoDetalhes.IndicacaoNome) dadosParaCopiar += `� Nome: ${documentoDetalhes.IndicacaoNome}\n`;
+                if (documentoDetalhes.IndicacaoCPF) dadosParaCopiar += `🆔 CPF: ${documentoDetalhes.IndicacaoCPF}\n`;
+                if (documentoDetalhes.IndicacaoRG) dadosParaCopiar += `� RG: ${documentoDetalhes.IndicacaoRG}\n`;
+                if (documentoDetalhes.IndicacaoCNH) dadosParaCopiar += `� CNH: ${documentoDetalhes.IndicacaoCNH}\n`;
+            }
+            
+            // Dados legados (retrocompatibilidade)
+            if (documentoDetalhes.NomeCondutor) dadosParaCopiar += `👤 Condutor: ${documentoDetalhes.NomeCondutor}\n`;
+            if (documentoDetalhes.NumeroCNH) dadosParaCopiar += `🆔 CNH: ${documentoDetalhes.NumeroCNH}\n`;
             if (documentoDetalhes.TextoDefesa) dadosParaCopiar += `📝 Defesa: ${documentoDetalhes.TextoDefesa}\n`;
             
             if (documentoDetalhes.PalavrasChave) {

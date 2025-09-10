@@ -113,7 +113,7 @@ namespace ClassificadorDoc.Services
                         TextoExtraido = textoCompleto, // Agora vem da segunda chamada
                         ProcessadoComSucesso = true,
 
-                        // NOVOS CAMPOS ESPECÍFICOS EXTRAÍDOS
+                        // CAMPOS ESPECÍFICOS EXTRAÍDOS
                         NumeroAIT = classificacao.numero_ait,
                         PlacaVeiculo = classificacao.placa_veiculo,
                         NomeCondutor = classificacao.nome_condutor,
@@ -123,7 +123,17 @@ namespace ClassificadorDoc.Services
                         LocalInfracao = classificacao.local_infracao,
                         CodigoInfracao = classificacao.codigo_infracao,
                         ValorMulta = TentarConverterValor(classificacao.valor_multa),
-                        OrgaoAutuador = classificacao.orgao_autuador
+                        OrgaoAutuador = classificacao.orgao_autuador,
+
+                        // NOVOS CAMPOS PARA INDICAÇÃO DE CONDUTOR
+                        RequerenteNome = classificacao.requerente_nome,
+                        RequerenteCPF = classificacao.requerente_cpf,
+                        RequerenteRG = classificacao.requerente_rg,
+                        RequerenteEndereco = classificacao.requerente_endereco,
+                        IndicacaoNome = classificacao.indicacao_nome,
+                        IndicacaoCPF = classificacao.indicacao_cpf,
+                        IndicacaoRG = classificacao.indicacao_rg,
+                        IndicacaoCNH = classificacao.indicacao_cnh
                     };
                 }
                 catch (Exception ex) when (tentativa < maxTentativas &&
@@ -366,6 +376,19 @@ EXTRAÇÃO DE DADOS ESPECÍFICOS:
 - valor_multa: Valor da multa em reais
 - orgao_autuador: Órgão que aplicou a multa
 
+DADOS ESPECÍFICOS PARA INDICAÇÃO DE CONDUTOR:
+**DADOS DO REQUERENTE (proprietário do veículo):**
+- requerente_nome: Nome completo do requerente/proprietário
+- requerente_cpf: CPF do requerente (formato 000.000.000-00)
+- requerente_rg: RG/documento do requerente
+- requerente_endereco: Endereço completo do requerente
+
+**DADOS DA INDICAÇÃO (condutor no momento da infração):**
+- indicacao_nome: Nome completo do condutor indicado
+- indicacao_cpf: CPF do condutor indicado (formato 000.000.000-00)
+- indicacao_rg: RG/documento do condutor indicado
+- indicacao_cnh: CNH do condutor indicado
+
 Retorne APENAS este JSON (sem blocos de código markdown):
 {{
     ""tipo_documento"": ""[autuacao|notificacao_autuacao|notificacao_penalidade|defesa|indicacao_condutor|outros]"",
@@ -381,7 +404,15 @@ Retorne APENAS este JSON (sem blocos de código markdown):
     ""local_infracao"": ""Local da infração ou null"",
     ""codigo_infracao"": ""Código CTB da infração ou null"",
     ""valor_multa"": ""Valor da multa em reais (apenas números) ou null"",
-    ""orgao_autuador"": ""Órgão que aplicou a multa ou null""
+    ""orgao_autuador"": ""Órgão que aplicou a multa ou null"",
+    ""requerente_nome"": ""Nome do requerente/proprietário ou null"",
+    ""requerente_cpf"": ""CPF do requerente ou null"",
+    ""requerente_rg"": ""RG do requerente ou null"",
+    ""requerente_endereco"": ""Endereço do requerente ou null"",
+    ""indicacao_nome"": ""Nome do condutor indicado ou null"",
+    ""indicacao_cpf"": ""CPF do condutor indicado ou null"",
+    ""indicacao_rg"": ""RG do condutor indicado ou null"",
+    ""indicacao_cnh"": ""CNH do condutor indicado ou null""
 }}
 ";
         }
@@ -492,6 +523,19 @@ Retorne apenas o texto extraído, sem formatação JSON ou markdown.
             public string? codigo_infracao { get; set; }
             public string? valor_multa { get; set; }
             public string? orgao_autuador { get; set; }
+
+            // CAMPOS PARA INDICAÇÃO DE CONDUTOR
+            // Dados do REQUERENTE (proprietário)
+            public string? requerente_nome { get; set; }
+            public string? requerente_cpf { get; set; }
+            public string? requerente_rg { get; set; }
+            public string? requerente_endereco { get; set; }
+
+            // Dados da INDICAÇÃO (condutor real)
+            public string? indicacao_nome { get; set; }
+            public string? indicacao_cpf { get; set; }
+            public string? indicacao_rg { get; set; }
+            public string? indicacao_cnh { get; set; }
 
             // Método helper para obter como string
             public string GetPalavrasChaveComoString()
