@@ -1,6 +1,7 @@
 using ClassificadorDoc.Models;
 using System.Text.Json;
 using System.Text;
+using Polly;
 
 namespace ClassificadorDoc.Services
 {
@@ -26,26 +27,42 @@ namespace ClassificadorDoc.Services
 
         private async Task<DocumentoClassificacao> ClassificarDocumentoVisualAsync(string nomeArquivo, byte[] arquivoBytes, string mimeType)
         {
-            const int maxTentativas = 3;
-            Exception? ultimaExcecao = null;
-
-            for (int tentativa = 1; tentativa <= maxTentativas; tentativa++)
+            // Validação básica do arquivo
+            if (arquivoBytes == null || arquivoBytes.Length == 0)
             {
-                try
-                {
-                    // Validação básica do arquivo
-                    if (arquivoBytes == null || arquivoBytes.Length == 0)
-                    {
-                        throw new ArgumentException("Arquivo vazio ou inválido");
-                    }
+                throw new ArgumentException("Arquivo vazio ou inválido");
+            }
 
+            // Política de retry com Polly
+            var retryPolicy = Policy
+                .Handle<HttpRequestException>()
+                .Or<TaskCanceledException>()
+                .Or<InvalidOperationException>(ex =>
+                    ex.Message.Contains("timeout") ||
+                    ex.Message.Contains("network") ||
+                    ex.Message.Contains("HTTP") ||
+                    ex.Message.Contains("API") ||
+                    ex.Message.Contains("stream") ||
+                    ex.Message.Contains("concurrency"))
+                .WaitAndRetryAsync(
+                    retryCount: 3,
+                    sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)), // Backoff exponencial
+                    onRetry: (outcome, duration, retryCount, context) =>
+                    {
+                        var tipoArquivo = mimeType.Contains("pdf") ? "PDF" : "imagem";
+                        _logger.LogWarning("🔄 Tentativa {RetryCount} para {TipoArquivo} {NomeArquivo} falhou: {Erro}. Tentando novamente em {Duration}s...",
+                            retryCount, tipoArquivo, nomeArquivo, outcome.Message, duration.TotalSeconds);
+                    });
+
+            try
+            {
+                return await retryPolicy.ExecuteAsync(async () =>
+                {
                     // Log adicional para PDFs que podem ser escaneados
                     if (mimeType.Contains("pdf"))
                     {
                         _logger.LogInformation("Processando PDF para {NomeArquivo} - pode ser texto nativo ou escaneado", nomeArquivo);
                     }
-
-                    // NOVA ESTRATÉGIA: Duas chamadas separadas para evitar limite de tokens
 
                     // PRIMEIRA CHAMADA: Classificação + dados específicos (sem texto completo)
                     var promptClassificacao = CriarPromptClassificacaoSemTexto(mimeType);
@@ -78,29 +95,34 @@ namespace ClassificadorDoc.Services
                         throw new InvalidOperationException($"Falha ao deserializar resposta de classificação do Gemini para {tipoArquivo}");
                     }
 
-                    // SEGUNDA CHAMADA: Extração completa do texto
-                    _logger.LogInformation("📄 Iniciando extração completa do texto para {NomeArquivo}", nomeArquivo);
-                    var promptTexto = CriarPromptExtracao(mimeType);
-                    var respostaTexto = await ChamarGeminiApiAsync(promptTexto, arquivoBytes, mimeType);
-
+                    // SEGUNDA CHAMADA: Extração completa do texto (apenas para defesas e recursos)
                     string textoCompleto = string.Empty;
-                    if (!string.IsNullOrEmpty(respostaTexto))
+                    bool precisaTextoCompleto = classificacao.tipo_documento?.ToLower() == "defesa" ||
+                                              classificacao.tipo_documento?.ToLower() == "recurso";
+
+                    if (precisaTextoCompleto)
                     {
-                        textoCompleto = LimparTextoExtraido(respostaTexto);
-                        _logger.LogDebug("📝 Texto extraído com {Tamanho} caracteres", textoCompleto.Length);
+                        _logger.LogInformation("📄 Iniciando extração completa do texto para {TipoDocumento} - {NomeArquivo}",
+                            classificacao.tipo_documento, nomeArquivo);
+                        var promptTexto = CriarPromptExtracao(mimeType);
+                        var respostaTexto = await ChamarGeminiApiAsync(promptTexto, arquivoBytes, mimeType);
+
+                        if (!string.IsNullOrEmpty(respostaTexto))
+                        {
+                            textoCompleto = LimparTextoExtraido(respostaTexto);
+                            _logger.LogDebug("📝 Texto extraído com {Tamanho} caracteres", textoCompleto.Length);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("⚠️ Não foi possível extrair texto completo do documento");
+                            textoCompleto = $"[Erro na extração de texto do {(mimeType.Contains("pdf") ? "PDF" : "imagem")}]";
+                        }
                     }
                     else
                     {
-                        _logger.LogWarning("⚠️ Não foi possível extrair texto completo do documento");
-                        textoCompleto = $"[Erro na extração de texto do {(mimeType.Contains("pdf") ? "PDF" : "imagem")}]";
-                    }
-
-                    var tipoAnalise = mimeType.Contains("pdf") ? "PDF (texto nativo ou escaneado)" : "imagem digitalizada";
-
-                    if (tentativa > 1)
-                    {
-                        _logger.LogInformation("Classificação visual bem-sucedida na tentativa {Tentativa} para {NomeArquivo}",
-                            tentativa, nomeArquivo);
+                        _logger.LogDebug("ℹ️ Pulando extração de texto completo para tipo de documento: {TipoDocumento}",
+                            classificacao.tipo_documento);
+                        textoCompleto = "[Texto completo não extraído - não necessário para este tipo de documento]";
                     }
 
                     return new DocumentoClassificacao
@@ -135,51 +157,25 @@ namespace ClassificadorDoc.Services
                         IndicacaoRG = classificacao.indicacao_rg,
                         IndicacaoCNH = classificacao.indicacao_cnh
                     };
-                }
-                catch (Exception ex) when (tentativa < maxTentativas &&
-                    (ex.Message.Contains("inner stream position") ||
-                     ex.Message.Contains("stream") ||
-                     ex.Message.Contains("position") ||
-                     ex.Message.Contains("timeout") ||
-                     ex.Message.Contains("network") ||
-                     ex.Message.Contains("OCR") ||
-                     ex.Message.Contains("vision") ||
-                     ex.Message.Contains("image processing") ||
-                     ex.Message.Contains("concurrency") ||
-                     ex.Message.Contains("thread") ||
-                     ex.Message.Contains("HTTP") ||
-                     ex.Message.Contains("API")))
-                {
-                    ultimaExcecao = ex;
-                    var tipoArquivo = mimeType.Contains("pdf") ? "PDF" : "imagem";
-                    _logger.LogWarning("Tentativa {Tentativa} falhou para {TipoArquivo} {NomeArquivo}: {Erro}. Tentando novamente...",
-                        tentativa, tipoArquivo, nomeArquivo, ex.Message);
-
-                    // Aguarda antes de tentar novamente com tempo crescente
-                    await Task.Delay(TimeSpan.FromSeconds(tentativa * 2));
-                    continue;
-                }
-                catch (Exception ex)
-                {
-                    ultimaExcecao = ex;
-                    break; // Erro não transitório
-                }
+                });
             }
-
-            var tipoArquivoFinal = mimeType.Contains("pdf") ? "PDF" : "imagem";
-            _logger.LogError(ultimaExcecao, "Erro ao classificar {TipoArquivo} {NomeArquivo} com Gemini após {MaxTentativas} tentativas",
-                tipoArquivoFinal, nomeArquivo, maxTentativas);
-
-            return new DocumentoClassificacao
+            catch (Exception ex)
             {
-                NomeArquivo = nomeArquivo,
-                TipoDocumento = "Erro",
-                ConfiancaClassificacao = 0,
-                ResumoConteudo = $"Erro no processamento do {tipoArquivoFinal}",
-                TextoExtraido = string.Empty,
-                ProcessadoComSucesso = false,
-                ErroProcessamento = ultimaExcecao?.Message ?? "Erro desconhecido após múltiplas tentativas"
-            };
+                var tipoArquivoFinal = mimeType.Contains("pdf") ? "PDF" : "imagem";
+                _logger.LogError(ex, "❌ Erro ao classificar {TipoArquivo} {NomeArquivo} após todas as tentativas de retry",
+                    tipoArquivoFinal, nomeArquivo);
+
+                return new DocumentoClassificacao
+                {
+                    NomeArquivo = nomeArquivo,
+                    TipoDocumento = "Erro",
+                    ConfiancaClassificacao = 0,
+                    ResumoConteudo = $"Erro no processamento do {tipoArquivoFinal}",
+                    TextoExtraido = string.Empty,
+                    ProcessadoComSucesso = false,
+                    ErroProcessamento = ex.Message
+                };
+            }
         }
 
         private async Task<string> ChamarGeminiApiAsync(string prompt, byte[]? arquivoBytes = null, string? mimeType = null)

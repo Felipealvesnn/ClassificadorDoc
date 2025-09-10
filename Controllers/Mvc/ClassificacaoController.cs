@@ -19,19 +19,22 @@ namespace ClassificadorDoc.Controllers.Mvc
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<ClassificacaoController> _logger;
+        private readonly IWebHostEnvironment _hostEnvironment;
 
         public ClassificacaoController(
             IClassificadorService classificador,
             PdfExtractorService pdfExtractor,
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            ILogger<ClassificacaoController> logger)
+            ILogger<ClassificacaoController> logger,
+            IWebHostEnvironment hostEnvironment)
         {
             _classificador = classificador;
             _pdfExtractor = pdfExtractor;
             _context = context;
             _userManager = userManager;
             _logger = logger;
+            _hostEnvironment = hostEnvironment;
         }
 
         // GET: /Classificacao
@@ -145,7 +148,7 @@ namespace ClassificadorDoc.Controllers.Mvc
                     Sucesso = d.IsSuccessful,
                     MensagemErro = d.ErrorMessage,
                     PalavrasChave = d.Keywords,
-                    CaminhoResultado = null, // Para ser implementado futuramente
+                    CaminhoResultado = d.CaminhoArquivo, // 📁 USAR O NOVO CAMPO CaminhoArquivo
                     TamanhoBytes = d.FileSizeBytes,
 
                     // Campos específicos extraídos
@@ -246,6 +249,117 @@ namespace ClassificadorDoc.Controllers.Mvc
             {
                 _logger.LogError(ex, "Erro ao buscar detalhes do documento {DocumentoId}", id);
                 return StatusCode(500, new { error = "Erro interno do servidor" });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> VisualizarDocumento(int id)
+        {
+            try
+            {
+                var documento = await _context.DocumentProcessingHistories
+                    .Where(d => d.Id == id)
+                    .Select(d => new { d.FileName, d.CaminhoArquivo })
+                    .FirstOrDefaultAsync();
+
+                if (documento == null)
+                {
+                    return NotFound("Documento não encontrado");
+                }
+
+                if (string.IsNullOrEmpty(documento.CaminhoArquivo))
+                {
+                    return NotFound("Caminho do arquivo não disponível");
+                }
+
+                // O caminho já é absoluto (pasta Documents), então usar diretamente
+                var caminhoCompleto = documento.CaminhoArquivo;
+
+                // Se por algum motivo for relativo, combinar com ContentRoot
+                if (!Path.IsPathRooted(caminhoCompleto))
+                {
+                    caminhoCompleto = Path.Combine(_hostEnvironment.ContentRootPath, documento.CaminhoArquivo);
+                }
+
+                if (!System.IO.File.Exists(caminhoCompleto))
+                {
+                    return NotFound("Arquivo não encontrado no disco");
+                }
+
+                var bytes = await System.IO.File.ReadAllBytesAsync(caminhoCompleto);
+                var extensao = Path.GetExtension(documento.FileName).ToLowerInvariant();
+
+                string contentType = extensao switch
+                {
+                    ".pdf" => "application/pdf",
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".png" => "image/png",
+                    ".gif" => "image/gif",
+                    ".bmp" => "image/bmp",
+                    ".tiff" or ".tif" => "image/tiff",
+                    _ => "application/octet-stream"
+                };
+
+                // Para todos os arquivos, retornar inline para visualização no navegador
+                Response.Headers["Content-Disposition"] = $"inline; filename=\"{documento.FileName}\"";
+
+                return File(bytes, contentType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao visualizar documento {DocumentoId}", id);
+                return StatusCode(500, "Erro interno do servidor");
+            }
+        }
+
+        // GET: /Classificacao/BaixarDocumento/5
+        [HttpGet]
+        public async Task<IActionResult> BaixarDocumento(int id)
+        {
+            try
+            {
+                var userId = _userManager.GetUserId(User);
+
+                // Buscar documento no histórico com verificação de propriedade
+                var documento = await _context.DocumentProcessingHistories
+                    .Where(d => d.Id == id && d.UserId == userId)
+                    .Select(d => new { d.CaminhoArquivo, d.FileName })
+                    .FirstOrDefaultAsync();
+
+                if (documento == null)
+                {
+                    return NotFound("Documento não encontrado ou você não tem permissão para acessá-lo.");
+                }
+
+                if (string.IsNullOrEmpty(documento.CaminhoArquivo))
+                {
+                    return NotFound("Caminho do arquivo não disponível.");
+                }
+
+                // O caminho já é absoluto (pasta Documents), usar diretamente
+                var caminhoCompleto = documento.CaminhoArquivo;
+
+                // Se for relativo (compatibilidade), combinar com diretório atual
+                if (!Path.IsPathRooted(caminhoCompleto))
+                {
+                    caminhoCompleto = Path.Combine(Environment.CurrentDirectory, documento.CaminhoArquivo);
+                }
+
+                if (!System.IO.File.Exists(caminhoCompleto))
+                {
+                    return NotFound("Arquivo físico não encontrado no sistema.");
+                }
+
+                // Retornar arquivo para download
+                var fileBytes = await System.IO.File.ReadAllBytesAsync(caminhoCompleto);
+                var contentType = "application/pdf"; // Assumindo que são PDFs
+
+                return File(fileBytes, contentType, documento.FileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao baixar documento {DocumentoId}", id);
+                return StatusCode(500, "Erro interno do servidor ao baixar o documento.");
             }
         }
 
@@ -353,8 +467,11 @@ namespace ClassificadorDoc.Controllers.Mvc
 
                         documentos.Add(classificacao);
 
-                        // Salvar no histórico para cada documento COM REFERÊNCIA AO LOTE
-                        await SalvarHistoricoProcessamento(userId, entry.Name, classificacao, batchHistory.Id);
+                        // 📁 NOVO: Salvar arquivo organizado por tipo
+                        var caminhoSalvo = await SalvarArquivoOrganizado(entry.Name, pdfBytes, classificacao.TipoDocumento, batchHistory.Id);
+
+                        // Salvar no histórico para cada documento COM REFERÊNCIA AO LOTE E CAMINHO
+                        await SalvarHistoricoProcessamento(userId, entry.Name, classificacao, batchHistory.Id, caminhoSalvo, pdfBytes.Length);
                         totalDocumentosProcessados++;
 
                         if (classificacao.ProcessadoComSucesso)
@@ -371,6 +488,9 @@ namespace ClassificadorDoc.Controllers.Mvc
                                 keywordsSummary.Add(classificacao.PalavrasChaveEncontradas);
                             }
                         }
+
+                        _logger.LogInformation("✅ Processado: {Arquivo} → {Tipo} → {Caminho}",
+                            entry.Name, classificacao.TipoDocumento, caminhoSalvo);
                     }
                     catch (Exception ex)
                     {
@@ -386,8 +506,18 @@ namespace ClassificadorDoc.Controllers.Mvc
                         };
 
                         documentos.Add(classificacaoErro);
-                        await SalvarHistoricoProcessamento(userId, entry.Name, classificacaoErro, batchHistory.Id);
+
+                        // Ainda salvar arquivo de erro organizado
+                        using var entryStream = entry.Open();
+                        using var memoryStream = new MemoryStream();
+                        await entryStream.CopyToAsync(memoryStream);
+                        var pdfBytes = memoryStream.ToArray();
+                        var caminhoErro = await SalvarArquivoOrganizado(entry.Name, pdfBytes, "erro", batchHistory.Id);
+
+                        await SalvarHistoricoProcessamento(userId, entry.Name, classificacaoErro, batchHistory.Id, caminhoErro, pdfBytes.Length);
                         totalDocumentosProcessados++;
+
+                        _logger.LogWarning("❌ Erro processado: {Arquivo} → {Caminho}", entry.Name, caminhoErro);
                     }
                 }
 
@@ -491,7 +621,67 @@ namespace ClassificadorDoc.Controllers.Mvc
 
         #region Métodos Auxiliares para Produtividade e Auditoria
 
-        private async Task SalvarHistoricoProcessamento(string? userId, string fileName, DocumentoClassificacao classificacao, int? batchId = null)
+        private async Task<string> SalvarArquivoOrganizado(string nomeArquivo, byte[] arquivoBytes, string tipoDocumento, int batchId, string baseDirectory = "DocumentosProcessados")
+        {
+            try
+            {
+                // Usar pasta Documents do usuário
+                var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                var baseFolder = Path.Combine(documentsPath, "ClassificadorDoc", baseDirectory);
+
+                // Criar estrutura de pastas: Documents/ClassificadorDoc/DocumentosProcessados/Lote_XXXXXX/TipoDocumento/documentos/
+                var batchFolder = Path.Combine(baseFolder, $"Lote_{batchId:000000}");
+                var tipoFolder = Path.Combine(batchFolder, NormalizarNomeTipo(tipoDocumento));
+                var documentosFolder = Path.Combine(tipoFolder, "documentos");
+
+                // Garantir que as pastas existem
+                Directory.CreateDirectory(documentosFolder);
+
+                // Caminho final do arquivo
+                var caminhoArquivo = Path.Combine(documentosFolder, nomeArquivo);
+
+                // Evitar conflitos de nome
+                var contador = 1;
+                var nomeBase = Path.GetFileNameWithoutExtension(nomeArquivo);
+                var extensao = Path.GetExtension(nomeArquivo);
+
+                while (System.IO.File.Exists(caminhoArquivo))
+                {
+                    var novoNome = $"{nomeBase}_{contador:000}{extensao}";
+                    caminhoArquivo = Path.Combine(documentosFolder, novoNome);
+                    contador++;
+                }
+
+                // Salvar o arquivo
+                await System.IO.File.WriteAllBytesAsync(caminhoArquivo, arquivoBytes);
+
+                _logger.LogDebug("📁 Arquivo salvo em Documents: {Caminho}", caminhoArquivo);
+
+                // Retornar caminho absoluto (Documents é mais confiável que caminhos relativos)
+                return caminhoArquivo;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Erro ao salvar arquivo {NomeArquivo} do tipo {Tipo}", nomeArquivo, tipoDocumento);
+                return string.Empty;
+            }
+        }
+
+        private static string NormalizarNomeTipo(string tipoDocumento)
+        {
+            return tipoDocumento.ToLowerInvariant() switch
+            {
+                "notificacao_autuacao" => "01_Autuacoes",
+                "autuacao" => "01_Autuacoes",
+                "defesa" => "02_Defesas",
+                "indicacao_condutor" => "03_Indicacoes_Condutor",
+                "notificacao_penalidade" => "04_Notificacoes_Penalidade",
+                "erro" => "99_Erros",
+                _ => "05_Outros"
+            };
+        }
+
+        private async Task SalvarHistoricoProcessamento(string? userId, string fileName, DocumentoClassificacao classificacao, int? batchId = null, string? caminhoArquivo = null, long tamanhoBytes = 0)
         {
             if (string.IsNullOrEmpty(userId)) return;
 
@@ -505,8 +695,9 @@ namespace ClassificadorDoc.Controllers.Mvc
                 IsSuccessful = classificacao.ProcessadoComSucesso,
                 ErrorMessage = classificacao.ErroProcessamento,
                 Keywords = classificacao.PalavrasChaveEncontradas,
-                FileSizeBytes = 0, // Seria necessário passar como parâmetro
+                FileSizeBytes = (int)Math.Min(tamanhoBytes, int.MaxValue), // Converter para int com limite
                 BatchProcessingHistoryId = batchId, // Novo campo para vincular ao lote
+                CaminhoArquivo = caminhoArquivo, // 📁 NOVO CAMPO para salvar caminho do arquivo
 
                 // NOVOS CAMPOS ESPECÍFICOS PARA DOCUMENTOS DE TRÂNSITO
                 TextoCompleto = classificacao.TextoExtraido,

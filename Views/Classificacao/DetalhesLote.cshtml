@@ -367,7 +367,7 @@
                                         @if (!string.IsNullOrEmpty(doc.CaminhoResultado))
                                         {
                                             <button type="button" class="btn btn-outline-success btn-sm"
-                                                    onclick="baixarResultadoDoc(@doc.Id)" title="Baixar Resultado">
+                                                    onclick="baixarDocumentoOriginal(@doc.Id)" title="Baixar Documento Original">
                                                 <i class="fas fa-download"></i>
                                             </button>
                                         }
@@ -399,7 +399,7 @@
 
 <!-- Modal de Detalhes do Documento -->
 <div class="modal fade" id="modalDetalhesDocumento" tabindex="-1" aria-labelledby="modalDetalhesDocumentoLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xxl" style="max-width: 95vw;">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalDetalhesDocumentoLabel">
@@ -407,7 +407,7 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="modalDetalhesConteudo">
+            <div class="modal-body" id="modalDetalhesConteudo" style="max-height: 80vh; overflow-y: auto;">
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Carregando...</span>
@@ -421,6 +421,9 @@
                 </button>
                 <button type="button" class="btn btn-primary" id="btnCopiarDados" onclick="copiarDadosDocumento()">
                     <i class="fas fa-copy"></i> Copiar Dados
+                </button>
+                <button type="button" class="btn btn-success" id="btnBaixarDocumento" onclick="baixarDocumentoDoModal()" style="display: none;">
+                    <i class="fas fa-download"></i> Baixar Documento
                 </button>
             </div>
         </div>
@@ -519,6 +522,9 @@
                 document.getElementById('modalDetalhesConteudo').innerHTML = htmlGerado;
                 console.log('✅ Modal atualizado com sucesso');
                 
+                // Carregar o documento no visualizador
+                carregarDocumentoVisualizador(id);
+                
             } catch (error) {
                 console.error('❌ Erro ao carregar detalhes:', error);
                 document.getElementById('modalDetalhesConteudo').innerHTML = `
@@ -548,7 +554,7 @@
             if (tipoDoc.includes('autuacao')) {
                 console.log('🚨 Gerando seção de Autuação');
                 dadosEspecificos = `
-                    <div class="col-md-6">
+                    <div class="col-12">
                         <div class="card border-danger h-100">
                             <div class="card-header bg-danger text-white">
                                 <h6 class="mb-0"><i class="fas fa-gavel me-2"></i>Dados da Autuação</h6>
@@ -568,7 +574,7 @@
             } else if (tipoDoc.includes('defesa')) {
                 console.log('🛡️ Gerando seção de Defesa');
                 dadosEspecificos = `
-                    <div class="col-md-6">
+                    <div class="col-12">
                         <div class="card border-primary h-100">
                             <div class="card-header bg-primary text-white">
                                 <h6 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Dados da Defesa</h6>
@@ -654,7 +660,7 @@
             } else if (tipoDoc.includes('notificacao')) {
                 console.log('📧 Gerando seção de Notificação');
                 dadosEspecificos = `
-                    <div class="col-md-6">
+                    <div class="col-12">
                         <div class="card border-info h-100">
                             <div class="card-header bg-info text-white">
                                 <h6 class="mb-0"><i class="fas fa-bell me-2"></i>Dados da Notificação</h6>
@@ -680,7 +686,7 @@
                                           (doc.ValorMulta || doc.valorMulta);
                 if (temDadosEspecificos) {
                     dadosEspecificos = `
-                        <div class="col-md-6">
+                        <div class="col-12">
                             <div class="card border-secondary h-100">
                                 <div class="card-header bg-secondary text-white">
                                     <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Dados Extraídos</h6>
@@ -713,63 +719,91 @@
             const textoCompleto = doc.TextoCompleto || doc.textoCompleto;
             
             return `
-                <div class="row mb-4">
+                <div class="row">
+                    <!-- Coluna Esquerda: Informações -->
+                    <div class="col-md-6">
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card h-100">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0"><i class="fas fa-info-circle me-2 text-primary"></i>Informações Gerais</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>📄 Arquivo:</strong> <code class="bg-light p-1 rounded">${nomeArquivo}</code></p>
+                                        <p><strong>📋 Tipo:</strong> 
+                                            <span class="badge ${getTipoBadgeClass(doc.TipoClassificado || doc.tipoClassificado)} fs-6">${tipoDisplayName}</span>
+                                        </p>
+                                        <p><strong>⚡ Status:</strong> 
+                                            <span class="badge bg-${statusClass} fs-6">${statusText}</span>
+                                        </p>
+                                        <p><strong>🎯 Confiança:</strong> 
+                                            <span class="badge ${confiancaPercentual >= 80 ? 'bg-success' : confiancaPercentual >= 60 ? 'bg-warning text-dark' : 'bg-danger'} fs-6">
+                                                ${confiancaPercentual}%
+                                            </span>
+                                        </p>
+                                        <p><strong>📏 Tamanho:</strong> <span class="text-muted">${tamanhoFormatado}</span></p>
+                                        <p><strong>🕒 Processado:</strong> <span class="text-muted">${dataProcessamentoFormatada}</span></p>
+                                        ${mensagemErro ? `
+                                            <div class="alert alert-danger p-2 mt-2">
+                                                <small><strong>❌ Erro:</strong> ${mensagemErro}</small>
+                                            </div>
+                                        ` : ''}
+                                        ${palavrasChave ? `
+                                            <div class="mt-2">
+                                                <strong>🔍 Palavras-chave:</strong><br>
+                                                <small class="text-info">${palavrasChave}</small>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Dados Específicos -->
+                        <div class="row">
+                            ${dadosEspecificos}
+                        </div>
+                        
+                        ${textoCompleto ? `
+                            <div class="card mt-3">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-file-text me-2 text-success"></i>Texto Completo Extraído
+                                        <span class="badge bg-secondary ms-2">${textoCompleto.length} caracteres</span>
+                                    </h6>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="copiarTextoCompleto()" title="Copiar texto completo">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="border-0 p-3 bg-light" style="max-height: 200px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85em; line-height: 1.4;">
+${textoCompleto}
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <!-- Coluna Direita: Visualizador do Documento -->
                     <div class="col-md-6">
                         <div class="card h-100">
                             <div class="card-header bg-light">
-                                <h6 class="mb-0"><i class="fas fa-info-circle me-2 text-primary"></i>Informações Gerais</h6>
+                                <h6 class="mb-0"><i class="fas fa-file-image me-2 text-success"></i>Documento Original</h6>
                             </div>
-                            <div class="card-body">
-                                <p><strong>📄 Arquivo:</strong> <code class="bg-light p-1 rounded">${nomeArquivo}</code></p>
-                                <p><strong>📋 Tipo:</strong> 
-                                    <span class="badge ${getTipoBadgeClass(doc.TipoClassificado || doc.tipoClassificado)} fs-6">${tipoDisplayName}</span>
-                                </p>
-                                <p><strong>⚡ Status:</strong> 
-                                    <span class="badge bg-${statusClass} fs-6">${statusText}</span>
-                                </p>
-                                <p><strong>🎯 Confiança:</strong> 
-                                    <span class="badge ${confiancaPercentual >= 80 ? 'bg-success' : confiancaPercentual >= 60 ? 'bg-warning text-dark' : 'bg-danger'} fs-6">
-                                        ${confiancaPercentual}%
-                                    </span>
-                                </p>
-                                <p><strong>📏 Tamanho:</strong> <span class="text-muted">${tamanhoFormatado}</span></p>
-                                <p><strong>🕒 Processado:</strong> <span class="text-muted">${dataProcessamentoFormatada}</span></p>
-                                ${mensagemErro ? `
-                                    <div class="alert alert-danger p-2 mt-2">
-                                        <small><strong>❌ Erro:</strong> ${mensagemErro}</small>
+                            <div class="card-body p-2">
+                                <div id="documentoVisualizador" style="height: 600px; overflow: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; background-color: #f8f9fa;">
+                                    <div class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Carregando documento...</span>
+                                        </div>
+                                        <p class="mt-2 text-muted">Carregando documento original...</p>
                                     </div>
-                                ` : ''}
-                                ${palavrasChave ? `
-                                    <div class="mt-2">
-                                        <strong>🔍 Palavras-chave:</strong><br>
-                                        <small class="text-info">${palavrasChave}</small>
-                                    </div>
-                                ` : ''}
+                                </div>
                             </div>
                         </div>
                     </div>
-                    ${dadosEspecificos}
                 </div>
-                
-                ${textoCompleto ? `
-                    <div class="card mb-3">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">
-                                <i class="fas fa-file-text me-2 text-success"></i>Texto Completo Extraído
-                                <span class="badge bg-secondary ms-2">${textoCompleto.length} caracteres</span>
-                            </h6>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="copiarTextoCompleto()" title="Copiar texto completo">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="border-0 p-3 bg-light" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85em; line-height: 1.4;">
-${textoCompleto}
-                            </div>
-                        </div>
-                    </div>
-                ` : `
-                    <div class="card">
+            `;
                         <div class="card-body text-center text-muted">
                             <i class="fas fa-file-text fa-3x mb-3 opacity-25"></i>
                             <p>Nenhum texto extraído disponível para este documento.</p>
@@ -898,8 +932,8 @@ ${textoCompleto}
             }, 2000);
         }
 
-        function baixarResultadoDoc(id) {
-            window.location.href = `@Url.Action("BaixarResultado", "Classificacao")?id=${id}`;
+        function baixarDocumentoOriginal(id) {
+            window.location.href = `@Url.Action("BaixarDocumento", "Classificacao")?id=${id}`;
         }
 
         function excluirDoc(id) {
@@ -922,6 +956,80 @@ ${textoCompleto}
             const valor = e.target.value;
             document.getElementById('valorConfianca').textContent = valor + '%';
         });
+
+        // Função para carregar documento no visualizador
+        async function carregarDocumentoVisualizador(documentoId) {
+            const visualizador = document.getElementById('documentoVisualizador');
+            
+            if (!visualizador) {
+                console.warn('Visualizador não encontrado');
+                return;
+            }
+
+            try {
+                console.log('🖼️ Carregando documento no visualizador, ID:', documentoId);
+                
+                // Construir URL para visualização
+                const urlVisualizacao = `@Url.Action("VisualizarDocumento", "Classificacao")?id=${documentoId}`;
+                
+                // Determinar se é PDF ou imagem baseado na extensão do arquivo
+                const nomeArquivo = documentoDetalhes?.NomeArquivo || '';
+                const extensao = nomeArquivo.split('.').pop()?.toLowerCase() || '';
+                
+                if (extensao === 'pdf') {
+                    // Para PDFs, usar embed para visualização inline
+                    visualizador.innerHTML = `
+                        <embed src="${urlVisualizacao}" 
+                               type="application/pdf" 
+                               width="100%" 
+                               height="100%" 
+                               style="border: none;">
+                        <div class="text-center p-3 d-none" id="pdfFallback">
+                            <p class="text-muted">Seu navegador não suporta visualização de PDF inline.</p>
+                            <a href="${urlVisualizacao}" target="_blank" class="btn btn-primary">
+                                <i class="fas fa-external-link-alt"></i> Abrir PDF em nova aba
+                            </a>
+                        </div>
+                    `;
+                    
+                    // Verificar se o PDF carregou
+                    setTimeout(() => {
+                        const embed = visualizador.querySelector('embed');
+                        const fallback = visualizador.querySelector('#pdfFallback');
+                        
+                        if (embed && fallback) {
+                            embed.onerror = () => {
+                                embed.style.display = 'none';
+                                fallback.classList.remove('d-none');
+                            };
+                        }
+                    }, 1000);
+                    
+                } else {
+                    // Para imagens, usar img tag
+                    visualizador.innerHTML = `
+                        <div class="text-center h-100 d-flex align-items-center justify-content-center">
+                            <img src="${urlVisualizacao}" 
+                                 alt="Documento: ${nomeArquivo}"
+                                 class="img-fluid"
+                                 style="max-height: 100%; max-width: 100%; object-fit: contain;">
+                        </div>
+                    `;
+                }
+                
+                console.log('✅ Documento carregado no visualizador');
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar documento:', error);
+                visualizador.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle text-warning fa-3x mb-3"></i>
+                        <p class="text-muted">Erro ao carregar o documento original</p>
+                        <small class="text-danger">${error.message}</small>
+                    </div>
+                `;
+            }
+        }
     </script>
 }
 

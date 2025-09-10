@@ -298,6 +298,7 @@ namespace ClassificadorDoc.Data
         public string? ErrorMessage { get; set; }
         public string? Keywords { get; set; }
         public int FileSizeBytes { get; set; }
+        public string? CaminhoArquivo { get; set; } // Caminho onde o arquivo foi salvo
 
         // Relacionamento com lote (novo campo)
         public int? BatchProcessingHistoryId { get; set; }
