@@ -527,6 +527,9 @@
                 
                 documentoDetalhes = await response.json();
                 console.log('📄 Dados recebidos:', documentoDetalhes);
+                console.log('📄 Propriedades do documento:', Object.keys(documentoDetalhes));
+                console.log('📄 NomeArquivo:', documentoDetalhes.NomeArquivo);
+                console.log('📄 nomeArquivo:', documentoDetalhes.nomeArquivo);
                 
                 // Renderizar conteúdo do modal
                 const htmlGerado = gerarHtmlDetalhes(documentoDetalhes);
@@ -847,7 +850,7 @@ ${textoCompleto}
             let dadosParaCopiar = `📄 DETALHES DO DOCUMENTO\n`;
             dadosParaCopiar += `${'='.repeat(50)}\n\n`;
             
-            dadosParaCopiar += `📄 Arquivo: ${documentoDetalhes.NomeArquivo}\n`;
+            dadosParaCopiar += `📄 Arquivo: ${documentoDetalhes.NomeArquivo || documentoDetalhes.nomeArquivo}\n`;
             dadosParaCopiar += `📋 Tipo: ${getTipoDisplayName(documentoDetalhes.TipoClassificado)}\n`;
             dadosParaCopiar += `🎯 Confiança: ${documentoDetalhes.ConfiancaPercentual}%\n`;
             dadosParaCopiar += `⚡ Status: ${documentoDetalhes.Sucesso ? 'Concluído' : 'Falhou'}\n`;
@@ -902,9 +905,10 @@ ${textoCompleto}
         }
 
         function copiarTextoCompleto() {
-            if (!documentoDetalhes || !documentoDetalhes.TextoCompleto) return;
+            if (!documentoDetalhes || !(documentoDetalhes.TextoCompleto || documentoDetalhes.textoCompleto)) return;
             
-            navigator.clipboard.writeText(documentoDetalhes.TextoCompleto).then(() => {
+            const textoCompleto = documentoDetalhes.TextoCompleto || documentoDetalhes.textoCompleto;
+            navigator.clipboard.writeText(textoCompleto).then(() => {
                 // Encontrar o botão de copiar texto (pode estar em qualquer elemento)
                 const btn = event.target.closest('button');
                 if (btn) {
@@ -981,8 +985,10 @@ ${textoCompleto}
                 console.log('🖼️ URL de visualização:', urlVisualizacao);
                 
                 // Determinar se é PDF ou imagem baseado na extensão do arquivo
-                const nomeArquivo = documentoDetalhes?.NomeArquivo || '';
+                const nomeArquivo = documentoDetalhes?.NomeArquivo || documentoDetalhes?.nomeArquivo || '';
+                console.log('📄 Nome do arquivo detectado:', nomeArquivo);
                 const extensao = nomeArquivo.split('.').pop()?.toLowerCase() || '';
+                console.log('📄 Extensão detectada:', extensao);
                 
                 if (extensao === 'pdf') {
                     // Para PDFs, usar embed para visualização inline
