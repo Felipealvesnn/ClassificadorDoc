@@ -433,6 +433,9 @@
 @section Scripts {
     <script>
         let documentoDetalhes = null;
+        
+        // Debug: Verificar se as funções estão sendo carregadas
+        console.log('📄 DetalhesLote.cshtml - JavaScript carregado');
 
         function aplicarFiltrosDoc() {
             const tipo = document.getElementById('filtroTipoDoc').value;
@@ -471,9 +474,16 @@
                     mostrar = false;
                 }
                 
-                // Filtro por confiança (implementação básica)
+                // Filtro por confiança
                 const confiancaMinima = parseFloat(confianca) / 100;
-                // ... implementar lógica de confiança se necessário
+                if (confiancaMinima > 0) {
+                    // Buscar valor de confiança na linha se disponível
+                    const confiancaTexto = linha.cells[4]?.textContent || '0%';
+                    const confiancaAtual = parseFloat(confiancaTexto.replace('%', '')) / 100;
+                    if (confiancaAtual < confiancaMinima) {
+                        mostrar = false;
+                    }
+                }
                 
                 linha.style.display = mostrar ? '' : 'none';
             });
@@ -496,6 +506,7 @@
         }
 
         async function verDetalhesDoc(id) {
+            console.log('🔍 Função verDetalhesDoc chamada com ID:', id);
             try {
                 console.log('🔍 Iniciando carregamento de detalhes para ID:', id);
                 
@@ -504,7 +515,9 @@
                 modal.show();
                 
                 // Fazer requisição para buscar detalhes
-                const response = await fetch(`@Url.Action("DetalhesDocumento", "Classificacao")?id=${id}`);
+                const url = '@Url.Action("DetalhesDocumento", "Classificacao")' + '?id=' + id;
+                console.log('🌐 URL gerada:', url);
+                const response = await fetch(url);
                 
                 console.log('📡 Response status:', response.status);
                 
@@ -933,7 +946,8 @@ ${textoCompleto}
         }
 
         function baixarDocumentoOriginal(id) {
-            window.location.href = `@Url.Action("BaixarDocumento", "Classificacao")?id=${id}`;
+            const url = '@Url.Action("BaixarDocumento", "Classificacao")' + '?id=' + id;
+            window.location.href = url;
         }
 
         function excluirDoc(id) {
@@ -970,7 +984,8 @@ ${textoCompleto}
                 console.log('🖼️ Carregando documento no visualizador, ID:', documentoId);
                 
                 // Construir URL para visualização
-                const urlVisualizacao = `@Url.Action("VisualizarDocumento", "Classificacao")?id=${documentoId}`;
+                const urlVisualizacao = '@Url.Action("VisualizarDocumento", "Classificacao")' + '?id=' + documentoId;
+                console.log('🖼️ URL de visualização:', urlVisualizacao);
                 
                 // Determinar se é PDF ou imagem baseado na extensão do arquivo
                 const nomeArquivo = documentoDetalhes?.NomeArquivo || '';

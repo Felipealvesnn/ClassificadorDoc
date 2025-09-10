@@ -522,7 +522,7 @@ namespace ClassificadorDoc.Controllers.Mvc
                 }
 
                 // Finalizar o lote com estatísticas
-                var endTime = DateTime.UtcNow;
+                var endTime = DateTime.Now;
                 batchHistory.CompletedAt = endTime;
                 batchHistory.ProcessingDuration = endTime - startTime;
                 batchHistory.SuccessfulDocuments = sucessos;
