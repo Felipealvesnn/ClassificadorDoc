@@ -65,6 +65,9 @@ namespace ClassificadorDoc.Data
                     logger.LogInformation("✅ Banco de dados já contém dados. Seed não necessário.");
                 }
 
+                // Sempre verificar e atualizar configurações padrão
+                await SeedConfiguracoesPadraoAsync(context, logger);
+
                 logger.LogInformation("🎉 Inicialização do banco de dados concluída com sucesso!");
             }
             catch (Exception ex)
@@ -142,6 +145,72 @@ namespace ClassificadorDoc.Data
             {
                 logger.LogWarning(ex, "⚠️ Erro ao verificar se banco precisa de seed. Assumindo que precisa: {Message}", ex.Message);
                 return true;
+            }
+        }
+
+        /// <summary>
+        /// Seed das configurações padrão do sistema
+        /// </summary>
+        private static async Task SeedConfiguracoesPadraoAsync(ApplicationDbContext context, ILogger logger)
+        {
+            try
+            {
+                logger.LogInformation("⚙️ Verificando configurações padrão...");
+
+                // Verificar se já existem configurações
+                if (!await context.Configuracoes.AnyAsync())
+                {
+                    logger.LogInformation("🔧 Criando configurações padrão...");
+
+                    var configuracoesPadrao = new[]
+                    {
+                        new Models.Configuracao
+                        {
+                            Chave = Models.ChavesConfiguracao.CAMINHO_SALVAMENTO_DOCUMENTOS,
+                            Valor = string.Empty, // Vazio = usar pasta Documents
+                            Descricao = "Caminho personalizado para salvamento dos documentos processados. Se vazio, usa a pasta Documents do usuário.",
+                            Categoria = "Armazenamento",
+                            Ativo = true
+                        },
+                        new Models.Configuracao
+                        {
+                            Chave = Models.ChavesConfiguracao.DIRETORIO_BASE_DOCUMENTOS,
+                            Valor = "DocumentosProcessados",
+                            Descricao = "Nome do diretório base onde os documentos serão organizados",
+                            Categoria = "Armazenamento",
+                            Ativo = true
+                        },
+                        new Models.Configuracao
+                        {
+                            Chave = Models.ChavesConfiguracao.NOME_PASTA_CLASSIFICADOR,
+                            Valor = "ClassificadorDoc",
+                            Descricao = "Nome da pasta principal do classificador de documentos",
+                            Categoria = "Armazenamento",
+                            Ativo = true
+                        },
+                        new Models.Configuracao
+                        {
+                            Chave = Models.ChavesConfiguracao.ESTRUTURA_PASTAS_HABILITADA,
+                            Valor = "true",
+                            Descricao = "Define se a estrutura de pastas por tipo de documento está habilitada",
+                            Categoria = "Armazenamento",
+                            Ativo = true
+                        }
+                    };
+
+                    context.Configuracoes.AddRange(configuracoesPadrao);
+                    await context.SaveChangesAsync();
+
+                    logger.LogInformation("✅ Configurações padrão criadas com sucesso!");
+                }
+                else
+                {
+                    logger.LogDebug("⚙️ Configurações já existem no banco de dados.");
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "❌ Erro ao criar configurações padrão: {Message}", ex.Message);
             }
         }
 

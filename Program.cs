@@ -113,6 +113,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAlertConditionEngine, AlertConditionEngine>();
 builder.Services.AddScoped<IAlertExecutionService, AlertExecutionService>();
 builder.Services.AddScoped<ISystemNotificationService, SystemNotificationService>();
+builder.Services.AddScoped<IConfiguracaoService, ConfiguracaoService>(); // 🆕 NOVO SERVIÇO
 
 // Configure SignalR for real-time notifications
 builder.Services.AddSignalR();

@@ -20,6 +20,7 @@ namespace ClassificadorDoc.Controllers.Mvc
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<ClassificacaoController> _logger;
         private readonly IWebHostEnvironment _hostEnvironment;
+        private readonly IConfiguracaoService _configuracaoService;
 
         public ClassificacaoController(
             IClassificadorService classificador,
@@ -27,7 +28,8 @@ namespace ClassificadorDoc.Controllers.Mvc
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             ILogger<ClassificacaoController> logger,
-            IWebHostEnvironment hostEnvironment)
+            IWebHostEnvironment hostEnvironment,
+            IConfiguracaoService configuracaoService)
         {
             _classificador = classificador;
             _pdfExtractor = pdfExtractor;
@@ -35,6 +37,7 @@ namespace ClassificadorDoc.Controllers.Mvc
             _userManager = userManager;
             _logger = logger;
             _hostEnvironment = hostEnvironment;
+            _configuracaoService = configuracaoService;
         }
 
         // GET: /Classificacao
@@ -625,11 +628,31 @@ namespace ClassificadorDoc.Controllers.Mvc
         {
             try
             {
-                // Usar pasta Documents do usuário
-                var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                var baseFolder = Path.Combine(documentsPath, "ClassificadorDoc", baseDirectory);
+                // Obter configurações de salvamento
+                var configuracoesSalvamento = await _configuracaoService.ObterConfiguracoesSalvamentoAsync();
 
-                                // Criar estrutura de pastas: Documents/ClassificadorDoc/DocumentosProcessados/Lote_XXXXXX/TipoDocumento/
+                string baseFolder;
+
+                // Se há um caminho personalizado configurado, usar ele
+                if (!string.IsNullOrEmpty(configuracoesSalvamento.CaminhoSalvamento) &&
+                    Directory.Exists(configuracoesSalvamento.CaminhoSalvamento))
+                {
+                    baseFolder = Path.Combine(configuracoesSalvamento.CaminhoSalvamento,
+                                            configuracoesSalvamento.NomePastaClassificador,
+                                            configuracoesSalvamento.DiretorioBase);
+
+                    _logger.LogInformation("📁 Usando caminho personalizado: {Caminho}", baseFolder);
+                }
+                else
+                {
+                    // Fallback para pasta Documents do usuário (comportamento atual)
+                    var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                    baseFolder = Path.Combine(documentsPath, configuracoesSalvamento.NomePastaClassificador, configuracoesSalvamento.DiretorioBase);
+
+                    _logger.LogInformation("📁 Usando caminho padrão (Documents): {Caminho}", baseFolder);
+                }
+
+                // Criar estrutura de pastas: [BaseFolder]/Lote_XXXXXX/TipoDocumento/
                 var batchFolder = Path.Combine(baseFolder, $"Lote_{batchId:000000}");
                 var tipoFolder = Path.Combine(batchFolder, NormalizarNomeTipo(tipoDocumento));
 
@@ -654,9 +677,9 @@ namespace ClassificadorDoc.Controllers.Mvc
                 // Salvar o arquivo
                 await System.IO.File.WriteAllBytesAsync(caminhoArquivo, arquivoBytes);
 
-                _logger.LogDebug("📁 Arquivo salvo em Documents: {Caminho}", caminhoArquivo);
+                _logger.LogDebug("📁 Arquivo salvo: {Caminho}", caminhoArquivo);
 
-                // Retornar caminho absoluto (Documents é mais confiável que caminhos relativos)
+                // Retornar caminho absoluto
                 return caminhoArquivo;
             }
             catch (Exception ex)

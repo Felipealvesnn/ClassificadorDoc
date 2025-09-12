@@ -46,6 +46,7 @@ namespace ClassificadorDoc.Data
                 await SeedLGPDComplianceAsync(context, users, logger);
                 await SeedDataExportsAsync(context, users, logger);
                 await SeedSystemNotificationsAsync(context, users, logger);
+                await SeedConfiguracoesAsync(context, logger); // 🆕 NOVA LINHA
 
                 await context.SaveChangesAsync();
                 logger.LogInformation("✅ Seed completo do banco de dados finalizado com sucesso!");
@@ -769,6 +770,62 @@ namespace ClassificadorDoc.Data
             }
 
             context.SystemNotifications.AddRange(notifications);
+        }
+        #endregion
+
+        #region Configurações do Sistema
+        private static async Task SeedConfiguracoesAsync(ApplicationDbContext context, ILogger logger)
+        {
+            if (await context.Configuracoes.AnyAsync())
+            {
+                logger.LogDebug("Configurações já existem, pulando seed...");
+                return;
+            }
+
+            logger.LogInformation("⚙️ Criando configurações padrão do sistema...");
+
+            var configuracoes = new[]
+            {
+                new Configuracao
+                {
+                    Chave = ChavesConfiguracao.CAMINHO_SALVAMENTO_DOCUMENTOS,
+                    Valor = "", // Vazio = usar pasta Documents como padrão
+                    Descricao = "Caminho personalizado para salvamento de documentos processados. Se vazio, usará a pasta Documents do usuário.",
+                    Categoria = "Armazenamento",
+                    UsuarioAtualizacao = "System",
+                    Ativo = true
+                },
+                new Configuracao
+                {
+                    Chave = ChavesConfiguracao.DIRETORIO_BASE_DOCUMENTOS,
+                    Valor = "DocumentosProcessados",
+                    Descricao = "Nome do diretório base dentro da pasta de salvamento para organizar os documentos processados.",
+                    Categoria = "Armazenamento",
+                    UsuarioAtualizacao = "System",
+                    Ativo = true
+                },
+                new Configuracao
+                {
+                    Chave = ChavesConfiguracao.NOME_PASTA_CLASSIFICADOR,
+                    Valor = "ClassificadorDoc",
+                    Descricao = "Nome da pasta principal do sistema dentro do caminho de salvamento.",
+                    Categoria = "Armazenamento",
+                    UsuarioAtualizacao = "System",
+                    Ativo = true
+                },
+                new Configuracao
+                {
+                    Chave = ChavesConfiguracao.ESTRUTURA_PASTAS_HABILITADA,
+                    Valor = "true",
+                    Descricao = "Define se a estrutura organizada de pastas por tipo de documento deve ser criada.",
+                    Categoria = "Armazenamento",
+                    UsuarioAtualizacao = "System",
+                    Ativo = true
+                }
+            };
+
+            context.Configuracoes.AddRange(configuracoes);
+            logger.LogInformation("✅ Configurações padrão criadas com sucesso!");
         }
         #endregion
     }

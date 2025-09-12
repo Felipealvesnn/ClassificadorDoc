@@ -33,6 +33,9 @@ namespace ClassificadorDoc.Data
         public DbSet<DataExport> DataExports { get; set; }
         public DbSet<SystemNotification> SystemNotifications { get; set; }
 
+        // DbSet para configurações do sistema
+        public DbSet<Configuracao> Configuracoes { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -281,6 +284,21 @@ namespace ClassificadorDoc.Data
                     .WithMany()
                     .HasForeignKey(e => e.ProcessadoPor)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configurações do sistema
+            builder.Entity<Configuracao>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.Chave).IsUnique();
+                entity.HasIndex(e => e.Categoria);
+                entity.HasIndex(e => e.Ativo);
+
+                entity.Property(e => e.Chave).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.Valor).HasMaxLength(500).IsRequired();
+                entity.Property(e => e.Descricao).HasMaxLength(200);
+                entity.Property(e => e.Categoria).HasMaxLength(50);
+                entity.Property(e => e.UsuarioAtualizacao).HasMaxLength(450);
             });
         }
     }
