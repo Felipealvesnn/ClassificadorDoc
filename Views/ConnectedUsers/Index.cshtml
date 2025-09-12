@@ -1,0 +1,357 @@
+@{
+    ViewData["Title"] = "Usuários Conectados";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-users fa-fw me-2"></i>Usuários Conectados
+    </h1>
+    <div>
+        <button type="button" class="btn btn-outline-primary" onclick="refreshConnectedUsers()">
+            <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
+        <button type="button" class="btn btn-outline-info" onclick="toggleAutoRefresh()">
+            <i class="fas fa-play" id="autoRefreshIcon"></i> <span id="autoRefreshText">Iniciar Auto-Refresh</span>
+        </button>
+    </div>
+</div>
+
+<!-- Estatísticas Rápidas -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Conectados
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalConnectedCount">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-users fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Usuários Ativos
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="activeUsersCount">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-circle fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Usuários Inativos
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="inactiveUsersCount">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-circle fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-secondary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                            Última Atualização
+                        </div>
+                        <div class="h6 mb-0 font-weight-bold text-gray-800" id="lastUpdated">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clock fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Usuários Conectados -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">Lista de Usuários Conectados</h6>
+        <div class="dropdown no-arrow">
+            <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown">
+                <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-right shadow animated--fade-in">
+                <div class="dropdown-header">Ações:</div>
+                <a class="dropdown-item" href="#" onclick="exportConnectedUsers()">
+                    <i class="fas fa-download fa-sm fa-fw mr-2 text-gray-400"></i> Exportar Lista
+                </a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="#" onclick="refreshConnectedUsers()">
+                    <i class="fas fa-sync-alt fa-sm fa-fw mr-2 text-gray-400"></i> Atualizar Lista
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="connectedUsersContainer">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando usuários conectados...</span>
+                </div>
+                <p class="mt-2">Carregando usuários conectados...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template para usuário conectado -->
+<template id="connectedUserTemplate">
+    <div class="row align-items-center py-3 border-bottom user-row" data-user-id="">
+        <div class="col-md-4">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="status-icon fa-sm"></i>
+                </div>
+                <div>
+                    <div class="font-weight-bold user-name"></div>
+                    <small class="text-muted user-email"></small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 text-center">
+            <span class="badge status-badge"></span>
+        </div>
+        <div class="col-md-2 text-center">
+            <small class="text-muted online-time"></small>
+        </div>
+        <div class="col-md-2 text-center">
+            <small class="text-muted connection-time"></small>
+        </div>
+        <div class="col-md-2 text-center">
+            <button class="btn btn-sm btn-outline-info" onclick="viewUserDetails('')" title="Ver detalhes">
+                <i class="fas fa-eye"></i>
+            </button>
+        </div>
+    </div>
+</template>
+
+@section Scripts {
+    <script>
+        let autoRefreshInterval = null;
+        let signalRConnection = null;
+
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', async function() {
+            await initializeSignalR();
+            await loadConnectedUsers();
+        });
+
+        // Inicializar conexão SignalR
+        async function initializeSignalR() {
+            try {
+                signalRConnection = new signalR.HubConnectionBuilder()
+                    .withUrl("/notificationHub")
+                    .withAutomaticReconnect()
+                    .build();
+
+                // Escutar atualizações de usuários conectados
+                signalRConnection.on("ConnectedUsersUpdate", function(stats) {
+                    updateConnectedUsersDisplay(stats);
+                });
+
+                await signalRConnection.start();
+                console.log("✅ Conexão SignalR estabelecida para usuários conectados");
+
+                // Solicitar lista inicial
+                await signalRConnection.invoke("RequestConnectedUsers");
+            } catch (error) {
+                console.error("❌ Erro ao conectar SignalR:", error);
+                showToast.error("Erro", "Falha ao conectar com o servidor em tempo real");
+            }
+        }
+
+        // Carregar usuários conectados via API
+        async function loadConnectedUsers() {
+            try {
+                const response = await fetch('/api/ConnectedUsers/stats');
+                if (!response.ok) throw new Error('Erro ao carregar usuários conectados');
+                
+                const stats = await response.json();
+                updateConnectedUsersDisplay(stats);
+            } catch (error) {
+                console.error("Erro ao carregar usuários conectados:", error);
+                document.getElementById('connectedUsersContainer').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erro ao carregar usuários conectados: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Atualizar display com dados dos usuários conectados
+        function updateConnectedUsersDisplay(stats) {
+            // Atualizar estatísticas
+            document.getElementById('totalConnectedCount').textContent = stats.totalConnected;
+            document.getElementById('activeUsersCount').textContent = stats.activeUsers;
+            document.getElementById('inactiveUsersCount').textContent = stats.inactiveUsers;
+            document.getElementById('lastUpdated').textContent = new Date(stats.lastUpdated).toLocaleTimeString('pt-BR');
+
+            // Atualizar lista de usuários
+            const container = document.getElementById('connectedUsersContainer');
+            
+            if (stats.users.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhum usuário conectado</h5>
+                        <p class="text-muted">Não há usuários online no momento.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Cabeçalho da tabela
+            let html = `
+                <div class="row align-items-center py-2 bg-light border-bottom">
+                    <div class="col-md-4"><strong>Usuário</strong></div>
+                    <div class="col-md-2 text-center"><strong>Status</strong></div>
+                    <div class="col-md-2 text-center"><strong>Online há</strong></div>
+                    <div class="col-md-2 text-center"><strong>Conectado às</strong></div>
+                    <div class="col-md-2 text-center"><strong>Ações</strong></div>
+                </div>
+            `;
+
+            // Adicionar cada usuário
+            stats.users.forEach(user => {
+                const statusClass = getStatusClass(user.activityStatus);
+                const statusIcon = getStatusIcon(user.activityStatus);
+                
+                html += `
+                    <div class="row align-items-center py-3 border-bottom user-row" data-user-id="${user.userId}">
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="${statusIcon} ${statusClass} fa-sm"></i>
+                                </div>
+                                <div>
+                                    <div class="font-weight-bold">${user.userName}</div>
+                                    <small class="text-muted">${user.email || 'Email não disponível'}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <span class="badge bg-${statusClass.replace('text-', '')}">${user.activityStatus}</span>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <small class="text-muted">${user.onlineTime}</small>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <small class="text-muted">${new Date(user.connectedAt).toLocaleTimeString('pt-BR')}</small>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <button class="btn btn-sm btn-outline-info" onclick="viewUserDetails('${user.userId}')" title="Ver detalhes">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function getStatusClass(status) {
+            switch(status) {
+                case 'Ativo': return 'text-success';
+                case 'Inativo': return 'text-warning';
+                case 'Ausente': return 'text-muted';
+                default: return 'text-secondary';
+            }
+        }
+
+        function getStatusIcon(status) {
+            switch(status) {
+                case 'Ativo': return 'fas fa-circle';
+                case 'Inativo': return 'fas fa-circle';
+                case 'Ausente': return 'far fa-circle';
+                default: return 'far fa-circle';
+            }
+        }
+
+        // Função para atualizar lista manualmente
+        async function refreshConnectedUsers() {
+            showToast.info("Atualizando", "Carregando usuários conectados...");
+            await loadConnectedUsers();
+        }
+
+        // Toggle auto-refresh
+        function toggleAutoRefresh() {
+            const icon = document.getElementById('autoRefreshIcon');
+            const text = document.getElementById('autoRefreshText');
+            
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                icon.className = 'fas fa-play';
+                text.textContent = 'Iniciar Auto-Refresh';
+                showToast.info("Auto-Refresh", "Auto-atualização desabilitada");
+            } else {
+                autoRefreshInterval = setInterval(loadConnectedUsers, 30000); // 30 segundos
+                icon.className = 'fas fa-pause';
+                text.textContent = 'Parar Auto-Refresh';
+                showToast.info("Auto-Refresh", "Auto-atualização ativada (30s)");
+            }
+        }
+
+        // Exportar lista de usuários conectados
+        function exportConnectedUsers() {
+            // Implementar exportação se necessário
+            showToast.info("Exportar", "Funcionalidade de exportação será implementada");
+        }
+
+        // Ver detalhes de um usuário específico
+        function viewUserDetails(userId) {
+            // Implementar modal ou página de detalhes se necessário
+            showToast.info("Detalhes", `Detalhes do usuário ${userId} serão implementados`);
+        }
+
+        // Limpeza ao sair da página
+        window.addEventListener('beforeunload', function() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            if (signalRConnection) {
+                signalRConnection.stop();
+            }
+        });
+    </script>
+}

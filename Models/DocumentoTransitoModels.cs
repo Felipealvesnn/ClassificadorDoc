@@ -115,15 +115,15 @@ namespace ClassificadorDoc.Models
 
         // NOVOS CAMPOS para INDICAÇÃO DE CONDUTOR
         // Dados do REQUERENTE (proprietário do veículo)
-        public string? RequerenteNome { get; set; } // Nome completo do requerente
-        public string? RequerenteCPF { get; set; } // CPF do requerente
-        public string? RequerenteRG { get; set; } // RG do requerente
-        public string? RequerenteEndereco { get; set; } // Endereço do requerente
+        public new string? RequerenteNome { get; set; } // Nome completo do requerente
+        public new string? RequerenteCPF { get; set; } // CPF do requerente
+        public new string? RequerenteRG { get; set; } // RG do requerente
+        public new string? RequerenteEndereco { get; set; } // Endereço do requerente
 
         // Dados da INDICAÇÃO (condutor real no momento da infração)
-        public string? IndicacaoNome { get; set; } // Nome do condutor indicado
-        public string? IndicacaoCPF { get; set; } // CPF do condutor indicado
-        public string? IndicacaoRG { get; set; } // RG do condutor indicado
-        public string? IndicacaoCNH { get; set; } // CNH do condutor indicado
+        public new string? IndicacaoNome { get; set; } // Nome do condutor indicado
+        public new string? IndicacaoCPF { get; set; } // CPF do condutor indicado
+        public new string? IndicacaoRG { get; set; } // RG do condutor indicado
+        public new string? IndicacaoCNH { get; set; } // CNH do condutor indicado
     }
 }

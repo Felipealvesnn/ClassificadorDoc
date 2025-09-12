@@ -1,93 +1,133 @@
 /**
- * Sistema de Notificações In-App
- * Gerencia toasts, sons e notificações em tempo real
+ * Sistema de Notificações In-App - VERSÃO OTIMIZADA
+ * Gerencia notificações em tempo real usando SignalR Manager centralizado
  */
 class NotificationManager {
     constructor() {
-        this.connection = null;
+        // Implementar Singleton Pattern
+        if (NotificationManager.instance) {
+            return NotificationManager.instance;
+        }
+        NotificationManager.instance = this;
+
         this.soundEnabled = true;
-        this.toastContainer = null;
         this.notificationCenter = null;
         this.unreadCount = 0;
+        this.isInitialized = false;
+
+        // Rate limiting para notificações
+        this.rateLimiter = {
+            maxNotifications: 10,
+            timeWindow: 60000, // 1 minuto
+            notifications: []
+        };
+
+        // Cache de elementos DOM
+        this.cachedElements = {
+            notificationBadge: null,
+            notificationList: null,
+            markAllReadBtn: null
+        };
+
+        // Event listeners cleanup
+        this.eventListeners = [];
 
         this.init();
     }
 
     async init() {
-        this.createToastContainer();
+        if (this.isInitialized) {
+            console.log("ℹ️ Sistema de notificações já inicializado");
+            return;
+        }
+
         this.createNotificationCenter();
         this.setupSignalR();
         this.loadExistingNotifications();
         this.setupEventListeners();
+        this.isInitialized = true;
 
-        console.log('🔔 Sistema de Notificações inicializado');
-    }
-
-    createToastContainer() {
-        this.toastContainer = document.createElement('div');
-        this.toastContainer.id = 'toast-container';
-        this.toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
-        this.toastContainer.style.zIndex = '9999';
-        document.body.appendChild(this.toastContainer);
+        console.log('🔔 Sistema de Notificações inicializado (versão otimizada)');
     }
 
     createNotificationCenter() {
-        // Adicionar ícone de notificação na navbar
         const navbar = document.querySelector('.navbar-nav');
-        if (navbar) {
-            const notificationItem = document.createElement('li');
-            notificationItem.className = 'nav-item dropdown me-3';
-            notificationItem.innerHTML = `
-                <a class="nav-link notification-bell" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-bell"></i>
-                    <span class="badge bg-danger notification-count" style="display: none;">0</span>
-                </a>
-                <div class="dropdown-menu dropdown-menu-end notification-dropdown" style="width: 350px; max-height: 400px; overflow-y: auto;">
-                    <div class="dropdown-header d-flex justify-content-between align-items-center">
-                        <span>Notificações</span>
-                        <button class="btn btn-sm btn-outline-secondary mark-all-read" type="button">
-                            Marcar todas como lidas
-                        </button>
-                    </div>
-                    <div class="notification-list">
-                        <div class="dropdown-item text-center text-muted">
-                            Carregando notificações...
-                        </div>
+        if (!navbar || this.notificationCenter) return;
+
+        const notificationItem = document.createElement('li');
+        notificationItem.className = 'nav-item dropdown me-3';
+
+        // Usar template mais seguro
+        const template = this.createNotificationTemplate();
+        notificationItem.innerHTML = template;
+
+        // Inserir antes do último item (usuário)
+        const userDropdown = navbar.querySelector('.user-dropdown')?.parentElement;
+        if (userDropdown) {
+            navbar.insertBefore(notificationItem, userDropdown);
+        } else {
+            navbar.appendChild(notificationItem);
+        }
+
+        this.notificationCenter = notificationItem;
+
+        // Cache elementos importantes
+        this.cachedElements.notificationBadge = notificationItem.querySelector('.notification-count');
+        this.cachedElements.notificationList = notificationItem.querySelector('.notification-list');
+        this.cachedElements.markAllReadBtn = notificationItem.querySelector('.mark-all-read');
+    }
+
+    createNotificationTemplate() {
+        return `
+            <a class="nav-link notification-bell" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-bell"></i>
+                <span class="badge bg-danger notification-count" style="display: none;">0</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end notification-dropdown" style="width: 350px; max-height: 400px; overflow-y: auto;">
+                <div class="dropdown-header d-flex justify-content-between align-items-center">
+                    <span>Notificações</span>
+                    <button class="btn btn-sm btn-outline-secondary mark-all-read" type="button">
+                        Marcar todas como lidas
+                    </button>
+                </div>
+                <div class="notification-list">
+                    <div class="dropdown-item text-center text-muted">
+                        Carregando notificações...
                     </div>
                 </div>
-            `;
-
-            // Inserir antes do último item (usuário)
-            const userDropdown = navbar.querySelector('.user-dropdown')?.parentElement;
-            if (userDropdown) {
-                navbar.insertBefore(notificationItem, userDropdown);
-            } else {
-                navbar.appendChild(notificationItem);
-            }
-
-            this.notificationCenter = notificationItem;
-        }
+            </div>
+        `;
     }
 
     async setupSignalR() {
-        if (typeof signalR === 'undefined') {
-            console.warn('SignalR não está disponível');
+        // Usar SignalR Manager centralizado em vez de criar conexão própria
+        if (!window.signalRManager) {
+            console.warn('SignalR Manager não está disponível');
+            // Tentar novamente em 1 segundo
+            setTimeout(() => this.setupSignalR(), 1000);
             return;
         }
 
         try {
-            this.connection = new signalR.HubConnectionBuilder()
-                .withUrl('/notificationHub')
-                .build();
-
-            this.connection.on('ReceiveNotification', (notification) => {
-                this.handleNewNotification(notification);
+            // Se inscrever nos eventos do SignalR Manager
+            window.signalRManager.subscribe('notifications', {
+                connected: () => {
+                    console.log('✅ Conectado ao hub de notificações via SignalR Manager');
+                },
+                reconnected: () => {
+                    console.log('🔄 Reconectado ao hub de notificações');
+                },
+                disconnected: () => {
+                    console.log('❌ Desconectado do hub de notificações');
+                },
+                receiveNotification: (notification) => {
+                    this.handleNewNotification(notification);
+                }
             });
 
-            await this.connection.start();
-            console.log('✅ Conectado ao hub de notificações');
+            console.log('✅ Sistema de notificações configurado com SignalR Manager');
         } catch (error) {
-            console.error('❌ Erro ao conectar SignalR:', error);
+            console.error('❌ Erro ao configurar notificações com SignalR Manager:', error);
         }
     }
 
@@ -105,17 +145,19 @@ class NotificationManager {
     }
 
     setupEventListeners() {
-        // Marcar todas como lidas
-        document.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('mark-all-read')) {
+        // Event delegation otimizada
+        const handleNotificationClick = async (e) => {
+            // Marcar todas como lidas
+            if (e.target.matches('.mark-all-read')) {
+                e.preventDefault();
                 await this.markAllAsRead();
+                return;
             }
-        });
 
-        // Clique em notificação específica
-        document.addEventListener('click', async (e) => {
+            // Clique em notificação específica
             const notificationItem = e.target.closest('.notification-item');
             if (notificationItem) {
+                e.preventDefault();
                 const notificationId = notificationItem.dataset.notificationId;
                 if (notificationId) {
                     await this.markAsRead(notificationId);
@@ -127,30 +169,68 @@ class NotificationManager {
                     }
                 }
             }
-        });
+        };
 
         // Toggle de som
-        document.addEventListener('keydown', (e) => {
+        const handleKeydown = (e) => {
             if (e.ctrlKey && e.shiftKey && e.key === 'M') {
+                e.preventDefault();
                 this.toggleSound();
             }
+        };
+
+        // Adicionar listeners com cleanup tracking
+        this.addEventListener(document, 'click', handleNotificationClick);
+        this.addEventListener(document, 'keydown', handleKeydown);
+    }
+
+    // Utilitário para rastrear event listeners
+    addEventListener(element, event, handler) {
+        element.addEventListener(event, handler);
+        this.eventListeners.push({
+            element,
+            event,
+            handler
         });
     }
 
+    // Rate limiting para notificações
+    isRateLimited() {
+        const now = Date.now();
+
+        // Limpar notificações antigas
+        this.rateLimiter.notifications = this.rateLimiter.notifications.filter(
+            timestamp => now - timestamp < this.rateLimiter.timeWindow
+        );
+
+        // Verificar se excedeu o limite
+        if (this.rateLimiter.notifications.length >= this.rateLimiter.maxNotifications) {
+            console.warn('⚠️ Rate limit de notificações atingido');
+            return true;
+        }
+
+        this.rateLimiter.notifications.push(now);
+        return false;
+    }
+
     handleNewNotification(notification) {
+        if (this.isRateLimited()) {
+            return;
+        }
+
         console.log('🔔 Nova notificação:', notification);
 
         // Tocar som se habilitado
         if (notification.playSound && this.soundEnabled) {
-            // Usar o SoundManager unificado
             if (window.soundManager) {
                 window.soundManager.playNotificationSound(notification.priority);
             }
         }
 
-        // Mostrar toast se habilitado
-        if (notification.showToast) {
-            this.showToast(notification);
+        // Mostrar toast se habilitado - USANDO SISTEMA EXISTENTE
+        if (notification.showToast && window.showToast) {
+            const toastFunction = window.showToast[notification.type] || window.showToast.info;
+            toastFunction(notification.title, notification.message);
         }
 
         // Atualizar centro de notificações
@@ -158,73 +238,17 @@ class NotificationManager {
         this.updateUnreadCount(this.unreadCount + 1);
     }
 
-    showToast(notification) {
-        const toastId = `toast-${notification.id}-${Date.now()}`;
-        const toastElement = document.createElement('div');
-        toastElement.id = toastId;
-        toastElement.className = `toast notification-toast toast-${notification.color}`;
-        toastElement.setAttribute('role', 'alert');
-        toastElement.setAttribute('aria-live', 'assertive');
-        toastElement.setAttribute('aria-atomic', 'true');
-
-        const autoHideDelay = notification.priority === 'urgent' ? 10000 :
-            notification.priority === 'high' ? 7000 : 5000;
-
-        toastElement.innerHTML = `
-            <div class="toast-header bg-${notification.color} text-white">
-                <i class="${notification.icon} me-2"></i>
-                <strong class="me-auto">${this.escapeHtml(notification.title)}</strong>
-                <small class="text-white-50">${this.formatTime(notification.createdAt)}</small>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body">
-                ${this.escapeHtml(notification.message)}
-                ${notification.actionUrl ? `<hr><a href="${notification.actionUrl}" class="btn btn-sm btn-${notification.color}">Ver detalhes</a>` : ''}
-            </div>
-        `;
-
-        this.toastContainer.appendChild(toastElement);
-
-        // Inicializar Bootstrap toast
-        const toast = new bootstrap.Toast(toastElement, {
-            autohide: true,
-            delay: autoHideDelay
-        });
-
-        toast.show();
-
-        // Remover elemento após esconder
-        toastElement.addEventListener('hidden.bs.toast', () => {
-            toastElement.remove();
-        });
-    }
-
     addToNotificationCenter(notification) {
-        const notificationList = document.querySelector('.notification-list');
+        const notificationList = this.cachedElements.notificationList;
         if (!notificationList) return;
 
         // Remover mensagem de carregamento
         const loadingMsg = notificationList.querySelector('.text-muted');
-        if (loadingMsg) loadingMsg.remove();
+        if (loadingMsg && loadingMsg.textContent.includes('Carregando')) {
+            loadingMsg.remove();
+        }
 
-        const notificationItem = document.createElement('div');
-        notificationItem.className = 'notification-item dropdown-item d-flex align-items-start py-2';
-        notificationItem.dataset.notificationId = notification.id;
-        notificationItem.dataset.actionUrl = notification.actionUrl || '';
-        notificationItem.style.cursor = 'pointer';
-
-        notificationItem.innerHTML = `
-            <div class="me-2">
-                <i class="${notification.icon} text-${notification.color}"></i>
-            </div>
-            <div class="flex-grow-1">
-                <div class="fw-bold small">${this.escapeHtml(notification.title)}</div>
-                <div class="text-muted small">${this.escapeHtml(notification.message)}</div>
-                <div class="text-muted small">${this.formatTime(notification.createdAt)}</div>
-            </div>
-            ${notification.priority === 'urgent' || notification.priority === 'high' ?
-                '<div class="ms-2"><span class="badge bg-danger">!</span></div>' : ''}
-        `;
+        const notificationItem = this.createNotificationItem(notification);
 
         // Inserir no topo
         notificationList.insertBefore(notificationItem, notificationList.firstChild);
@@ -236,25 +260,80 @@ class NotificationManager {
         }
     }
 
-    updateNotificationCenter(notifications) {
-        const notificationList = document.querySelector('.notification-list');
-        if (!notificationList) return;
+    createNotificationItem(notification) {
+        const item = document.createElement('div');
+        item.className = 'notification-item dropdown-item d-flex align-items-start py-2';
+        item.dataset.notificationId = notification.id;
+        item.dataset.actionUrl = notification.actionUrl || '';
+        item.style.cursor = 'pointer';
 
-        notificationList.innerHTML = '';
+        // Criar estrutura usando createElement
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'me-2';
+        const icon = document.createElement('i');
+        icon.className = `${notification.icon} text-${notification.color}`;
+        iconDiv.appendChild(icon);
 
-        if (notifications.length === 0) {
-            notificationList.innerHTML = '<div class="dropdown-item text-center text-muted">Nenhuma notificação</div>';
-            return;
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'flex-grow-1';
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'fw-bold small';
+        titleDiv.textContent = notification.title;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'text-muted small';
+        messageDiv.textContent = notification.message;
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'text-muted small';
+        timeDiv.textContent = this.formatTime(notification.createdAt);
+
+        contentDiv.appendChild(titleDiv);
+        contentDiv.appendChild(messageDiv);
+        contentDiv.appendChild(timeDiv);
+
+        item.appendChild(iconDiv);
+        item.appendChild(contentDiv);
+
+        if (notification.priority === 'urgent' || notification.priority === 'high') {
+            const priorityDiv = document.createElement('div');
+            priorityDiv.className = 'ms-2';
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-danger';
+            badge.textContent = '!';
+            priorityDiv.appendChild(badge);
+            item.appendChild(priorityDiv);
         }
 
-        notifications.slice(0, 10).forEach(notification => {
-            this.addToNotificationCenter(notification);
-        });
+        return item;
+    }
+
+    updateNotificationCenter(notifications) {
+        const notificationList = this.cachedElements.notificationList;
+        if (!notificationList) return;
+
+        // Usar DocumentFragment para melhor performance
+        const fragment = document.createDocumentFragment();
+
+        if (notifications.length === 0) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.className = 'dropdown-item text-center text-muted';
+            emptyMsg.textContent = 'Nenhuma notificação';
+            fragment.appendChild(emptyMsg);
+        } else {
+            notifications.slice(0, 10).forEach(notification => {
+                fragment.appendChild(this.createNotificationItem(notification));
+            });
+        }
+
+        notificationList.innerHTML = '';
+        notificationList.appendChild(fragment);
     }
 
     updateUnreadCount(count) {
         this.unreadCount = count;
-        const badge = document.querySelector('.notification-count');
+        const badge = this.cachedElements.notificationBadge;
         if (badge) {
             if (count > 0) {
                 badge.textContent = count > 99 ? '99+' : count.toString();
@@ -267,10 +346,12 @@ class NotificationManager {
 
     async markAsRead(notificationId) {
         try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
             const response = await fetch(`/api/notifications/${notificationId}/mark-read`, {
                 method: 'POST',
                 headers: {
-                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token || ''
                 }
             });
 
@@ -289,10 +370,12 @@ class NotificationManager {
 
     async markAllAsRead() {
         try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
             const response = await fetch('/api/notifications/mark-all-read', {
                 method: 'POST',
                 headers: {
-                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token || ''
                 }
             });
 
@@ -307,7 +390,6 @@ class NotificationManager {
     }
 
     toggleSound() {
-        // Usar o SoundManager unificado
         if (window.soundManager) {
             this.soundEnabled = window.soundManager.toggle();
         } else {
@@ -316,23 +398,11 @@ class NotificationManager {
         }
 
         const message = this.soundEnabled ? 'Sons de notificação ativados' : 'Sons de notificação desativados';
-        this.showToast({
-            id: Date.now(),
-            title: 'Configuração alterada',
-            message: message,
-            type: 'info',
-            color: 'info',
-            icon: this.soundEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute',
-            createdAt: new Date().toISOString(),
-            playSound: false,
-            showToast: true
-        });
-    }
 
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        // Usar sistema de toasts existente
+        if (window.showToast) {
+            window.showToast.info('Configuração alterada', message);
+        }
     }
 
     formatTime(isoString) {
@@ -345,69 +415,41 @@ class NotificationManager {
         if (diff < 86400000) return `${Math.floor(diff / 3600000)}h`;
         return date.toLocaleDateString('pt-BR');
     }
+
+    // Cleanup method
+    cleanup() {
+        // Remover event listeners
+        this.eventListeners.forEach(({ element, event, handler }) => {
+            element.removeEventListener(event, handler);
+        });
+        this.eventListeners = [];
+
+        // Remover inscrição do SignalR Manager
+        if (window.signalRManager) {
+            window.signalRManager.unsubscribe('notifications');
+        }
+
+        this.isInitialized = false;
+        console.log('🧹 Sistema de notificações limpo');
+    }
 }
 
 // Inicializar quando o DOM estiver carregado
 document.addEventListener('DOMContentLoaded', () => {
     // Verificar se o usuário está logado
     if (document.querySelector('.navbar .user-dropdown')) {
-        window.notificationManager = new NotificationManager();
+        // Aguardar SignalR Manager estar disponível
+        setTimeout(() => {
+            window.notificationManager = new NotificationManager();
+        }, 1500); // Maior delay para aguardar SignalR Manager
     }
 });
 
-// CSS para as notificações
-const notificationStyles = `
-<style>
-.notification-toast {
-    min-width: 300px;
-    max-width: 400px;
-}
+// Cleanup ao sair da página
+window.addEventListener('beforeunload', () => {
+    if (window.notificationManager) {
+        window.notificationManager.cleanup();
+    }
+});
 
-.toast-primary { border-left: 4px solid #0d6efd; }
-.toast-success { border-left: 4px solid #198754; }
-.toast-warning { border-left: 4px solid #ffc107; }
-.toast-danger { border-left: 4px solid #dc3545; }
-.toast-info { border-left: 4px solid #0dcaf0; }
-
-.notification-bell {
-    position: relative;
-}
-
-.notification-bell .badge {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    font-size: 0.7rem;
-    min-width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.notification-dropdown {
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-}
-
-.notification-item:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-}
-
-.notification-item.opacity-75 {
-    opacity: 0.75;
-}
-
-@keyframes notification-pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
-}
-
-.notification-bell.has-new {
-    animation: notification-pulse 2s infinite;
-}
-</style>
-`;
-
-document.head.insertAdjacentHTML('beforeend', notificationStyles);
+console.log("📄 Script de notificações carregado (versão otimizada - usando SignalR Manager)");

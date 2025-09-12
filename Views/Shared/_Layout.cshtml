@@ -89,6 +89,9 @@
                                             <li><a class="dropdown-item" asp-controller="Alertas" asp-action="Index">
                                                     <i class="fas fa-bell me-2"></i>Alertas Automáticos
                                                 </a></li>
+                                            <li><a class="dropdown-item" asp-controller="ConnectedUsers" asp-action="Index">
+                                                    <i class="fas fa-users me-2"></i>Usuários Conectados
+                                                </a></li>
                                             <li>
                                                 <hr class="dropdown-divider">
                                             </li>
@@ -104,6 +107,15 @@
                         <ul class="navbar-nav">
                             @if (User.Identity?.IsAuthenticated == true)
                             {
+                                <!-- Contador de usuários conectados -->
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-controller="ConnectedUsers" asp-action="Index"
+                                        title="Ver usuários conectados">
+                                        <i class="fas fa-users me-1"></i>
+                                        <span class="badge bg-success rounded-pill" id="connectedUsersCounter">0</span>
+                                    </a>
+                                </li>
+
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle user-dropdown" href="#" role="button"
                                         data-bs-toggle="dropdown">
@@ -291,6 +303,12 @@
 
     <!-- SignalR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.11/signalr.min.js"></script>
+
+    <!-- SignalR Manager Centralizado (deve vir primeiro) -->
+    <script src="~/js/signalr-manager.js" asp-append-version="true"></script>
+
+    <!-- Real-time Connected Users -->
+    <script src="~/js/realtime/connected-users.js" asp-append-version="true"></script>
 
     <!-- Sistema de Notificações -->
     <script src="~/js/notifications.js" asp-append-version="true"></script>

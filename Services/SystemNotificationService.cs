@@ -1,8 +1,8 @@
 using ClassificadorDoc.Data;
 using ClassificadorDoc.Models;
+using ClassificadorDoc.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
 
 namespace ClassificadorDoc.Services
 {
@@ -211,41 +211,6 @@ namespace ClassificadorDoc.Services
                 "INFO" => "info",
                 _ => "primary"
             };
-        }
-    }
-
-    /// <summary>
-    /// Hub SignalR para notificações em tempo real
-    /// </summary>
-    public class NotificationHub : Hub
-    {
-        private readonly ILogger<NotificationHub> _logger;
-
-        public NotificationHub(ILogger<NotificationHub> logger)
-        {
-            _logger = logger;
-        }
-
-        public override async Task OnConnectedAsync()
-        {
-            _logger.LogInformation("Cliente conectado ao hub de notificações: {ConnectionId}", Context.ConnectionId);
-            await base.OnConnectedAsync();
-        }
-
-        public override async Task OnDisconnectedAsync(Exception? exception)
-        {
-            _logger.LogInformation("Cliente desconectado do hub de notificações: {ConnectionId}", Context.ConnectionId);
-            await base.OnDisconnectedAsync(exception);
-        }
-
-        public async Task JoinUserGroup(string userId)
-        {
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"User_{userId}");
-        }
-
-        public async Task LeaveUserGroup(string userId)
-        {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"User_{userId}");
         }
     }
 }

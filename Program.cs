@@ -115,6 +115,9 @@ builder.Services.AddScoped<IAlertExecutionService, AlertExecutionService>();
 builder.Services.AddScoped<ISystemNotificationService, SystemNotificationService>();
 builder.Services.AddScoped<IConfiguracaoService, ConfiguracaoService>(); // 🆕 NOVO SERVIÇO
 
+// Register Real-Time Services
+builder.Services.AddScoped<ClassificadorDoc.Services.RealTime.IConnectedUsersService, ClassificadorDoc.Services.RealTime.ConnectedUsersService>();
+
 // Configure SignalR for real-time notifications
 builder.Services.AddSignalR();
 
@@ -183,7 +186,7 @@ else if (appMode == "WebOnly")
         pattern: "{controller=Home}/{action=Index}/{id?}");
 
     // Map SignalR Hub for notifications
-    app.MapHub<ClassificadorDoc.Services.NotificationHub>("/notificationHub");
+    app.MapHub<ClassificadorDoc.Hubs.NotificationHub>("/notificationHub");
 }
 else // Full mode
 {
@@ -194,7 +197,7 @@ else // Full mode
     app.MapControllers();
 
     // Map SignalR Hub for notifications
-    app.MapHub<ClassificadorDoc.Services.NotificationHub>("/notificationHub");
+    app.MapHub<ClassificadorDoc.Hubs.NotificationHub>("/notificationHub");
 }
 
 // Log do modo atual
